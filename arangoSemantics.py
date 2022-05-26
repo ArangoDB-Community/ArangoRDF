@@ -31,12 +31,12 @@ class ArangoSemantics():
         self.collections = {}
 
 
-    def init_rdf_collections(self, iri: str = "IRI", bnode: str = "BNode", literal: str = "Literal", edge: str = "Statment") -> None:
+    def init_rdf_collections(self, iri: str = "IRI", bnode: str = "BNode", literal: str = "Literal", edge: str = "Statement") -> None:
         #init collections
         self.init_collection(iri, "iri")
         self.init_collection(bnode, "bnode")
         self.init_collection(literal, "literal")
-        self.init_edge_collection(edge, [iri, bnode], [iri, literal, bnode], "statment")
+        self.init_edge_collection(edge, [iri, bnode], [iri, literal, bnode], "statement")
 
     def init_ontology_collections(self, cls: str = "Class", rel: str = "Relationship",prop: str = "Property", sub_cls: str = "SubClassOf", sub_prop: str ="SubPropertyOf", range: str = "Range", domain: str = "Domain"):
         self.init_collection(cls, "class")
@@ -121,7 +121,7 @@ class ArangoSemantics():
                 raise ValueError("Object must be IRI, Blank Node, or Literal")
             
             #build and insert edge
-            self.insert_edge(self.collections["statment"], self.build_statment_edge(p, s_id, o_id, graph_id, self.collections["statment"]))
+            self.insert_edge(self.collections["statement"], self.build_statement_edge(p, s_id, o_id, graph_id, self.collections["statement"]))
             
         
         return
@@ -157,28 +157,28 @@ class ArangoSemantics():
             if "#subClassOf" in p.toPython():
                 o_id = self.build_node(o, self.collections["class"])
                 s_id = self.build_node(s, self.collections["class"])
-                self.insert_edge(self.collections["sub_class"], self.build_statment_edge(p, s_id, o_id, graph_id, self.collections["sub_class"]))
+                self.insert_edge(self.collections["sub_class"], self.build_statement_edge(p, s_id, o_id, graph_id, self.collections["sub_class"]))
                 continue
             
             #if predicate is #domain create relationship node and connect to class node
             if "#domain" in p.toPython():
                 s_id = self.build_node(s, self.collections["rel"])
                 o_id = self.build_node(o, self.collections["class"])
-                self.insert_edge(self.collections["domain"], self.build_statment_edge(p, s_id, o_id, graph_id, self.collections["domain"]))
+                self.insert_edge(self.collections["domain"], self.build_statement_edge(p, s_id, o_id, graph_id, self.collections["domain"]))
                 continue
             
             
             if "#range" in p.toPython():
                 s_id = self.build_node(s, self.collections["rel"])
                 o_id = self.build_node(o, self.collections["class"])
-                self.insert_edge(self.collections["range"], self.build_statment_edge(p, s_id, o_id, graph_id, self.collections["range"]))  
+                self.insert_edge(self.collections["range"], self.build_statement_edge(p, s_id, o_id, graph_id, self.collections["range"]))
                 continue
 
 
             if "#subPropertyOf" in p.toPython():
                 o_id = self.build_node(o, self.collections["prop"])
                 s_id = self.build_node(o, self.collections["prop"])
-                self.insert_edge(self.collections["sub_prop"], self.build_statment_edge(p, s_id, o_id, graph_id, self.collections["sub_prop"]))
+                self.insert_edge(self.collections["sub_prop"], self.build_statement_edge(p, s_id, o_id, graph_id, self.collections["sub_prop"]))
                 
 
         return 
@@ -221,12 +221,15 @@ class ArangoSemantics():
         key_string = value+type+lang
         key = hashlib.md5(key_string.encode('utf-8')).hexdigest()
         id = f"{collection.name}/{key}"
+        #rdf strings are the only type allowed to not have a type.  Coerce strings without type to xsd:String
+        if type =="None" :
+            type = "http://www.w3.org/2001/XMLSchema#string" 
 
         doc = {"_id": id, "_key": key, "_value":value, "_type": type, "_lang": lang}
         return doc
 
 
-    def build_statment_edge(self, predicate: URIRef, subject_id: dict, object_id: dict, graph: str, collection: StandardCollection):
+    def build_statement_edge(self, predicate: URIRef, subject_id: dict, object_id: dict, graph: str, collection: StandardCollection):
         _iri = predicate.toPython()
         _from = subject_id["_id"]
         _predicate = hashlib.md5(_iri.encode('utf-8')).hexdigest()
