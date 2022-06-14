@@ -260,6 +260,9 @@ class ArangoSemantics():
         key_string = value+type+lang
         key = hashlib.md5(key_string.encode('utf-8')).hexdigest()
         id = f"{collection.name}/{key}"
+        #rdf strings are the only type allowed to not have a type.  Coerce strings without type to xsd:String
+        if type =="None" :
+            type = "http://www.w3.org/2001/XMLSchema#string" 
 
         doc = {"_id": id, "_key": key, "_value":value, "_type": type, "_lang": lang}
         return doc

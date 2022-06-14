@@ -1,0 +1,208 @@
+
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix fn:      <http://www.w3.org/2005/xpath-functions#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+<http://www.arangodb.com/rdfowl>
+      a       owl:Ontology ;
+      owl:versionInfo "Created with TopBraid Composer"^^xsd:string .
+
+rdf:subject
+      a       rdf:Property ;
+      rdfs:domain rdf:Statement ;
+      rdfs:subPropertyOf rdf:subject .
+
+owl:Ontology
+      a       rdfs:Class ;
+      rdfs:subClassOf owl:Ontology .
+
+rdf:List
+      a       rdfs:Class ;
+      rdfs:subClassOf rdf:List .
+
+rdfs:range
+      a       rdf:Property ;
+      rdfs:domain rdf:Property ;
+      rdfs:range rdfs:Class ;
+      rdfs:subPropertyOf rdfs:range .
+
+owl:differentFrom
+      a       owl:SymmetricProperty ;
+      owl:inverseOf owl:differentFrom .
+
+rdfs:subPropertyOf
+      a       rdf:Property , owl:TransitiveProperty , rdfs:Resource ;
+      rdfs:domain rdf:Property ;
+      rdfs:range rdf:Property ;
+      rdfs:subPropertyOf rdfs:subPropertyOf ;
+      <http://proton.semanticweb.org/2005/04/protons#transitiveOver>
+              rdfs:subPropertyOf .
+
+rdf:first
+      a       rdf:Property ;
+      rdfs:domain rdf:List ;
+      rdfs:subPropertyOf rdf:first .
+
+rdfs:label
+      a       rdf:Property ;
+      rdfs:range rdfs:Literal ;
+      rdfs:subPropertyOf rdfs:label .
+
+rdf:value
+      a       rdf:Property ;
+      rdfs:subPropertyOf rdf:value .
+
+rdfs:subClassOf
+      a       rdf:Property , owl:TransitiveProperty ;
+      rdfs:domain rdfs:Class ;
+      rdfs:range rdfs:Class ;
+      rdfs:subPropertyOf rdfs:subClassOf ;
+      <http://proton.semanticweb.org/2005/04/protons#transitiveOver>
+              rdfs:subClassOf .
+
+rdf:Alt
+      a       rdfs:Class ;
+      rdfs:subClassOf rdfs:Container , rdf:Alt .
+
+rdfs:Literal
+      a       rdfs:Class ;
+      rdfs:subClassOf rdfs:Literal .
+
+owl:inverseOf
+      a       rdf:Property , owl:SymmetricProperty ;
+      rdfs:subPropertyOf owl:inverseOf ;
+      owl:inverseOf owl:inverseOf .
+
+xsd:nonNegativeInteger
+      a       rdfs:Class , rdfs:Datatype ;
+      rdfs:subClassOf rdfs:Literal , xsd:nonNegativeInteger .
+
+owl:equivalentClass
+      a       rdf:Property , owl:TransitiveProperty , owl:SymmetricProperty ;
+      rdfs:domain rdfs:Class ;
+      rdfs:range rdfs:Class ;
+      rdfs:subPropertyOf rdfs:subClassOf , owl:equivalentClass ;
+      <http://proton.semanticweb.org/2005/04/protons#transitiveOver>
+              owl:equivalentClass ;
+      owl:inverseOf owl:equivalentClass .
+
+rdfs:comment
+      a       rdf:Property ;
+      rdfs:range rdfs:Literal ;
+      rdfs:subPropertyOf rdfs:comment .
+
+rdf:type
+      a       rdf:Property , rdfs:Resource ;
+      rdfs:range rdfs:Class ;
+      rdfs:subPropertyOf rdf:type ;
+      <http://proton.semanticweb.org/2005/04/protons#transitiveOver>
+              rdfs:subClassOf .
+
+owl:equivalentProperty
+      a       rdf:Property , owl:TransitiveProperty , owl:SymmetricProperty ;
+      rdfs:domain rdf:Property ;
+      rdfs:range rdf:Property ;
+      rdfs:subPropertyOf rdfs:subPropertyOf , owl:equivalentProperty ;
+      <http://proton.semanticweb.org/2005/04/protons#transitiveOver>
+              owl:equivalentProperty ;
+      owl:inverseOf owl:equivalentProperty .
+
+<http://proton.semanticweb.org/2005/04/protons#transitiveOver>
+      a       rdf:Property ;
+      rdfs:subPropertyOf <http://proton.semanticweb.org/2005/04/protons#transitiveOver> .
+
+rdfs:Datatype
+      a       rdfs:Class ;
+      rdfs:subClassOf rdfs:Class , rdfs:Datatype .
+
+rdf:rest
+      a       rdf:Property ;
+      rdfs:domain rdf:List ;
+      rdfs:range rdf:List ;
+      rdfs:subPropertyOf rdf:rest .
+
+rdfs:Container
+      a       rdfs:Class ;
+      rdfs:subClassOf rdfs:Container .
+
+rdf:Statement
+      a       rdfs:Class ;
+      rdfs:subClassOf rdf:Statement .
+
+rdfs:isDefinedBy
+      a       rdf:Property ;
+      rdfs:subPropertyOf rdfs:isDefinedBy , rdfs:seeAlso .
+
+rdfs:seeAlso
+      a       rdf:Property ;
+      rdfs:subPropertyOf rdfs:seeAlso .
+
+rdfs:Resource
+      a       rdfs:Resource , rdfs:Class ;
+      rdfs:subClassOf rdfs:Resource .
+
+rdfs:Class
+      a       rdfs:Class ;
+      rdfs:subClassOf rdfs:Class .
+
+rdf:object
+      a       rdf:Property ;
+      rdfs:domain rdf:Statement ;
+      rdfs:subPropertyOf rdf:object .
+
+rdf:XMLLiteral
+      a       rdfs:Class , rdfs:Datatype ;
+      rdfs:subClassOf rdfs:Literal , rdf:XMLLiteral .
+
+xsd:string
+      a       rdfs:Class , rdfs:Datatype ;
+      rdfs:subClassOf rdfs:Literal , xsd:string .
+
+rdf:predicate
+      a       rdf:Property ;
+      rdfs:domain rdf:Statement ;
+      rdfs:subPropertyOf rdf:predicate .
+
+owl:SymmetricProperty
+      a       rdfs:Class ;
+      rdfs:subClassOf owl:SymmetricProperty .
+
+rdf:Seq
+      a       rdfs:Class ;
+      rdfs:subClassOf rdfs:Container , rdf:Seq .
+
+rdf:Property
+      a       rdfs:Resource , rdfs:Class ;
+      rdfs:subClassOf rdf:Property .
+
+rdfs:domain
+      a       rdf:Property ;
+      rdfs:domain rdf:Property ;
+      rdfs:range rdfs:Class ;
+      rdfs:subPropertyOf rdfs:domain .
+
+owl:versionInfo
+      a       rdf:Property ;
+      rdfs:subPropertyOf owl:versionInfo .
+
+()    a       rdf:List .
+
+owl:TransitiveProperty
+      a       rdfs:Class ;
+      rdfs:subClassOf owl:TransitiveProperty .
+
+rdfs:ContainerMembershipProperty
+      a       rdfs:Class ;
+      rdfs:subClassOf rdf:Property , rdfs:ContainerMembershipProperty .
+
+rdf:Bag
+      a       rdfs:Class ;
+      rdfs:subClassOf rdfs:Container , rdf:Bag .
+
+owl:sameAs
+      a       owl:TransitiveProperty , rdfs:Resource , owl:SymmetricProperty ;
+      <http://proton.semanticweb.org/2005/04/protons#transitiveOver>
+              owl:sameAs ;
+      owl:inverseOf owl:sameAs .
