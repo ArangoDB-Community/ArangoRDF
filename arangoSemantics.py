@@ -1,3 +1,4 @@
+import string
 from typing import List, Union
 from rdflib import Graph, URIRef, Literal, BNode
 #from rdflib.namespace import RDFS, OWL
@@ -31,12 +32,12 @@ class ArangoSemantics():
         self.collections = {}
 
 
-    def init_rdf_collections(self, iri: str = "IRI", bnode: str = "BNode", literal: str = "Literal", edge: str = "Statment") -> None:
+    def init_rdf_collections(self, iri: str = "IRI", bnode: str = "BNode", literal: str = "Literal", edge: str = "Statement") -> None:
         #init collections
         self.init_collection(iri, "iri")
         self.init_collection(bnode, "bnode")
         self.init_collection(literal, "literal")
-        self.init_edge_collection(edge, [iri, bnode], [iri, literal, bnode], "statment")
+        self.init_edge_collection(edge, [iri, bnode], [iri, literal, bnode], "statement")
 
     def init_ontology_collections(self, cls: str = "Class", rel: str = "Relationship",prop: str = "Property", sub_cls: str = "SubClassOf", sub_prop: str ="SubPropertyOf", range: str = "Range", domain: str = "Domain"):
         self.init_collection(cls, "class")
@@ -94,9 +95,9 @@ class ArangoSemantics():
         self.collections[default_name] = collection 
 
 
-    def import_rdf(self, data: str) -> None:
+    def import_rdf(self, data: str, format="xml") -> None:
         
-        self.rdf_graph.parse(data)
+        self.rdf_graph.parse(data, format=format)
 
         graph_id = self.rdf_graph.identifier.toPython()
 
@@ -121,10 +122,11 @@ class ArangoSemantics():
                 raise ValueError("Object must be IRI, Blank Node, or Literal")
             
             #build and insert edge
-            self.insert_edge(self.collections["statment"], self.build_statment_edge(p, s_id, o_id, graph_id, self.collections["statment"]))
+            self.insert_edge(self.collections["statement"], self.build_statement_edge(p, s_id, o_id, graph_id, self.collections["statement"]))
             
         
         return
+
 
     
     def import_ontology(self, data: str, format="xml") -> None:
@@ -145,6 +147,7 @@ class ArangoSemantics():
             #add objectProperty to relationship collection
             if not isinstance(o, Literal):
                 if "#ObjectProperty" in o.toPython():
+                    print("~~~~"+s+p+o)
                     self.build_node(s, self.collections["rel"])
                     continue
 
@@ -157,31 +160,67 @@ class ArangoSemantics():
             if "#subClassOf" in p.toPython():
                 o_id = self.build_node(o, self.collections["class"])
                 s_id = self.build_node(s, self.collections["class"])
-                self.insert_edge(self.collections["sub_class"], self.build_statment_edge(p, s_id, o_id, graph_id, self.collections["sub_class"]))
+                self.insert_edge(self.collections["sub_class"], self.build_statement_edge(p, s_id, o_id, graph_id, self.collections["sub_class"]))
                 continue
             
             #if predicate is #domain create relationship node and connect to class node
             if "#domain" in p.toPython():
                 s_id = self.build_node(s, self.collections["rel"])
                 o_id = self.build_node(o, self.collections["class"])
-                self.insert_edge(self.collections["domain"], self.build_statment_edge(p, s_id, o_id, graph_id, self.collections["domain"]))
+                self.insert_edge(self.collections["domain"], self.build_statement_edge(p, s_id, o_id, graph_id, self.collections["domain"]))
                 continue
             
             
             if "#range" in p.toPython():
                 s_id = self.build_node(s, self.collections["rel"])
                 o_id = self.build_node(o, self.collections["class"])
-                self.insert_edge(self.collections["range"], self.build_statment_edge(p, s_id, o_id, graph_id, self.collections["range"]))  
+                self.insert_edge(self.collections["range"], self.build_statement_edge(p, s_id, o_id, graph_id, self.collections["range"]))  
                 continue
 
 
             if "#subPropertyOf" in p.toPython():
                 o_id = self.build_node(o, self.collections["prop"])
                 s_id = self.build_node(o, self.collections["prop"])
-                self.insert_edge(self.collections["sub_prop"], self.build_statment_edge(p, s_id, o_id, graph_id, self.collections["sub_prop"]))
+                self.insert_edge(self.collections["sub_prop"], self.build_statement_edge(p, s_id, o_id, graph_id, self.collections["sub_prop"]))
                 
 
         return 
+
+    def export(self, file_name: str, format: str) -> None:
+        #init rdf graph
+        g = Graph()
+
+        #get all collections from db
+        collections = self.db.collections()
+        names=[]
+        for i in collections:
+            if i["name"][0] != "_":
+                names.append(i["name"])
+        
+        #get nodes
+        nodes = self.get_all(names)
+        all_nodes = []
+        # build triples
+        for collection in nodes:
+            for n in collection:
+                all_nodes.append(n)
+
+        for n in all_nodes:
+            if "_to" in n:
+                to_node = self.find_by_id(n["_to"], all_nodes)
+                from_node = self.find_by_id(n["_from"], all_nodes)
+                if type(to_node) is Literal:
+                    print(to_node)
+                if type(from_node) is Literal:
+                    print(to_node)
+                _iri = n["_iri"]
+                g.add((from_node, URIRef(_iri), to_node))
+        
+        g.serialize(destination=file_name, format=format)
+
+        return
+
+
 
     def build_node(self, doc: Union[URIRef,BNode], collection: StandardCollection) -> dict:
         if isinstance(doc, URIRef):
@@ -226,7 +265,7 @@ class ArangoSemantics():
         return doc
 
 
-    def build_statment_edge(self, predicate: URIRef, subject_id: dict, object_id: dict, graph: str, collection: StandardCollection):
+    def build_statement_edge(self, predicate: URIRef, subject_id: dict, object_id: dict, graph: str, collection: StandardCollection):
         _iri = predicate.toPython()
         _from = subject_id["_id"]
         _predicate = hashlib.md5(_iri.encode('utf-8')).hexdigest()
@@ -264,4 +303,34 @@ class ArangoSemantics():
             f"LET doc = IS_NULL(OLD) ? NEW : OLD \n"
             f"RETURN {{ _id: doc._id}}")
         
-        return cursor.pop()  
+        return cursor.pop()
+
+    def get_all(self, cols: List[str]) -> list:
+        col_string = ",".join(cols)
+        col_string = "["+col_string+"]"
+        cursor = self.db.aql.execute(
+            f"FOR doc in {col_string} \n"
+            f"RETURN doc"
+        )
+
+        
+
+        return cursor
+
+
+    def find_by_id(self, id: string, nodes: list)-> Union[URIRef, BNode, Literal]:
+        node = None
+        for n in nodes:
+            if n["_id"] == id:
+                node = n
+        #build literal
+        if "_type" in node:
+            if node["_lang"] is not None:
+                return Literal(node["_value"], lang=node["_lang"])
+            else:
+                return Literal(node("_value"), datatype=node["_type"])
+        #build URIRef 
+        if "_iri" in node:
+            return URIRef(node["_iri"])
+        #build BNode
+        return BNode(value=node["_key"])
