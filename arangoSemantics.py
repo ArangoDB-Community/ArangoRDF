@@ -4,12 +4,27 @@ from rdflib import Graph, URIRef, Literal, BNode
 #from rdflib.namespace import RDFS, OWL
 from arango import ArangoClient
 from arango.collection import StandardCollection, EdgeCollection
+from arango.cursor import Cursor
 import hashlib
 
 
 class ArangoSemantics():
 
     def __init__(self, host: str, username: str, password: str, database: str, graph: str) -> None:
+        """
+        Parameters
+        ----------
+        host: str
+            Host url
+        username: str
+            Username for basic authentication
+        password: str
+            Password for basic authentication
+        database: str
+            Database name
+        graph: str
+            Graph name
+        """
         
         self.connection = ArangoClient(hosts=host)
         sys_db = self.connection.db('_system', username=username, password=password, verify=False)
@@ -33,6 +48,20 @@ class ArangoSemantics():
 
 
     def init_rdf_collections(self, iri: str = "IRI", bnode: str = "BNode", literal: str = "Literal", edge: str = "Statement") -> None:
+        """
+        Creates the node and edge collections for rdf import.
+
+        Parameters
+        ----------
+        iri: str
+            the name of the collection that will store the IRI nodes (default is "IRI")
+        bnode: str
+            the name of the collection that will store blank nodes (default is "BNode")
+        literal: str
+            the name of collection that will store literals (default is "Literal")
+        edge: str
+            the name of the edge collection that will connect the nodes (default is "Statement")
+        """
         #init collections
         self.init_collection(iri, "iri")
         self.init_collection(bnode, "bnode")
@@ -40,6 +69,26 @@ class ArangoSemantics():
         self.init_edge_collection(edge, [iri, bnode], [iri, literal, bnode], "statement")
 
     def init_ontology_collections(self, cls: str = "Class", rel: str = "Relationship",prop: str = "Property", sub_cls: str = "SubClassOf", sub_prop: str ="SubPropertyOf", range: str = "Range", domain: str = "Domain"):
+        """
+        Creates the node and edge collections for ontology import.
+
+        Parameters
+        ----------
+        cls: str
+            the name of the collection that will store classes (default is "Class")
+        rel: str
+            the name of the collection that will store relationships (default is "Relationship")
+        prop: str 
+            the name of the collection that will store properties (default is "Property")
+        sub_cls: str
+            the name of the edge collection that will connect classes (default is "SubClassOf")
+        sub_prop: str
+            the name of the edge collection that will connect properties (default is "SubPropertyOf")
+        range: str
+            the name of the edge collection that will connect relationships to range classes (default is "Range")
+        domain: str
+            the name of the edge collection that will connect relationships to domain classes (default is "Domain")
+        """
         self.init_collection(cls, "class")
         self.init_collection(rel, "rel")
         self.init_collection(prop, "prop")
@@ -51,6 +100,16 @@ class ArangoSemantics():
         
 
     def init_collection(self, name: str, default_name: str) -> None:
+        '''
+        Creates collection if it doesn't already exist
+
+        parameters
+        ----------
+        name: str
+            the name of the collection that will be created
+        default_name: str
+            the name that will be used to reference the collection in the code
+        '''
         if self.db.has_collection(name):
             collection = self.db.collection(name)
         else:
@@ -58,7 +117,21 @@ class ArangoSemantics():
         self.collections[default_name] = collection
 
         
-    def init_edge_collection(self, name, parent_collections: List[str], child_collections: List[str], default_name: str) -> None:
+    def init_edge_collection(self, name: str, parent_collections: List[str], child_collections: List[str], default_name: str) -> None:
+        """
+        Creates edge collection if it doesn't already exist. Appends to and from vertex collections if collection already exists.
+
+        Parameters
+        ----------
+        name: str
+            the name of the edge collection that will be created
+        parent_collections: List[str]
+            a list of collections that will be added to from_vertex_collections in the edge definition
+        child_collections: List[str]
+            a list of collections that will be added to to_vertex_collections in the edge definition
+        default_name: str
+            the name that will be used to reference the collection in the code
+        """
 
         if self.graph.has_edge_collection(name):
             # check edge definition
@@ -95,7 +168,17 @@ class ArangoSemantics():
         self.collections[default_name] = collection 
 
 
-    def import_rdf(self, data: str, format="xml") -> None:
+    def import_rdf(self, data: str, format: str ="xml") -> None:
+        """
+        Imports an rdf graph from a file into Arangodb
+
+        Parameters
+        ----------
+        data: str
+            path to rdf file
+        format: str
+            format of the rdf file (default is "xml")
+        """
         
         self.rdf_graph.parse(data, format=format)
 
@@ -129,7 +212,17 @@ class ArangoSemantics():
 
 
     
-    def import_ontology(self, data: str, format="xml") -> None:
+    def import_ontology(self, data: str, format: str ="xml") -> None:
+        """
+        Imports an ontology from a file into Arangodb
+
+        Parameters
+        ----------
+        data: str
+            path to rdf file
+        format: str
+            format of the rdf file (default is "xml")
+        """
 
         self.rdf_graph.parse(data, format=format)
         graph_id = self.rdf_graph.identifier.toPython()
@@ -147,7 +240,6 @@ class ArangoSemantics():
             #add objectProperty to relationship collection
             if not isinstance(o, Literal):
                 if "#ObjectProperty" in o.toPython():
-                    print("~~~~"+s+p+o)
                     self.build_node(s, self.collections["rel"])
                     continue
 
@@ -187,6 +279,16 @@ class ArangoSemantics():
         return 
 
     def export(self, file_name: str, format: str) -> None:
+        """
+        Builds a rdf graph from the database graph and exports to a file
+
+        Parameters
+        ----------
+        file_name: str
+            path to where file will be exported
+        format: str
+            format of the rdf file
+        """
         #init rdf graph
         g = Graph()
 
@@ -207,15 +309,15 @@ class ArangoSemantics():
 
         for n in all_nodes:
             if "_to" in n:
+                #find and build subect/object
                 to_node = self.find_by_id(n["_to"], all_nodes)
                 from_node = self.find_by_id(n["_from"], all_nodes)
-                if type(to_node) is Literal:
-                    print(to_node)
-                if type(from_node) is Literal:
-                    print(to_node)
+
                 _iri = n["_iri"]
+                #add triple to graph
                 g.add((from_node, URIRef(_iri), to_node))
         
+        #output graph
         g.serialize(destination=file_name, format=format)
 
         return
@@ -268,7 +370,7 @@ class ArangoSemantics():
         return doc
 
 
-    def build_statement_edge(self, predicate: URIRef, subject_id: dict, object_id: dict, graph: str, collection: StandardCollection):
+    def build_statement_edge(self, predicate: URIRef, subject_id: dict, object_id: dict, graph: str, collection: StandardCollection) -> dict:
         _iri = predicate.toPython()
         _from = subject_id["_id"]
         _predicate = hashlib.md5(_iri.encode('utf-8')).hexdigest()
@@ -308,15 +410,13 @@ class ArangoSemantics():
         
         return cursor.pop()
 
-    def get_all(self, cols: List[str]) -> list:
+    def get_all(self, cols: List[str]) -> Cursor:
         col_string = ",".join(cols)
         col_string = "["+col_string+"]"
         cursor = self.db.aql.execute(
             f"FOR doc in {col_string} \n"
             f"RETURN doc"
         )
-
-        
 
         return cursor
 
