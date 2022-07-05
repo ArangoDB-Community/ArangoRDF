@@ -1,3 +1,6 @@
+# DEVELOPMENT VERSION - WIP - EXPECT BREAKING CHANGES
+___
+
 # Arango-RDF
 
 [![PyPI version badge](https://img.shields.io/pypi/v/arango-rdf?color=3775A9&style=for-the-badge&logo=pypi&logoColor=FFD43B)](https://pypi.org/project/arango-rdf/)
