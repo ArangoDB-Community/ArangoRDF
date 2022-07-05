@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# author @David Vidovich (Mission Solutions Group)
+# author @Arthur Keen (ArangoDB)
+
 import hashlib
 import string
 from typing import List, Union
