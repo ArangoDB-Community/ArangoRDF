@@ -3,7 +3,7 @@ from tests import PROJECT_DIR
 
 # rdf import
 kg = ArangoRDF(
-    "http://0.0.0.0:8529",
+    "http://localhost:8529",
     username="root",
     password="",
     database="rdf",
@@ -15,7 +15,7 @@ kg.import_rdf(f"{PROJECT_DIR}/examples/data/beatles.ttl", format="ttl")
 kg.import_rdf(f"{PROJECT_DIR}/examples/data/iao.owl")
 
 # ontology import
-kg2 = ArangoRDF("http://0.0.0.0:8529", "root", "", "ontologyImport", "ontology_iao")
+kg2 = ArangoRDF("http://localhost:8529", "root", "", "ontologyImport", "ontology_iao")
 kg2.init_ontology_collections()
 kg2.import_ontology(f"{PROJECT_DIR}/examples/data/iao.owl")
 

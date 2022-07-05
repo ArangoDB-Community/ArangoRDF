@@ -41,7 +41,7 @@ pip install git+https://github.com/ArangoDB-Community/ArangoRDF
 from arango_rdf import ArangoRDF
 
 # RDF Import
-adb_rdf = ArangoRDF(host="http://0.0.0.0:8529", username="root", password="openSesame", database="rdf", graph="rdf_music")
+adb_rdf = ArangoRDF(host="http://localhost:8529", username="root", password="openSesame", database="rdf", graph="rdf_music")
 adb_rdf.init_rdf_collections(bnode="Blank")
 adb_rdf.import_rdf("./examples/data/music_schema.ttl", format="ttl")
 adb_rdf.import_rdf("./examples/data/beatles.ttl", format="ttl")
@@ -53,7 +53,7 @@ adb_rdf.export(f"./examples/data/rdfExport.ttl", format="ttl")
 adb_rdf.import_rdf(f"./examples/data/rdfExport.ttl", format="ttl")
 
 # Ontology Import
-adb_rdf_2 = ArangoRDF("http://0.0.0.0:8529", "root", "openSesame", "ontologyImport", "ontology_iao")
+adb_rdf_2 = ArangoRDF("http://localhost:8529", "root", "openSesame", "ontologyImport", "ontology_iao")
 adb_rdf_2.init_ontology_collections()
 adb_rdf_2.import_ontology("./examples/data/iao.owl")
 ```
