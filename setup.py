@@ -17,8 +17,8 @@ setup(
     python_requires=">=3.7",
     license="Apache Software License",
     install_requires=[
-        "rdflib",
-        "python-arango",
+        "rdflib>=6.1.1",
+        "python-arango>=7.4.1",
         "requests>=2.27.1",
         "setuptools>=45",
     ],
