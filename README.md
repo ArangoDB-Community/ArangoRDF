@@ -7,13 +7,8 @@
 [![Code style: black](https://img.shields.io/static/v1?style=for-the-badge&label=code%20style&message=black&color=black)](https://github.com/psf/black)
 [![Downloads](https://img.shields.io/badge/dynamic/json?style=for-the-badge&color=282661&label=Downloads&query=total_downloads&url=https://api.pepy.tech/api/projects/arango-rdf)](https://pepy.tech/project/arango-rdf)
 
-<p float="left">
-    <a href="https://www.arangodb.com/" rel="arangodb.com"><img src="./examples/assets/adb_logo.png" width=10%/>
-    <a href="https://www.w3.org/RDF/" rel="w3.org/RDF"><img src="./examples/assets/rdf_logo.png" width=7% /></a>
-</p>
-
-<!-- <a href="https://www.arangodb.com/" rel="arangodb.com">![](https://raw.githubusercontent.com/ArangoDB-Community/ArangoRDF/master/examples/assets/adb_logo.png)</a>
-<a href="https://www.w3.org/RDF/" rel="w3.org/RDF">![](https://raw.githubusercontent.com/ArangoDB-Community/ArangoRDF/master/examples/assets/rdf_logo.png)</a> -->
+<a href="https://www.arangodb.com/" rel="arangodb.com"><img src="./examples/assets/adb_logo.png" width=10%/>
+<a href="https://www.w3.org/RDF/" rel="w3.org/RDF"><img src="./examples/assets/rdf_logo.png" width=7% /></a>
 
 Import/Export RDF graphs with ArangoDB
 
@@ -21,7 +16,7 @@ Import/Export RDF graphs with ArangoDB
 
 RDF is a standard model for data interchange on the Web. RDF has features that facilitate data merging even if the underlying schemas differ, and it specifically supports the evolution of schemas over time without requiring all the data consumers to be changed.
 
-RDF extends the linking structure of the Web to use URIs to name the relationship between things as well as the two ends of the link (this is usually referred to as a “triple”). Using this simple model, it allows structured and semi-structured data to be mixed, exposed, and shared across different applications.
+RDF extends the linking structure of the Web to use URIs to name the relationship between things as well as the two ends of the link (this is usually referred to as a "triple"). Using this simple model, it allows structured and semi-structured data to be mixed, exposed, and shared across different applications.
 
 This linking structure forms a directed, labeled graph, where the edges represent the named link between two resources, represented by the graph nodes. This graph view is the easiest possible mental model for RDF and is often used in easy-to-understand visual explanations.
 
