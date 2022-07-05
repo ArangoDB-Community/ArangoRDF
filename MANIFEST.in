@@ -1,3 +1,5 @@
 include README.md LICENSE
+include examples/assets/adb_logo.png
+include examples/assets/rdf_logo.png
 prune tests
 prune examples
