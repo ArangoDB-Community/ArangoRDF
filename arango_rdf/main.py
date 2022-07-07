@@ -12,42 +12,22 @@ from typing import List, Union
 from arango import ArangoClient
 from arango.collection import EdgeCollection, StandardCollection
 from arango.cursor import Cursor
+from arango.database import StandardDatabase
 from rdflib import BNode, Graph, Literal, URIRef
 
 
 class ArangoRDF:
-    def __init__(
-        self, host: str, username: str, password: str, database: str, graph: str
-    ) -> None:
+    def __init__(self, db: StandardDatabase, graph: str) -> None:
         """
         Parameters
         ----------
-        host: str
-            Host url
-        username: str
-            Username for basic authentication
-        password: str
-            Password for basic authentication
-        database: str
-            Database name
+        db: StandardDatabase
+            The python-arango database client
         graph: str
             Graph name
         """
 
-        self.connection = ArangoClient(hosts=host)
-        sys_db = self.connection.db(
-            "_system", username=username, password=password, verify=False
-        )
-
-        if sys_db.has_database(database):
-            self.db = self.connection.db(
-                database, username=username, password=password, verify=False
-            )
-        else:
-            sys_db.create_database(database)
-            self.db = self.connection.db(
-                database, username=username, password=password, verify=False
-            )
+        self.db = db
 
         # Create the graph
         if self.db.has_graph(graph):
