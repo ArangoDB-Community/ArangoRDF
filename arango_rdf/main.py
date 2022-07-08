@@ -484,6 +484,4 @@ class ArangoRDF:
                     FILTER c.timestamp == {timestamp}
                     RETURN UNSET(c, "_id", "_key", "_rev")
         """
-        return self.db.aql.execute(
-            aql,
-        ).pop()
+        return self.db.aql.execute(aql).pop()
