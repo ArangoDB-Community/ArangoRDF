@@ -46,7 +46,7 @@ from arango_rdf import ArangoRDF
 
 db = ArangoClient(hosts="http://localhost:8529").db("_system", username="root", password="")
 
-adb_rdf = ArangoRDF(system, sub_graph="music")
+adb_rdf = ArangoRDF(db, sub_graph="music")
 
 config = {'normalize_literals': True} # {'normalize_literals': False}
 
