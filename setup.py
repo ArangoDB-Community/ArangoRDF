@@ -17,7 +17,7 @@ setup(
     python_requires=">=3.7",
     license="Apache Software License",
     install_requires=[
-        "rdflib>=6.1.1",
+        "rdflib>=6.0.0",
         "python-arango>=7.4.1",
         "requests>=2.27.1",
         "setuptools>=45",
@@ -36,7 +36,6 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
         "Topic :: Utilities",
         "Typing :: Typed",
     ],
