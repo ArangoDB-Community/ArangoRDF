@@ -46,12 +46,14 @@ from arango_rdf import ArangoRDF
 
 db = ArangoClient(hosts="http://localhost:8529").db("_system", username="root", password="")
 
-adb_rdf = ArangoRDF(db, graph="rdf_music")
+adb_rdf = ArangoRDF(system, sub_graph="music")
+
+config = {'normalize_literals': True} # {'normalize_literals': False}
 
 # RDF Import
 adb_rdf.init_rdf_collections(bnode="Blank")
-adb_rdf.import_rdf("./examples/data/music_schema.ttl", format="ttl")
-adb_rdf.import_rdf("./examples/data/beatles.ttl", format="ttl")
+adb_rdf.import_rdf("./examples/data/music_schema.ttl", format="ttl", config)
+adb_rdf.import_rdf("./examples/data/beatles.ttl", format="ttl", config)
 
 # RDF Export
 adb_rdf.export(f"./examples/data/rdfExport.ttl", format="ttl")

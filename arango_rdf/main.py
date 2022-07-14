@@ -6,8 +6,9 @@
 
 import hashlib
 import string
+import sys
 import time
-from typing import List, Union
+from typing import Any, List, Optional, Union
 
 # from rdflib.namespace import RDFS, OWL
 from arango import ArangoClient
@@ -18,26 +19,36 @@ from rdflib import BNode, Graph, Literal, URIRef
 
 
 class ArangoRDF:
-    def __init__(self, db: StandardDatabase, graph: str) -> None:
+    def __init__(
+        self,
+        db: StandardDatabase,
+        default_graph: str = "default_graph",
+        sub_graph: Optional[str] = None,
+    ) -> None:
         """
         Parameters
         ----------
         db: StandardDatabase
             The python-arango database client
-        graph: str
-            Graph name
+        default_graph: str
+            The name of the ArangoDB graph that contains all collections
+        sub_graph: str | None
+            The identifier of the RDF graph that defines an ArangoDB sub-graph
+            that only contains the nodes & edges of a specific graph
         """
 
         self.db: StandardDatabase = db
+        self.default_graph = default_graph
+        self.sub_graph = sub_graph
 
         # Create the graph
-        if self.db.has_graph(graph):
-            self.graph = self.db.graph(graph)
+        if self.db.has_graph(default_graph):
+            self.graph = self.db.graph(default_graph)
         else:
-            self.graph = self.db.create_graph(graph)
+            self.graph = self.db.create_graph(default_graph)
 
-        # init rdflib graph
-        self.rdf_graph = Graph()
+        self.__set_sub_graph = sub_graph is not None
+        self.rdf_graph = Graph(identifier=sub_graph)
 
         self.collections = {}
 
@@ -205,8 +216,6 @@ class ArangoRDF:
             configuration options, which currently include:
                 normalize_literals: bool
                     normalize the RDF literals. Defaults to False
-                graph_name: str
-                    the graph name to use # TODO: Clarify use case
         save_config: bool
             save the specified configuration into the ArangoDB 'configurations' collection
         """
@@ -216,6 +225,11 @@ class ArangoRDF:
         graph_id = self.rdf_graph.identifier.toPython()
 
         if config and save_config:
+            config["normalize_literals"] = config.get("normalize_literals", False)
+            config["default_graph"] = self.default_graph
+            if self.__set_sub_graph:
+                config["sub_graph"] = self.sub_graph
+
             self.save_config(config)
 
         for s, p, o in self.rdf_graph:
@@ -236,20 +250,28 @@ class ArangoRDF:
             if isinstance(o, URIRef):
                 collection = "iri"
                 doc = self.build_iri_doc(o)
+                o_id = self.insert_doc(self.collections[collection], doc)
             elif isinstance(o, BNode):
                 collection = "bnode"
                 doc = self.build_bnode_doc(o)
+                o_id = self.insert_doc(self.collections[collection], doc)
             elif isinstance(o, Literal):
                 collection = "literal"
                 normalize = config.get("normalize_literals", False)
                 doc = self.build_literal_doc(o, normalize)
+                o_id = self.insert_literal_doc(
+                    self.collections[collection], doc, normalize
+                )
             else:
                 raise ValueError("Object must be IRI, Blank Node, or Literal")
 
-            o_id = self.insert_doc(self.collections[collection], doc)
-
             # build and insert edge
             edge = self.build_statement_edge(p, s_id, o_id, graph_id)
+
+            # add RDF Graph id as edge property
+            if self.__set_sub_graph:
+                edge["graph"] = graph_id
+
             self.insert_edge(self.collections["statement"], edge)
 
         return
@@ -383,7 +405,6 @@ class ArangoRDF:
 
         # rdf strings are the only type allowed to not have a type.  Coerce strings without type to xsd:String
         doc = {"_value": value, "_type": type, "_lang": lang}
-
         if normalize:
             key_string = value + type + lang
             key = hashlib.md5(key_string.encode("utf-8")).hexdigest()
@@ -412,8 +433,24 @@ class ArangoRDF:
         return doc
 
     def insert_doc(self, collection: StandardCollection, doc: dict) -> dict:
-        adb_doc = collection.insert(doc, overwrite_mode="update")
-        return adb_doc["_id"]
+        return collection.insert(doc, overwrite_mode="update")["_id"]
+
+    def insert_literal_doc(
+        self, collection: StandardCollection, doc: dict, normalize=False
+    ) -> dict:
+        if normalize:  # TODO: Clean this up
+            try:
+                return collection.insert(doc)["_id"]
+            except:
+                main_doc = collection.get(doc["_key"])
+                if "duplicates" in main_doc:
+                    main_doc["duplicates"].append(doc)
+                else:
+                    main_doc["duplicates"] = [doc]
+
+                return collection.update(main_doc)["_id"]
+        else:
+            return collection.insert(doc)["_id"]
 
     def insert_edge(self, collection: EdgeCollection, edge: dict) -> dict:
         # TODO: Verify intended behavior and consider replacing this spaghet AQL with collection.insert(edge)
@@ -471,17 +508,18 @@ class ArangoRDF:
         self.db.collection("configurations").insert(config)
 
     def get_config_by_latest(self) -> dict:
-        aql = """
-            FOR c IN configurations
-                FILTER c.latest == true
-                RETURN UNSET(c, "_id", "_key", "_rev")
-        """
-        return self.db.aql.execute(aql).pop()
+        return self.get_config_by_key_value("latest", True)
 
-    def get_config_by_timestamp(self, timestamp: int) -> dict:
+    def get_config_by_key_value(self, key: str, val: Any) -> dict:
         aql = f"""
             FOR c IN configurations
-                    FILTER c.timestamp == {timestamp}
-                    RETURN UNSET(c, "_id", "_key", "_rev")
+                FILTER c[@key] == @val
+                SORT c.timestamp DESC
+                LIMIT 1
+                RETURN UNSET(c, "_id", "_key", "_rev")
         """
-        return self.db.aql.execute(aql).pop()
+        cursor = self.db.aql.execute(aql, bind_vars={"key": key, "val": val})
+        if cursor.empty():
+            sys.exit("No configuration found")
+
+        return cursor.pop()
