@@ -44,27 +44,45 @@ pip install git+https://github.com/ArangoDB-Community/ArangoRDF
 from arango import ArangoClient
 from arango_rdf import ArangoRDF
 
-db = ArangoClient(hosts="http://localhost:8529").db("_system", username="root", password="")
+db = ArangoClient(hosts="http://localhost:8529").db("rdf", username="root", password="openSesame")
 
-adb_rdf = ArangoRDF(db, sub_graph="music")
+# Optional: sub_graph (stores graph name as the 'graph' attribute on all edges in Statement collection) 
+# Optional: default_graph (name of ArangoDB Named Graph, defaults to 'default_graph', 
+#           is root graph that contains all collections/relations)
+adb_rdf = ArangoRDF(db, sub_graph="music") 
 
-config = {'normalize_literals': True} # {'normalize_literals': False}
+config = {'normalize_literals': True} # default: False
 
 # RDF Import
 adb_rdf.init_rdf_collections(bnode="Blank")
-adb_rdf.import_rdf("./examples/data/music_schema.ttl", format="ttl", config)
-adb_rdf.import_rdf("./examples/data/beatles.ttl", format="ttl", config)
+adb_rdf.import_rdf("./examples/data/music_schema.ttl", format="ttl", config=config, save_config=True)
+adb_rdf.import_rdf("./examples/data/beatles.ttl", format="ttl", config=config, save_config=True)
 
 # RDF Export
+# WARNING:
+# Exports ALL collections of the database, 
+# currently does not account for default_graph or sub_graph 
 adb_rdf.export(f"./examples/data/rdfExport.ttl", format="ttl")
 
+# Drop graph and ALL documents and collections
+db.delete_graph("default_graph", drop_collections=True, ignore_missing=True)
+
+# Re-initialize our RDF Graph
+adb_rdf = ArangoRDF(db, sub_graph="music") 
+
 # Re-import RDF Export
-adb_rdf.import_rdf(f"./examples/data/rdfExport.ttl", format="ttl")
+config = adb_rdf.get_config_by_latest()
+#config = adb_rdf.get_config_by_key_value('graph', 'music')
+#config = adb_rdf.get_config_by_key_value('AnyKeySuppliedInConfig', 'SomeValue')
+
+adb_rdf.init_rdf_collections(bnode="Blank")
+adb_rdf.import_rdf(f"./examples/data/rdfExport.ttl", format="ttl", config=config)
 
 # Ontology Import
-adb_rdf_2 = ArangoRDF(db, graph="ontology_iao")
-adb_rdf_2.init_ontology_collections()
-adb_rdf_2.import_ontology("./examples/data/iao.owl")
+# *WIP*
+# adb_rdf_2 = ArangoRDF(db, default_graph="ontology_iao")
+# adb_rdf_2.init_ontology_collections()
+# adb_rdf_2.import_ontology("./examples/data/iao.owl")
 ```
 
 ##  Development & Testing
