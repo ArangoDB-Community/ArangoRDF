@@ -276,7 +276,7 @@ class ArangoRDF:
             self.insert_edge(self.collections["statement"], edge)
 
         return
-    
+
     # DO NOT USE ontology-specific functions, incomplete
     def import_ontology(self, data: str, format: str = "xml") -> None:
         """
