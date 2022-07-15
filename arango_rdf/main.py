@@ -81,6 +81,7 @@ class ArangoRDF:
             edge, [iri, bnode], [iri, literal, bnode], "statement"
         )
 
+    # DO NOT USE ontology-specific functions, incomplete
     def init_ontology_collections(
         self,
         cls: str = "Class",
@@ -275,7 +276,8 @@ class ArangoRDF:
             self.insert_edge(self.collections["statement"], edge)
 
         return
-
+    
+    # DO NOT USE ontology-specific functions, incomplete
     def import_ontology(self, data: str, format: str = "xml") -> None:
         """
         Imports an ontology from a file into Arangodb

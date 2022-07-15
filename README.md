@@ -24,9 +24,9 @@ RDF extends the linking structure of the Web to use URIs to name the relationshi
 This linking structure forms a directed, labeled graph, where the edges represent the named link between two resources, represented by the graph nodes. This graph view is the easiest possible mental model for RDF and is often used in easy-to-understand visual explanations.
 
 Resources to get started:
-* [RDF Data Model Example](https://docs.stardog.com/tutorials/rdf-graph-data-model)
+* [RDF Primer](https://www.w3.org/TR/rdf11-concepts/)
 * [RDFLib (Python)](https://pypi.org/project/rdflib/)
-
+* [One Example for Modeling RDF as ArangoDB Graphs](https://www.arangodb.com/docs/stable/data-modeling-graphs-from-rdf.html)
 ## Installation
 
 #### Latest Release
@@ -39,6 +39,7 @@ pip install git+https://github.com/ArangoDB-Community/ArangoRDF
 ```
 
 ##  Quickstart
+Run the full version with Google Colab: <a href="https://colab.research.google.com/github/ArangoDB-Community/ArangoRDF/blob/main/examples/ArangoRDF.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
 ```py
 from arango import ArangoClient
@@ -63,10 +64,10 @@ config = {"normalize_literals": False}  # default: False
 adb_rdf.init_rdf_collections(bnode="Blank")
 
 # Start with importing the ontology
-adb_rdf.import_rdf("./examples/data/airport-ontology.owl", format="xml", config=config)
+adb_rdf.import_rdf("./examples/data/airport-ontology.owl", format="xml", config=config, save_config=True)
 
 # Next, let's import the actual graph data
-adb_rdf.import_rdf(f"./examples/data/sfo-aircraft-partial.ttl", format="ttl", config=config)
+adb_rdf.import_rdf(f"./examples/data/sfo-aircraft-partial.ttl", format="ttl", config=config, save_config=True)
 
 
 # RDF Export

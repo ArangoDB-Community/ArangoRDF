@@ -23,12 +23,12 @@ print("initialized collections")
 
 print("importing ontology...")
 # Start with importing the ontology
-adb_rdf.import_rdf("./examples/data/airport-ontology.owl", format="xml", config=config)
+adb_rdf.import_rdf("./examples/data/airport-ontology.owl", format="xml", config=config, save_config=True)
 print("Ontology imported")
 
 print("importing aircraft data...")
 # Next, let's import the actual graph data
-adb_rdf.import_rdf(f"./examples/data/sfo-aircraft-partial.ttl", format="ttl", config=config)
+adb_rdf.import_rdf(f"./examples/data/sfo-aircraft-partial.ttl", format="ttl", config=config, save_config=True)
 
 print("aircraft data imported")
 
