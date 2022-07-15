@@ -1,36 +1,64 @@
 from arango import ArangoClient
-
 from arango_rdf import ArangoRDF
 
-client = ArangoClient(hosts="http://localhost:8529")
+db = ArangoClient(hosts="http://localhost:8529").db(
+    "rdf", username="root", password="openSesame"
+)
 
-system = client.db("_system", username="root", password="")
-system.delete_graph("default_graph", drop_collections=True, ignore_missing=True)
+# Clean up existing data and collections
+if db.has_graph("default_graph"):
+    db.delete_graph("default_graph", drop_collections=True, ignore_missing=True)
 
-adb_rdf = ArangoRDF(system)
+# Initializes default_graph and sets RDF graph identifier (ArangoDB sub_graph)
+# Optional: sub_graph (stores graph name as the 'graph' attribute on all edges in Statement collection)
+# Optional: default_graph (name of ArangoDB Named Graph, defaults to 'default_graph',
+#           is root graph that contains all collections/relations)
+adb_rdf = ArangoRDF(db, sub_graph="http://data.sfgov.org/ontology") 
+print("initialized graph")
+config = {"normalize_literals": False}  # default: False
 
 # RDF Import
 adb_rdf.init_rdf_collections(bnode="Blank")
-adb_rdf.import_rdf("./examples/data/music_schema.ttl", format="ttl", config={'normalize_literals': True})
-adb_rdf.import_rdf(
-    "./examples/data/beatles.ttl",
-    format="ttl",
-    config={'normalize_literals': True},
-    save_config=True,
-)
+print("initialized collections")
 
-config_latest = adb_rdf.get_config_by_latest()
-print(config_latest)
+print("importing ontology...")
+# Start with importing the ontology
+adb_rdf.import_rdf("./examples/data/airport-ontology.owl", format="xml", config=config)
+print("Ontology imported")
 
-# # RDF Export
-adb_rdf.export(f"./examples/data/rdfExport.ttl", format="ttl")
+print("importing aircraft data...")
+# Next, let's import the actual graph data
+adb_rdf.import_rdf(f"./examples/data/sfo-aircraft-partial.ttl", format="ttl", config=config)
 
-# Re-import RDF Export
-adb_rdf.import_rdf(f"./examples/data/rdfExport.ttl", format="ttl")
+print("aircraft data imported")
 
-# Ontology Import
-adb_rdf_2 = ArangoRDF(system, graph="ontology_iao")
-adb_rdf_2.init_ontology_collections()
-adb_rdf_2.import_ontology("./examples/data/iao.owl")
+# RDF Export
+# WARNING:
+# Exports ALL collections of the database,
+# currently does not account for default_graph or sub_graph
+# Results may vary, minifying may occur
+print("exporting data...")
+adb_rdf.export(f"./examples/data/rdfExport.xml", format="xml")
+print("export complete")
+
+# Drop graph and ALL documents and collections to test import from exported data
+if db.has_graph("default_graph"):
+    db.delete_graph("default_graph", drop_collections=True, ignore_missing=True)
+
+# Re-initialize our RDF Graph
+# Initializes default_graph and sets RDF graph identifier (ArangoDB sub_graph)
+adb_rdf = ArangoRDF(db, sub_graph="http://data.sfgov.org/ontology")
+print("re-initialized graph")
+
+adb_rdf.init_rdf_collections(bnode="Blank")
+print("re-initialized collections")
+
+config = adb_rdf.get_config_by_latest() # gets the last config saved
+# config = adb_rdf.get_config_by_key_value('graph', 'music')
+# config = adb_rdf.get_config_by_key_value('AnyKeySuppliedInConfig', 'SomeValue')
+
+# Re-import Exported data
+print("re-importing data...")
+adb_rdf.import_rdf(f"./examples/data/rdfExport.xml", format="xml", config=config)
 
 print("done")
