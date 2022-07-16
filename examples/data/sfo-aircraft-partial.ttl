@@ -1,0 +1,35 @@
+<http://csi.com/AircraftModel/A321> <http://data.sfgov.org/ontology#hasVersion> <http://csi.com/AircraftModelVersion/200> ;
+  <http://data.sfgov.org/ontology#hasModelName> "A321" ;
+  a <http://data.sfgov.org/ontology#AircraftModel> .
+
+<http://csi.com/AircraftModelVersion/200> <http://data.sfgov.org/ontology#hasModelVersion> "200" ;
+  a <http://data.sfgov.org/ontology#AircraftModel> ;
+  a <http://data.sfgov.org/ontology#AircraftModelVersion> .
+
+<http://csi.com/Aircraft/151UW> <http://data.sfgov.org/ontology#owningAirline> <http://csi.comCompany/American+Airlines> ;
+  <http://data.sfgov.org/ontology#p_has_Aircraft_Model> <http://csi.com/AircraftModel/A321> ;
+  <http://data.sfgov.org/ontology#hasAircraftModelVersion> <http://csi.com/AircraftModelVersion/200> ;
+  <http://data.sfgov.org/ontology#hasCreationDate> "2015-10-22T07:30:00.0"^^<http://www.w3.org/2001/XMLSchema#dateTime> ;
+  <http://data.sfgov.org/ontology#hasModificationDate> "2015-10-22T07:30:00.0"^^<http://www.w3.org/2001/XMLSchema#dateTime> ;
+  <http://data.sfgov.org/ontology#hasTailNumber> "151UW" ;
+  <http://data.sfgov.org/ontology#hasAircraftId> "9824"^^<http://www.w3.org/2001/XMLSchema#integer> ;
+  <http://data.sfgov.org/ontology#isActive> "true"^^<http://www.w3.org/2001/XMLSchema#boolean> ;
+  a <http://data.sfgov.org/ontology#Aircraft> .
+
+<http://csi.comCompany/American+Airlines> <http://data.sfgov.org/ontology#hasCompanyName> "American Airlines" ;
+  a <http://data.sfgov.org/ontology#Airline> ;
+  a <http://data.sfgov.org/ontology#Company> .
+
+<http://csi.com/AircraftModelVersion/200> <http://data.sfgov.org/ontology#hasModelVersion> "200" ;
+  a <http://data.sfgov.org/ontology#AircraftModel> ;
+  a <http://data.sfgov.org/ontology#AircraftModelVersion> .
+
+<http://csi.com/AircraftModel/B747> <http://data.sfgov.org/ontology#hasVersion> <http://csi.com/AircraftModelVersion/400> ;
+  <http://data.sfgov.org/ontology#hasModelName> "B747" ;
+  a <http://data.sfgov.org/ontology#AircraftModel> .
+
+<http://csi.com/AircraftModelVersion/400> <http://data.sfgov.org/ontology#hasModelVersion> "400" ;
+  a <http://data.sfgov.org/ontology#AircraftModel> ;
+  a <http://data.sfgov.org/ontology#AircraftModelVersion> .
+
+

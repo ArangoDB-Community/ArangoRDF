@@ -1,0 +1,684 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF xmlns:anzoowl="http://openanzo.org/ontologies/2009/05/AnzoOwl#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:owl="http://www.w3.org/2002/07/owl#" xmlns:xsd="http://www.w3.org/2001/XMLSchema#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+	<owl:Ontology rdf:about="http://data.sfgov.org/ontology">
+		<usedBy rdf:resource="http://cambridgesemantics.com/apps#SDI" xmlns="http://openanzo.org/ontologies/2008/07/Anzo#" />
+		<dc:title>Airport Ontology</dc:title>
+		<modified rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime" xmlns="http://purl.org/dc/terms/">2018-05-09T04:24:15.108Z</modified>
+		<modifier rdf:resource="http://openanzo.org/system/internal/sysadmin" xmlns="http://purl.org/dc/terms/" />
+		<rdfs:label>Airport Ontology</rdfs:label>
+	</owl:Ontology>
+	<owl:Class rdf:about="http://data.sfgov.org/ontology#ActivityPeriod">
+		<anzoowl:identifierTemplate>&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix&gt;/&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName&gt;/&lt;http://data.sfgov.org/ontology#hasActivityPeriodValue&gt;</anzoowl:identifierTemplate>
+		<resourceTemplate rdf:nodeID="ubbccc0a1-927a-4477-ab75-42beb3d420c2" xmlns="http://openanzo.org/ontologies/Storage#" />
+		<dc:description>Normalizes Activity Period from source data</dc:description>
+		<dc:title>ActivityPeriod</dc:title>
+		<rdfs:comment>Normalizes Activity Period from source data</rdfs:comment>
+		<rdfs:label>ActivityPeriod</rdfs:label>
+		<rdfs:subClassOf rdf:nodeID="u0cf820f6-c3e6-449f-97ce-b3b326c5f224" />
+	</owl:Class>
+	<owl:Class rdf:about="http://data.sfgov.org/ontology#Aircraft">
+		<anzoowl:identifierTemplate>&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix&gt;/&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName&gt;/&lt;http://data.sfgov.org/ontology#hasTailNumber&gt;</anzoowl:identifierTemplate>
+		<resourceTemplate rdf:nodeID="u689cec61-d976-4b58-ae92-75e04614e886" xmlns="http://openanzo.org/ontologies/Storage#" />
+		<dc:description>Specific Aircraft identified by Tail Number</dc:description>
+		<dc:title>Aircraft</dc:title>
+		<rdfs:comment>Specific Aircraft identified by Tail Number</rdfs:comment>
+		<rdfs:label>Aircraft</rdfs:label>
+		<rdfs:subClassOf rdf:nodeID="uc8c3c7d5-1e5f-409e-9d49-4460be98c9a7" />
+		<rdfs:subClassOf rdf:nodeID="uddd1105a-1547-4796-9acb-57f54425681a" />
+	</owl:Class>
+	<owl:Class rdf:about="http://data.sfgov.org/ontology#AircraftBody">
+		<dc:title>Aircraft Body Style</dc:title>
+		<rdfs:label>Aircraft Body Style</rdfs:label>
+	</owl:Class>
+	<owl:Class rdf:about="http://data.sfgov.org/ontology#AircraftConfiguration">
+		<dc:title>Aircraft Configuration</dc:title>
+		<rdfs:label>Aircraft Configuration</rdfs:label>
+	</owl:Class>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#AircraftManufacturer">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#Company" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<dc:title>Aircraft Manufacturer</dc:title>
+		<rdfs:label>Aircraft Manufacturer</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#Company" />
+	</rdf:Description>
+	<owl:Class rdf:about="http://data.sfgov.org/ontology#AircraftModel">
+		<anzoowl:identifierTemplate>&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix&gt;/&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName&gt;/&lt;http://data.sfgov.org/ontology#hasModelName&gt;</anzoowl:identifierTemplate>
+		<resourceTemplate rdf:nodeID="u971c63e4-3131-451f-b7e1-f62b9c86ab07" xmlns="http://openanzo.org/ontologies/Storage#" />
+		<dc:title>Aircraft Model</dc:title>
+		<rdfs:label>Aircraft Model</rdfs:label>
+	</owl:Class>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#AircraftModelVersion">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#AircraftModel" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<anzoowl:identifierTemplate>&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix&gt;/&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName&gt;/&lt;http://data.sfgov.org/ontology#hasModelVersion&gt;</anzoowl:identifierTemplate>
+		<resourceTemplate rdf:nodeID="uf7719f33-12f6-473a-aeca-0707400501e5" xmlns="http://openanzo.org/ontologies/Storage#" />
+		<dc:title>Aircraft Model Version</dc:title>
+		<rdfs:label>Aircraft Model Version</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#AircraftModel" />
+	</rdf:Description>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#Airline">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#Company" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<rdfs:label>Airline</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#Company" />
+	</rdf:Description>
+	<owl:Class rdf:about="http://data.sfgov.org/ontology#Airport">
+		<anzoowl:identifierTemplate>&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix&gt;/&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName&gt;/&lt;http://data.sfgov.org/ontology#hasAirportName&gt;</anzoowl:identifierTemplate>
+		<resourceTemplate rdf:nodeID="ua5fa33bb-9c78-4116-8c7b-f0074a568df7" xmlns="http://openanzo.org/ontologies/Storage#" />
+		<dc:title>Airport</dc:title>
+		<rdfs:label>Airport</rdfs:label>
+	</owl:Class>
+	<owl:Class rdf:about="http://data.sfgov.org/ontology#AirportActivity">
+		<dc:title>Airport Activity</dc:title>
+		<rdfs:label>Airport Activity</rdfs:label>
+		<rdfs:subClassOf rdf:nodeID="u6227e7a3-5490-48b1-9e00-3a355e21ed07" />
+	</owl:Class>
+	<owl:Class rdf:about="http://data.sfgov.org/ontology#AirportTerminal">
+		<anzoowl:identifierTemplate>&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix&gt;/&lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#type&gt;/&lt;http://data.sfgov.org/ontology#p_hasAirportName&gt;/&lt;http://data.sfgov.org/ontology#hasTerminalName&gt;</anzoowl:identifierTemplate>
+		<resourceTemplate rdf:nodeID="u2f46b695-7b8c-43a3-af87-5b3f6075d183" xmlns="http://openanzo.org/ontologies/Storage#" />
+		<dc:title>Airport Terminal</dc:title>
+		<rdfs:label>Airport Terminal</rdfs:label>
+	</owl:Class>
+	<owl:Class rdf:about="http://data.sfgov.org/ontology#BoardingArea">
+		<rdfs:label>Boarding Area</rdfs:label>
+		<rdfs:subClassOf rdf:nodeID="u7920cc49-3c0f-45cd-995f-788e36bdecda" />
+	</owl:Class>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#CombiAircraft">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#AircraftConfiguration" />
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#FreighterAircraft" />
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#PassengerAircraft" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<dc:title>Combi Aircraft</dc:title>
+		<rdfs:label>Combi Aircraft</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#FreighterAircraft" />
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#PassengerAircraft" />
+	</rdf:Description>
+	<owl:Class rdf:about="http://data.sfgov.org/ontology#Company">
+		<anzoowl:identifierTemplate>&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix&gt;Company/&lt;http://data.sfgov.org/ontology#hasCompanyName&gt;</anzoowl:identifierTemplate>
+		<resourceTemplate rdf:nodeID="uf9525768-f299-4b0f-bc7e-d18ad1dc2195" xmlns="http://openanzo.org/ontologies/Storage#" />
+		<dc:title>Company</dc:title>
+		<rdfs:label>Company</rdfs:label>
+	</owl:Class>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#FreighterAircraft">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#AircraftConfiguration" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<dc:title>Freighter Aircraft</dc:title>
+		<rdfs:label>Freighter Aircraft</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#AircraftConfiguration" />
+	</rdf:Description>
+	<owl:Class rdf:about="http://data.sfgov.org/ontology#GeoRegion">
+		<anzoowl:identifierTemplate>&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix&gt;/&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName&gt;/&lt;http://data.sfgov.org/ontology#hasRegionName&gt;</anzoowl:identifierTemplate>
+		<resourceTemplate rdf:nodeID="u0d1233d2-4623-44e4-a387-dd7918efca21" xmlns="http://openanzo.org/ontologies/Storage#" />
+		<dc:title>Geo Region</dc:title>
+		<rdfs:label>Geo Region</rdfs:label>
+	</owl:Class>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasActivityPeriod">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#InverseFunctionalProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<dc:title>has activity period</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#AirportActivity" />
+		<rdfs:label>has activity period</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#ActivityPeriod" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasActivityPeriodValue">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#InverseFunctionalProperty" />
+		<dc:title>has Activity Period Value</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#ActivityPeriod" />
+		<rdfs:label>has Activity Period Value</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#int" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasAircraftId">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#Aircraft" />
+		<rdfs:label>has aircraft id</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasAircraftManufacturer">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#LandingActivity" />
+		<rdfs:label>has aircraft manufacturer</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#AircraftManufacturer" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasAircraftModel">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#LandingActivity" />
+		<rdfs:label>has aircraft model</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#AircraftModel" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasAircraftModelVersion">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<dc:title>has Aircraft Model Version</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#Aircraft" />
+		<rdfs:label>has Aircraft Model Version</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#AircraftModelVersion" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasAircroftModelVersion">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<dc:title>has Aircraft Model Version</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#LandingActivity" />
+		<rdfs:label>has Aircraft Model Version</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#AircraftModelVersion" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasAirportIATA2DigitCode">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#Airport" />
+		<rdfs:label>has airport IATA2Digit code</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasAirportName">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<dc:title>has Airport Name</dc:title>
+		<rdfs:domain rdf:nodeID="u3fd74d28-9ebd-405b-9efa-bedc23ba2387" />
+		<rdfs:label>has Airport Name</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasBoardingAreaTerminal">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<dc:title>has Boarding Area Terminal</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#BoardingArea" />
+		<rdfs:label>has Boarding Area Terminal</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#AirportTerminal" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasCompanyName">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#Company" />
+		<rdfs:label>has company name</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasCreationDate">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#Aircraft" />
+		<rdfs:label>has creation date</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#dateTime" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasGeoRegion">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<dc:title>has geo region</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#AirportActivity" />
+		<rdfs:label>has geo region</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#GeoRegion" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasIAirlineATA2DigitCode">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#Airline" />
+		<rdfs:label>has Airline IATA 2 digit Code</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasLAndingAirport">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<dc:title>has Landing Airport</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#LandingActivity" />
+		<rdfs:label>has Landing Airport</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#Airport" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasLandingCount">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#LandingActivity" />
+		<rdfs:label>has landing count</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasManufacturer">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<dc:title>has Manufacturer</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#AircraftModel" />
+		<rdfs:label>has Manufacturer</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#AircraftManufacturer" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasModelName">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<dc:title>has model name</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#AircraftModel" />
+		<rdfs:label>has model name</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasModelVersion">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<dc:title>has Model Version Name</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#AircraftModelVersion" />
+		<rdfs:label>has Model Version Name</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasModificationDate">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#Aircraft" />
+		<rdfs:label>has modification date</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#dateTime" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasOperatingAirline">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#AirportActivity" />
+		<rdfs:label>has operating airline</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#Airline" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasPassengerBoardingArea">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<dc:title>has Passenger Boarding Area</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#PassengerActivity" />
+		<rdfs:label>has Passenger Boarding Area</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#BoardingArea" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasPassengerCount">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#PassengerActivity" />
+		<rdfs:label>has passenger count</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasPublishedAirline">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#AirportActivity" />
+		<rdfs:label>has published airline</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#Airline" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasRegionName">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#GeoRegion" />
+		<rdfs:label>has region name</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasregionSummary">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#GeoRegion" />
+		<rdfs:label>hasregion summary</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasTailNumber">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#InverseFunctionalProperty" />
+		<dc:title>has tail number</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#Aircraft" />
+		<rdfs:label>has tail number</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasTerminalAirport">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<dc:title>has Terminal Airport</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#AirportTerminal" />
+		<rdfs:label>has Terminal Airport</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#Airport" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasTerminalAreaName">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<dc:title>has boarding area name</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#BoardingArea" />
+		<rdfs:label>has boarding area name</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasTerminalName">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<dc:title>has Terminal Name</dc:title>
+		<rdfs:domain rdf:nodeID="uc13ad9ec-bace-4e75-8dd4-af0203d8c659" />
+		<rdfs:label>has Terminal Name</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasTotalLandedWeight">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#LandingActivity" />
+		<rdfs:label>has total landed weight</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#hasVersion">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<dc:title>has Version</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#AircraftModel" />
+		<rdfs:label>has Version</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#AircraftModelVersion" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#isActive">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#Aircraft" />
+		<rdfs:label>is active</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#isVersionOf">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<dc:title>is Version Of</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#AircraftModelVersion" />
+		<rdfs:label>is Version Of</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#AircraftModel" />
+	</rdf:Property>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#LandingActivity">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#AirportActivity" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<dc:title>Landing Activity</dc:title>
+		<rdfs:label>Landing Activity</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#AirportActivity" />
+	</rdf:Description>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#NarrowBody">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#AircraftBody" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<dc:title>Narrow Body</dc:title>
+		<rdfs:label>Narrow Body</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#AircraftBody" />
+	</rdf:Description>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#owningAirline">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#Aircraft" />
+		<rdfs:label>owning airline</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#Airline" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#p_has_Aircraft_Model">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty" />
+		<dc:title>has Aircraft Model</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#Aircraft" />
+		<rdfs:label>has Aircraft Model</rdfs:label>
+		<rdfs:range rdf:resource="http://data.sfgov.org/ontology#AircraftModel" />
+	</rdf:Property>
+	<rdf:Property rdf:about="http://data.sfgov.org/ontology#p_hasAirportName">
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty" />
+		<dc:title>hasAirportName</dc:title>
+		<rdfs:domain rdf:resource="http://data.sfgov.org/ontology#AirportTerminal" />
+		<rdfs:label>hasAirportName</rdfs:label>
+		<rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string" />
+	</rdf:Property>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#PassengerActivity">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#AirportActivity" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<anzoowl:identifierTemplate>&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix&gt;/&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName&gt;/&lt;http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUniqueID&gt;</anzoowl:identifierTemplate>
+		<resourceTemplate rdf:nodeID="u667fdb6c-7750-4489-ab7f-5a45a0479948" xmlns="http://openanzo.org/ontologies/Storage#" />
+		<dc:title>Passenger Activity</dc:title>
+		<rdfs:label>Passenger Activity</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#AirportActivity" />
+	</rdf:Description>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#PassengerAircraft">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#AircraftConfiguration" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<dc:title>Passenger Aircraft</dc:title>
+		<rdfs:label>Passenger Aircraft</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#AircraftConfiguration" />
+	</rdf:Description>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#PassengerDeplaned">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#AirportActivity" />
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#PassengerActivity" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<dc:title>Passenger Deplaned</dc:title>
+		<rdfs:label>Passenger Deplaned</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#PassengerActivity" />
+	</rdf:Description>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#PassengerEnplaned">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#AirportActivity" />
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#PassengerActivity" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<dc:title>Passenger Enplaned</dc:title>
+		<rdfs:label>Passenger Enplaned</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#PassengerActivity" />
+	</rdf:Description>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#PassengerTransit">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#AirportActivity" />
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#PassengerActivity" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<dc:title>Passenger Transit</dc:title>
+		<rdfs:label>Passenger Transit</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#PassengerActivity" />
+	</rdf:Description>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#RegionalJet">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#AircraftBody" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<dc:title>Regional Jet</dc:title>
+		<rdfs:label>Regional Jet</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#AircraftBody" />
+	</rdf:Description>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#Turbo_Prop">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#AircraftBody" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<dc:title>Turbo Prop</dc:title>
+		<rdfs:label>Turbo Prop</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#AircraftBody" />
+	</rdf:Description>
+	<rdf:Description rdf:about="http://data.sfgov.org/ontology#WideBody">
+		<rdf:type rdf:resource="http://data.sfgov.org/ontology#AircraftBody" />
+		<rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class" />
+		<rdfs:label>Wide body</rdfs:label>
+		<rdfs:subClassOf rdf:resource="http://data.sfgov.org/ontology#AircraftBody" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u02101a66-d452-489a-9980-2ec151acac74">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName" />
+		<rdf:rest rdf:nodeID="u6e0d1bb4-9e6d-4395-9c0e-98a3f0be22db" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u0980a2b8-353e-4155-9b59-7384d7c8b7cc">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="uc7d350b1-9756-4d0c-9bb8-a4f0e1422556" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u0aed0371-b2c6-42b1-9659-cd1778666e68">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#BoardingArea" />
+		<rdf:rest rdf:nodeID="u300b5404-eaf5-4d85-98a9-b1b6c5adaf90" />
+	</rdf:Description>
+	<owl:Restriction rdf:nodeID="u0cf820f6-c3e6-449f-97ce-b3b326c5f224">
+		<owl:maxCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#int">1</owl:maxCardinality>
+		<owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#int">1</owl:minCardinality>
+		<owl:onProperty rdf:resource="http://data.sfgov.org/ontology#hasActivityPeriodValue" />
+	</owl:Restriction>
+	<rdf:Description rdf:nodeID="u0d1233d2-4623-44e4-a387-dd7918efca21">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix" />
+		<rdf:rest rdf:nodeID="ud9245203-6380-4576-baaf-b50d5d76bc39" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u0dc8b7c3-9024-4cbb-bf6e-3da5b4de6e5b">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#hasCompanyName" />
+		<rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u12979a2d-43d9-4e50-9abc-36df1d293cbf">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="u842cf575-84e4-4db2-918d-103088f6de26" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u13acb322-565c-40f7-b174-58fc066e29e0">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="u64776baa-30fb-4e6f-b03d-5dc7162c287a" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u19fbd9cd-99e1-4855-bedc-889c4dd20919">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#hasTerminalName" />
+		<rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u1ca98d4b-e285-4b38-aa59-d3e9f2fb4150">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="u96249a96-8417-40b7-8ef1-c21632699703" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u1f2b273a-7302-4f7c-97b4-ed3c0af5bdf4">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="u66c5d7fe-12b6-4f31-b6d8-bfff6d8dd65c" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u26a081a1-3af5-4df7-8ab8-67873478077e">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#AircraftModel" />
+		<rdf:rest rdf:nodeID="ubf8c1a73-6531-4a88-a39d-3f7e7aab1ae7" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u2bc691af-eb95-4b2c-b3d9-5b17601b5b7f">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="u340bf990-717f-4eca-b69f-3f30bb61c749" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u2f46b695-7b8c-43a3-af87-5b3f6075d183">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix" />
+		<rdf:rest rdf:nodeID="uf4363891-3a20-495e-bf6f-09d64c66cec6" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u300b5404-eaf5-4d85-98a9-b1b6c5adaf90">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#AirportTerminal" />
+		<rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u340bf990-717f-4eca-b69f-3f30bb61c749">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName" />
+		<rdf:rest rdf:nodeID="udfa9f374-2990-401c-89b4-dc7494b664ab" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u3bc42f76-0027-48f3-800c-dfaafd4e8363">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="uc0b374bb-9316-4a6b-9685-2ed163601dfc" />
+	</rdf:Description>
+	<owl:Class rdf:nodeID="u3fd74d28-9ebd-405b-9efa-bedc23ba2387">
+		<owl:unionOf rdf:nodeID="u7b143ab7-8d65-474e-9040-ad204d0b97e4" />
+	</owl:Class>
+	<rdf:Description rdf:nodeID="u46aa1b1f-9869-478e-aa7e-54c2cc9da91a">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="ubcc9c1ea-01f1-4abb-a829-52d4bfb2eb78" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u4be7e66f-a51c-4dfb-9a2f-6d8c4fc84b9c">
+		<rdf:first rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#type" />
+		<rdf:rest rdf:nodeID="u1ca98d4b-e285-4b38-aa59-d3e9f2fb4150" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u562472ec-9138-4bda-8d1a-a21cda48ecc8">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="uf11f278b-d26b-48cc-a4fa-5fe28937f061" />
+	</rdf:Description>
+	<owl:Restriction rdf:nodeID="u6227e7a3-5490-48b1-9e00-3a355e21ed07">
+		<owl:maxCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#int">1</owl:maxCardinality>
+		<owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#int">1</owl:minCardinality>
+		<owl:onProperty rdf:resource="http://data.sfgov.org/ontology#hasActivityPeriod" />
+	</owl:Restriction>
+	<rdf:Description rdf:nodeID="u64776baa-30fb-4e6f-b03d-5dc7162c287a">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#hasRegionName" />
+		<rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u667fdb6c-7750-4489-ab7f-5a45a0479948">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix" />
+		<rdf:rest rdf:nodeID="ucebbabc3-ff9f-485f-87d0-4005466e71ef" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u66c5d7fe-12b6-4f31-b6d8-bfff6d8dd65c">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName" />
+		<rdf:rest rdf:nodeID="u9d67051d-a72e-45bb-b2f9-757cf50ed822" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u689cec61-d976-4b58-ae92-75e04614e886">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix" />
+		<rdf:rest rdf:nodeID="u12979a2d-43d9-4e50-9abc-36df1d293cbf" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u6e0d1bb4-9e6d-4395-9c0e-98a3f0be22db">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="u977feb09-cd8f-4f45-a61b-db737ec8cb2b" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u74de095e-4202-4cf4-8c40-c75d743c4bdf">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="u19fbd9cd-99e1-4855-bedc-889c4dd20919" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u78277e0e-4672-4064-a1b9-175b1f972f19">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#hasAirportName" />
+		<rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil" />
+	</rdf:Description>
+	<owl:Restriction rdf:nodeID="u7920cc49-3c0f-45cd-995f-788e36bdecda">
+		<owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#int">1</owl:minCardinality>
+		<owl:onProperty rdf:resource="http://data.sfgov.org/ontology#hasTerminalAreaName" />
+	</owl:Restriction>
+	<rdf:Description rdf:nodeID="u7b143ab7-8d65-474e-9040-ad204d0b97e4">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#BoardingArea" />
+		<rdf:rest rdf:nodeID="u7cb5af50-8238-48e7-a627-dcbd23c27cca" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u7cb5af50-8238-48e7-a627-dcbd23c27cca">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#Airport" />
+		<rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u842cf575-84e4-4db2-918d-103088f6de26">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName" />
+		<rdf:rest rdf:nodeID="u562472ec-9138-4bda-8d1a-a21cda48ecc8" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u96249a96-8417-40b7-8ef1-c21632699703">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#p_hasAirportName" />
+		<rdf:rest rdf:nodeID="u74de095e-4202-4cf4-8c40-c75d743c4bdf" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u971c63e4-3131-451f-b7e1-f62b9c86ab07">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix" />
+		<rdf:rest rdf:nodeID="u3bc42f76-0027-48f3-800c-dfaafd4e8363" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u977feb09-cd8f-4f45-a61b-db737ec8cb2b">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUniqueID" />
+		<rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="u9d67051d-a72e-45bb-b2f9-757cf50ed822">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="ub62e140d-4f6b-42c7-94de-1a8531f5935b" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="ua59dd1b6-6591-4dd6-8187-fc1b405f12d3">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName" />
+		<rdf:rest rdf:nodeID="u46aa1b1f-9869-478e-aa7e-54c2cc9da91a" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="ua5fa33bb-9c78-4116-8c7b-f0074a568df7">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix" />
+		<rdf:rest rdf:nodeID="u2bc691af-eb95-4b2c-b3d9-5b17601b5b7f" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="uac41a9df-3e73-47b4-84bb-a7f002c936d9">
+		<rdf:first>Company/</rdf:first>
+		<rdf:rest rdf:nodeID="u0dc8b7c3-9024-4cbb-bf6e-3da5b4de6e5b" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="ub62e140d-4f6b-42c7-94de-1a8531f5935b">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#hasActivityPeriodValue" />
+		<rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="ubbccc0a1-927a-4477-ab75-42beb3d420c2">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix" />
+		<rdf:rest rdf:nodeID="u1f2b273a-7302-4f7c-97b4-ed3c0af5bdf4" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="ubcc9c1ea-01f1-4abb-a829-52d4bfb2eb78">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#hasModelVersion" />
+		<rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="ubd99622e-58e3-4f49-b1fa-3b94003d10ce">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="ua59dd1b6-6591-4dd6-8187-fc1b405f12d3" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="ubf8c1a73-6531-4a88-a39d-3f7e7aab1ae7">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#AircraftModelVersion" />
+		<rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="uc0b374bb-9316-4a6b-9685-2ed163601dfc">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName" />
+		<rdf:rest rdf:nodeID="u0980a2b8-353e-4155-9b59-7384d7c8b7cc" />
+	</rdf:Description>
+	<owl:Class rdf:nodeID="uc13ad9ec-bace-4e75-8dd4-af0203d8c659">
+		<owl:unionOf rdf:nodeID="u0aed0371-b2c6-42b1-9659-cd1778666e68" />
+	</owl:Class>
+	<rdf:Description rdf:nodeID="uc7d350b1-9756-4d0c-9bb8-a4f0e1422556">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#hasModelName" />
+		<rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil" />
+	</rdf:Description>
+	<owl:Restriction rdf:nodeID="uc8c3c7d5-1e5f-409e-9d49-4460be98c9a7">
+		<owl:maxCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#int">1</owl:maxCardinality>
+		<owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#int">1</owl:minCardinality>
+		<owl:onProperty rdf:resource="http://data.sfgov.org/ontology#hasTailNumber" />
+	</owl:Restriction>
+	<rdf:Description rdf:nodeID="ucebbabc3-ff9f-485f-87d0-4005466e71ef">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="u02101a66-d452-489a-9980-2ec151acac74" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="ud1cadbbe-2afb-4b03-b26d-f0a0caaa95e1">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingTypeName" />
+		<rdf:rest rdf:nodeID="u13acb322-565c-40f7-b174-58fc066e29e0" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="ud9245203-6380-4576-baaf-b50d5d76bc39">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="ud1cadbbe-2afb-4b03-b26d-f0a0caaa95e1" />
+	</rdf:Description>
+	<owl:Restriction rdf:nodeID="uddd1105a-1547-4796-9acb-57f54425681a">
+		<owl:minCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#int">1</owl:minCardinality>
+		<owl:onProperty rdf:resource="http://data.sfgov.org/ontology#p_has_Aircraft_Model" />
+	</owl:Restriction>
+	<rdf:Description rdf:nodeID="udfa9f374-2990-401c-89b4-dc7494b664ab">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="u78277e0e-4672-4064-a1b9-175b1f972f19" />
+	</rdf:Description>
+	<owl:Class rdf:nodeID="ued27438e-21ac-427f-b4d1-5613d5d7914c">
+		<owl:unionOf rdf:nodeID="u26a081a1-3af5-4df7-8ab8-67873478077e" />
+	</owl:Class>
+	<rdf:Description rdf:nodeID="uf11f278b-d26b-48cc-a4fa-5fe28937f061">
+		<rdf:first rdf:resource="http://data.sfgov.org/ontology#hasTailNumber" />
+		<rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="uf4363891-3a20-495e-bf6f-09d64c66cec6">
+		<rdf:first>/</rdf:first>
+		<rdf:rest rdf:nodeID="u4be7e66f-a51c-4dfb-9a2f-6d8c4fc84b9c" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="uf7719f33-12f6-473a-aeca-0707400501e5">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix" />
+		<rdf:rest rdf:nodeID="ubd99622e-58e3-4f49-b1fa-3b94003d10ce" />
+	</rdf:Description>
+	<rdf:Description rdf:nodeID="uf9525768-f299-4b0f-bc7e-d18ad1dc2195">
+		<rdf:first rdf:resource="http://cambridgesemantics.com/ontologies/2009/05/LinkedData#linkingUriPrefix" />
+		<rdf:rest rdf:nodeID="uac41a9df-3e73-47b4-84bb-a7f002c936d9" />
+	</rdf:Description>
+</rdf:RDF>
