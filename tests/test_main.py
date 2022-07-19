@@ -51,7 +51,7 @@ def test_full_cycle_aircraft_without_normalize_literals() -> None:
     assert db.collection("Blank").count() == 59
     assert db.collection("IRI").count() == 84
     assert db.collection("Literal").count() == 148
-    assert db.collection("Statement").count() == 476
+    assert db.collection("Statement").count() == 492
 
     assert db.has_collection("configurations")
     assert adb_rdf.get_config_by_latest()["timestamp"] >= timestamp
@@ -68,16 +68,16 @@ def test_full_cycle_aircraft_without_normalize_literals() -> None:
     assert db.collection("Blank").count() == 59
     assert db.collection("IRI").count() == 90
     assert db.collection("Literal").count() == 306
-    assert db.collection("Statement").count() == 648
+    assert db.collection("Statement").count() == 664
 
     print("aircraft data imported")
 
     ################################# Export #################################
     print("exporting data...")
-    adb_rdf.export(f"{PROJECT_DIR}/examples/data/rdfExport.xml", format="xml")
+    adb_rdf.export_rdf(f"{PROJECT_DIR}/examples/data/rdfExport.xml", format="xml")
     print("export complete")
 
-    ################################# Re-import ##############################
+    # ################################# Re-import ##############################
     db.delete_graph(graph_name, drop_collections=True, ignore_missing=True)
 
     # Re-initialize our RDF Graph
@@ -98,8 +98,8 @@ def test_full_cycle_aircraft_without_normalize_literals() -> None:
 
     assert db.collection("Blank").count() == 59
     assert db.collection("IRI").count() == 90
-    assert db.collection("Literal").count() == 306
-    assert db.collection("Statement").count() == 648
+    assert db.collection("Literal").count() == 158
+    assert db.collection("Statement").count() == 516
 
     print("done")
 
@@ -128,7 +128,7 @@ def test_full_cycle_aircraft_with_normalize_literals() -> None:
     assert db.collection("Blank").count() == 59
     assert db.collection("IRI").count() == 84
     assert db.collection("Literal").count() == 78
-    assert db.collection("Statement").count() == 427
+    assert db.collection("Statement").count() == 492
 
     print("importing aircraft data...")
     adb_rdf.import_rdf(
@@ -141,13 +141,13 @@ def test_full_cycle_aircraft_with_normalize_literals() -> None:
     assert db.collection("Blank").count() == 59
     assert db.collection("IRI").count() == 90
     assert db.collection("Literal").count() == 87
-    assert db.collection("Statement").count() == 450
+    assert db.collection("Statement").count() == 516
 
     print("aircraft data imported")
 
     ################################# Export #################################
     print("exporting data...")
-    adb_rdf.export(f"{PROJECT_DIR}/examples/data/rdfExport.xml", format="xml")
+    adb_rdf.export_rdf(f"{PROJECT_DIR}/examples/data/rdfExport.xml", format="xml")
     print("export complete")
 
     ################################# Re-import ##############################
@@ -172,7 +172,7 @@ def test_full_cycle_aircraft_with_normalize_literals() -> None:
     assert db.collection("Blank").count() == 59
     assert db.collection("IRI").count() == 90
     assert db.collection("Literal").count() == 87
-    assert db.collection("Statement").count() == 450
+    assert db.collection("Statement").count() == 516
 
     print("done")
 

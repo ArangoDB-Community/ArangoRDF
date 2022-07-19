@@ -276,6 +276,7 @@ class ArangoRDF:
             # add RDF Graph id as edge property
             if self.__set_sub_graph:
                 edge["graph"] = graph_id
+            adb_documents["statement"].append(edge)
 
             self.insert_edge(self.collections["statement"], edge)
 
