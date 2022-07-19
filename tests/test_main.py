@@ -39,7 +39,7 @@ def test_full_cycle_aircraft_without_normalize_literals() -> None:
 
     print("importing ontology...")
 
-    timestamp = round(time())
+    timestamp = time()
     adb_rdf.import_rdf(
         f"{PROJECT_DIR}/examples/data/airport-ontology.owl",
         format="xml",
