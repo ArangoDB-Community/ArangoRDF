@@ -75,7 +75,7 @@ adb_rdf.import_rdf(f"./examples/data/sfo-aircraft-partial.ttl", format="ttl", co
 # Exports ALL collections of the database,
 # currently does not account for default_graph or sub_graph
 # Results may vary, minifying may occur
-adb_rdf.export(f"./examples/data/rdfExport.xml", format="xml")
+adb_rdf.export_rdf(f"./examples/data/rdfExport.xml", format="xml")
 
 # Drop graph and ALL documents and collections to test import from exported data
 if db.has_graph("default_graph"):
