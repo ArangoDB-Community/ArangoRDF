@@ -377,7 +377,7 @@ class ArangoRDF:
             self.db.aql.execute(aql)
 
         config["latest"] = True
-        config["timestamp"] = round(time.time())
+        config["timestamp"] = time.time()
         self.db.collection("configurations").insert(config)
 
     def get_config_by_latest(self) -> dict:
