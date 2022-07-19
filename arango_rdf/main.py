@@ -5,17 +5,18 @@
 # author @Arthur Keen (ArangoDB)
 
 import hashlib
-import string
 import sys
 import time
-from typing import Any, List, Optional, Union
+from collections import defaultdict
+from typing import Any, Dict, List, Optional, Union
 
 # from rdflib.namespace import RDFS, OWL
-from arango import ArangoClient
-from arango.collection import EdgeCollection, StandardCollection
-from arango.cursor import Cursor
 from arango.database import StandardDatabase
-from rdflib import BNode, Graph, Literal, URIRef
+from arango.graph import Graph as ArangoGraph
+from rdflib import BNode
+from rdflib import Graph as RDFGraph
+from rdflib import Literal, URIRef
+from tqdm import tqdm
 
 
 class ArangoRDF:
@@ -48,9 +49,10 @@ class ArangoRDF:
             self.graph = self.db.create_graph(default_graph)
 
         self.__set_sub_graph = sub_graph is not None
-        self.rdf_graph = Graph(identifier=sub_graph)
+        self.rdf_graph = RDFGraph(identifier=sub_graph)
 
-        self.collections = {}
+        # Maps the default RDF collection names to the user-specified RDF collection names
+        self.col_map: Dict[str, str] = {}
 
     def init_rdf_collections(
         self,
@@ -81,46 +83,6 @@ class ArangoRDF:
             edge, [iri, bnode], [iri, literal, bnode], "statement"
         )
 
-    # DO NOT USE ontology-specific functions, incomplete
-    def init_ontology_collections(
-        self,
-        cls: str = "Class",
-        rel: str = "Relationship",
-        prop: str = "Property",
-        sub_cls: str = "SubClassOf",
-        sub_prop: str = "SubPropertyOf",
-        range: str = "Range",
-        domain: str = "Domain",
-    ):
-        """
-        Creates the node and edge collections for ontology import.
-
-        Parameters
-        ----------
-        cls: str
-            the name of the collection that will store classes (default is "Class")
-        rel: str
-            the name of the collection that will store relationships (default is "Relationship")
-        prop: str
-            the name of the collection that will store properties (default is "Property")
-        sub_cls: str
-            the name of the edge collection that will connect classes (default is "SubClassOf")
-        sub_prop: str
-            the name of the edge collection that will connect properties (default is "SubPropertyOf")
-        range: str
-            the name of the edge collection that will connect relationships to range classes (default is "Range")
-        domain: str
-            the name of the edge collection that will connect relationships to domain classes (default is "Domain")
-        """
-        self.init_collection(cls, "class")
-        self.init_collection(rel, "rel")
-        self.init_collection(prop, "prop")
-
-        self.init_edge_collection(sub_cls, [cls], [cls], "sub_class")
-        self.init_edge_collection(sub_prop, [prop], [prop], "sub_prop")
-        self.init_edge_collection(range, [rel], [cls], "range")
-        self.init_edge_collection(domain, [rel], [cls], "domain")
-
     def init_collection(self, name: str, default_name: str) -> None:
         """
         Creates collection if it doesn't already exist
@@ -132,11 +94,10 @@ class ArangoRDF:
         default_name: str
             the name that will be used to reference the collection in the code
         """
-        if self.db.has_collection(name):
-            collection = self.db.collection(name)
-        else:
-            collection = self.db.create_collection(name)
-        self.collections[default_name] = collection
+        if self.db.has_collection(name) is False:
+            self.db.create_collection(name)
+
+        self.col_map[default_name] = name
 
     def init_edge_collection(
         self,
@@ -187,15 +148,14 @@ class ArangoRDF:
                 to_vertex_collections=new_to_vc,
             )
 
-            collection = self.graph.edge_collection(name)
         else:
-            collection = self.graph.create_edge_definition(
+            self.graph.create_edge_definition(
                 edge_collection=name,
                 from_vertex_collections=parent_collections,
                 to_vertex_collections=child_collections,
             )
 
-        self.collections[default_name] = collection
+        self.col_map[default_name] = name
 
     def import_rdf(
         self,
@@ -203,7 +163,8 @@ class ArangoRDF:
         format: str = "xml",
         config: dict = {},
         save_config: bool = False,
-    ) -> None:
+        **import_options: Any,
+    ) -> ArangoGraph:
         """
         Imports an rdf graph from a file into Arangodb
 
@@ -225,167 +186,119 @@ class ArangoRDF:
 
         graph_id = self.rdf_graph.identifier.toPython()
 
+        normalize_literals = config.get("normalize_literals", False)
         if config and save_config:
-            config["normalize_literals"] = config.get("normalize_literals", False)
+            config["normalize_literals"] = normalize_literals
             config["default_graph"] = self.default_graph
             if self.__set_sub_graph:
                 config["sub_graph"] = self.sub_graph
 
             self.save_config(config)
 
-        for s, p, o in self.rdf_graph:
+        adb_documents = defaultdict(list)
+
+        file_name = data.split("/")[-1]
+        for s, p, o in tqdm(self.rdf_graph, desc=file_name, colour="#88a049"):
 
             # build subject doc
             if isinstance(s, URIRef):
-                collection = "iri"
-                doc = self.build_iri_doc(s)
+                s_collection = "iri"
+                s_doc = self.build_iri_doc(s)
             elif isinstance(s, BNode):
-                collection = "bnode"
-                doc = self.build_bnode_doc(s)
+                s_collection = "bnode"
+                s_doc = self.build_bnode_doc(s)
             else:
                 raise ValueError("Subject must be IRI or Blank Node")
 
-            s_id = self.insert_doc(self.collections[collection], doc)
+            s_id = self.col_map[s_collection] + "/" + s_doc["_key"]
+            adb_documents[s_collection].append(s_doc)
 
             # build object doc
             if isinstance(o, URIRef):
-                collection = "iri"
-                doc = self.build_iri_doc(o)
-                o_id = self.insert_doc(self.collections[collection], doc)
+                o_collection = "iri"
+                o_doc = self.build_iri_doc(o)
             elif isinstance(o, BNode):
-                collection = "bnode"
-                doc = self.build_bnode_doc(o)
-                o_id = self.insert_doc(self.collections[collection], doc)
+                o_collection = "bnode"
+                o_doc = self.build_bnode_doc(o)
             elif isinstance(o, Literal):
-                collection = "literal"
-                normalize = config.get("normalize_literals", False)
-                doc = self.build_literal_doc(o, normalize)
-                o_id = self.insert_literal_doc(
-                    self.collections[collection], doc, normalize
-                )
+                o_collection = "literal"
+                o_doc = self.build_literal_doc(o, normalize_literals)
             else:
                 raise ValueError("Object must be IRI, Blank Node, or Literal")
+
+            o_id = self.col_map[o_collection] + "/" + o_doc["_key"]
+            adb_documents[o_collection].append(o_doc)
 
             # build and insert edge
             edge = self.build_statement_edge(p, s_id, o_id, graph_id)
 
             # add RDF Graph id as edge property
             if self.__set_sub_graph:
-                edge["graph"] = graph_id
+                edge["_graph"] = graph_id
 
-            self.insert_edge(self.collections["statement"], edge)
+            adb_documents["statement"].append(edge)
 
-        return
+        # Set default ArangoDB `import_bulk` behavior to update/insert
+        if "on_duplicate" not in import_options:
+            import_options["on_duplicate"] = "update"
 
-    # DO NOT USE ontology-specific functions, incomplete
-    def import_ontology(self, data: str, format: str = "xml") -> None:
-        """
-        Imports an ontology from a file into Arangodb
+        for collection, doc_list in tqdm(
+            adb_documents.items(), colour="#5e3108", desc="/_api/import"
+        ):
+            self.db.collection(self.col_map[collection]).import_bulk(
+                doc_list, **import_options
+            )
 
-        Parameters
-        ----------
-        data: str
-            path to rdf file
-        format: str
-            format of the rdf file (default is "xml")
-        """
+        return self.graph
 
-        self.rdf_graph.parse(data, format=format)
-        graph_id = self.rdf_graph.identifier.toPython()
-
-        for s, p, o in self.rdf_graph:
-            if isinstance(o, Literal) is False:
-                if "#Class" in o.toPython():
-                    self.build_and_insert_node(self.collections["class"], s)
-                elif "#ObjectProperty" in o.toPython():
-                    self.build_and_insert_node(self.collections["rel"], s)
-                elif "#DatatypeProperty" in o.toPython():
-                    self.build_and_insert_node(self.collections["prop"], s)
-                else:
-                    raise ValueError(f"Unrecognized object {o.toPython()}")
-
-            else:
-                # if predicate is subclass of, add s and o to class collection and connect them w/ subClassOf edge
-                if "#subClassOf" in p.toPython():
-                    o_id = self.build_and_insert_node(self.collections["class"], o)
-                    s_id = self.build_and_insert_node(self.collections["class"], s)
-
-                    edge = self.build_statement_edge(p, s_id, o_id, graph_id)
-                    self.insert_edge(self.collections["sub_class"], edge)
-
-                # if predicate is #domain create relationship node and connect to class node
-                elif "#domain" in p.toPython():
-                    s_id = self.build_and_insert_node(self.collections["rel"], s)
-                    o_id = self.build_and_insert_node(self.collections["class"], o)
-
-                    edge = self.build_statement_edge(p, s_id, o_id, graph_id)
-                    self.insert_edge(self.collections["domain"], edge)
-
-                elif "#range" in p.toPython():
-                    s_id = self.build_and_insert_node(self.collections["rel"], s)
-                    o_id = self.build_and_insert_node(self.collections["class"], o)
-
-                    edge = self.build_statement_edge(p, s_id, o_id, graph_id)
-                    self.insert_edge(self.collections["range"], edge)
-
-                elif "#subPropertyOf" in p.toPython():
-                    o_id = self.build_and_insert_node(self.collections["prop"], o)
-                    s_id = self.build_and_insert_node(self.collections["prop"], o)
-
-                    edge = self.build_statement_edge(p, s_id, o_id, graph_id)
-                    self.insert_edge(self.collections["sub_prop"], edge)
-                else:
-                    raise ValueError(f"Unrecognized predicate {p.toPython()}")
-
-    def export(self, file_name: str, format: str) -> None:
+    def export_rdf(
+        self,
+        file_name: Optional[str] = None,
+        format: Optional[str] = None,
+        **query_options: Any,
+    ) -> RDFGraph:
         """
         Builds a rdf graph from the database graph and exports to a file
 
         Parameters
         ----------
-        file_name: str
+        file_name: str | none
             path to where file will be exported
-        format: str
+        format: str | none
             format of the rdf file
         """
         # init rdf graph
-        g = Graph()
+        g = RDFGraph()
 
-        # get all collections from db
-        collections = self.db.collections()
-        names = []
-        for i in collections:
-            if i["name"][0] != "_":
-                names.append(i["name"])
+        aql = """
+            FOR edge IN @@col
+                RETURN {
+                    iri: edge["_iri"],
+                    from: DOCUMENT(edge._from),
+                    to: DOCUMENT(edge._to)
+                }
+        """
 
-        all_adb_docs = self.get_all_docs(names)
+        data_cursor = self.db.aql.execute(
+            aql,
+            bind_vars={"@col": self.col_map["statement"]},
+            count=True,
+            **query_options,
+        )
 
-        for n in all_adb_docs:
-            if "_to" in n:
-                # find and build subect/object
-                to_node = self.find_by_id(n["_to"], all_adb_docs)
-                from_node = self.find_by_id(n["_from"], all_adb_docs)
+        for data in tqdm(data_cursor, total=data_cursor.count(), colour="CYAN"):
+            from_node = self.adb_doc_to_rdf_node(data["from"])
+            to_node = self.adb_doc_to_rdf_node(data["to"])
+            _iri = data["iri"]
 
-                _iri = n["_iri"]
-                # add triple to graph
-                g.add((from_node, URIRef(_iri), to_node))
+            # add triple to graph
+            g.add((from_node, URIRef(_iri), to_node))
 
         # output graph
-        g.serialize(destination=file_name, format=format)
+        if file_name:
+            g.serialize(destination=file_name, format=format)
 
-        return
-
-    def build_and_insert_node(
-        self, collection: StandardCollection, doc: Union[URIRef, BNode]
-    ) -> dict:
-        if isinstance(doc, URIRef):
-            node = self.build_iri_doc(doc)
-        elif isinstance(doc, BNode):
-            node = self.build_bnode_doc(doc)
-        else:
-            raise ValueError("Document must be IRI or Blank Node")
-
-        return self.insert_doc(collection, node)
+        return g
 
     def build_iri_doc(self, iri: URIRef) -> dict:
         return {
@@ -409,8 +322,10 @@ class ArangoRDF:
         doc = {"_value": value, "_type": type, "_lang": lang}
         if normalize:
             key_string = value + type + lang
-            key = hashlib.md5(key_string.encode("utf-8")).hexdigest()
-            doc["_key"] = key
+        else:
+            key_string = str(time.time())
+
+        doc["_key"] = hashlib.md5(key_string.encode("utf-8")).hexdigest()
 
         return doc
 
@@ -434,64 +349,20 @@ class ArangoRDF:
 
         return doc
 
-    def insert_doc(self, collection: StandardCollection, doc: dict) -> dict:
-        return collection.insert(doc, overwrite_mode="update")["_id"]
-
-    def insert_literal_doc(
-        self, collection: StandardCollection, doc: dict, normalize=False
-    ) -> dict:
-        if normalize:  # TODO: Clean this up
-            try:
-                return collection.insert(doc)["_id"]
-            except:
-                main_doc = collection.get(doc["_key"])
-                if "duplicates" in main_doc:
-                    main_doc["duplicates"].append(doc)
-                else:
-                    main_doc["duplicates"] = [doc]
-
-                return collection.update(main_doc)["_id"]
-        else:
-            return collection.insert(doc)["_id"]
-
-    def insert_edge(self, collection: EdgeCollection, edge: dict) -> dict:
-        # TODO: Verify intended behavior and consider replacing this spaghet AQL with collection.insert(edge)
-        col_name = collection.name
-        aql = f"""
-            UPSERT {{ _from: '{edge['_from']}', _to: '{edge['_to']}' }}
-            INSERT  {edge}
-            UPDATE {{}}
-            IN {col_name}
-            LET doc = IS_NULL(OLD) ? NEW : OLD
-            RETURN {{ _id: doc._id}}
-        """
-        cursor = self.db.aql.execute(aql)
-
-        return cursor.pop()
-
-    def get_all_docs(self, cols: List[str]) -> Cursor:
-        docs = []
-        for col in cols:
-            docs.extend([doc for doc in self.db.collection(col).all()])
-
-        return docs
-
-    def find_by_id(self, id: string, nodes: list) -> Union[URIRef, BNode, Literal]:
-        node = None
-        for n in nodes:
-            if n["_id"] == id:
-                node = n
+    def adb_doc_to_rdf_node(self, adb_doc: dict) -> Union[URIRef, BNode, Literal]:
         # build literal
-        if "_type" in node:
-            if node["_lang"] is not None:
-                return Literal(node["_value"], lang=node["_lang"])
+        if "_type" in adb_doc:
+            if adb_doc["_lang"] is not None:
+                return Literal(adb_doc["_value"], lang=adb_doc["_lang"])
             else:
-                return Literal(node("_value"), datatype=node["_type"])
+                return Literal(adb_doc["_value"], datatype=adb_doc["_type"])
+
         # build URIRef
-        if "_iri" in node:
-            return URIRef(node["_iri"])
+        if "_iri" in adb_doc:
+            return URIRef(adb_doc["_iri"])
+
         # build BNode
-        return BNode(value=node["_key"])
+        return BNode(value=adb_doc["_key"])
 
     def save_config(self, config: dict) -> None:
         if self.db.has_collection("configurations") is False:
@@ -506,14 +377,14 @@ class ArangoRDF:
             self.db.aql.execute(aql)
 
         config["latest"] = True
-        config["timestamp"] = round(time.time())
+        config["timestamp"] = time.time()
         self.db.collection("configurations").insert(config)
 
     def get_config_by_latest(self) -> dict:
         return self.get_config_by_key_value("latest", True)
 
     def get_config_by_key_value(self, key: str, val: Any) -> dict:
-        aql = f"""
+        aql = """
             FOR c IN configurations
                 FILTER c[@key] == @val
                 SORT c.timestamp DESC

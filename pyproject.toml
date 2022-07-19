@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.coverage.run]
+omit = [
+    "arango_rdf/version.py",
+    "setup.py",
+]
+
+[tool.pytest.ini_options]
+addopts = "-s -vv"
+minversion = "6.0"
+testpaths = ["tests"]
+
+[tool.setuptools_scm]
+write_to = "arango_rdf/version.py"

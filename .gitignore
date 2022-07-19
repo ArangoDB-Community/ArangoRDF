@@ -116,6 +116,9 @@ venv.bak/
 localdata/
 
 # setuptools_scm
-adbdgl_adapter/version.py
+arango_rdf/version.py
 
 .vscode
+
+# export rdf file
+examples/data/rdfExport.xml

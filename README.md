@@ -3,6 +3,11 @@ ___
 
 # Arango-RDF
 
+[![build](https://github.com/ArangoDB-Community/ArangoRDF/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/ArangoDB-Community/ArangoRDF/actions/workflows/build.yml)
+[![CodeQL](https://github.com/ArangoDB-Community/ArangoRDF/actions/workflows/analyze.yml/badge.svg?branch=main)](https://github.com/ArangoDB-Community/ArangoRDF/actions/workflows/analyze.yml)
+[![Coverage Status](https://coveralls.io/repos/github/ArangoDB-Community/ArangoRDF/badge.svg?branch=main)](https://coveralls.io/github/ArangoDB-Community/ArangoRDF?branch=main)
+[![Last commit](https://img.shields.io/github/last-commit/ArangoDB-Community/ArangoRDF)](https://github.com/ArangoDB-Community/ArangoRDF/commits/main)
+
 [![PyPI version badge](https://img.shields.io/pypi/v/arango-rdf?color=3775A9&style=for-the-badge&logo=pypi&logoColor=FFD43B)](https://pypi.org/project/arango-rdf/)
 [![Python versions badge](https://img.shields.io/pypi/pyversions/arango-rdf?color=3776AB&style=for-the-badge&logo=python&logoColor=FFD43B)](https://pypi.org/project/arango-rdf/)
 
@@ -10,8 +15,8 @@ ___
 [![Code style: black](https://img.shields.io/static/v1?style=for-the-badge&label=code%20style&message=black&color=black)](https://github.com/psf/black)
 [![Downloads](https://img.shields.io/badge/dynamic/json?style=for-the-badge&color=282661&label=Downloads&query=total_downloads&url=https://api.pepy.tech/api/projects/arango-rdf)](https://pepy.tech/project/arango-rdf)
 
-<a href="https://www.arangodb.com/" rel="arangodb.com"><img src="./examples/assets/adb_logo.png" width=10%/>
-<a href="https://www.w3.org/RDF/" rel="w3.org/RDF"><img src="./examples/assets/rdf_logo.png" width=7% /></a>
+<a href="https://www.arangodb.com/" rel="arangodb.com"><img src="https://raw.githubusercontent.com/ArangoDB-Community/ArangoRDF/main/examples/assets/adb_logo.png" width=10%/>
+<a href="https://www.w3.org/RDF/" rel="w3.org/RDF"><img src="https://raw.githubusercontent.com/ArangoDB-Community/ArangoRDF/main/examples/assets/rdf_logo.png" width=7% /></a>
 
 Import/Export RDF graphs with ArangoDB
 
@@ -64,10 +69,10 @@ config = {"normalize_literals": False}  # default: False
 adb_rdf.init_rdf_collections(bnode="Blank")
 
 # Start with importing the ontology
-adb_rdf.import_rdf("./examples/data/airport-ontology.owl", format="xml", config=config, save_config=True)
+adb_graph = adb_rdf.import_rdf("./examples/data/airport-ontology.owl", format="xml", config=config, save_config=True)
 
 # Next, let's import the actual graph data
-adb_rdf.import_rdf(f"./examples/data/sfo-aircraft-partial.ttl", format="ttl", config=config, save_config=True)
+adb_graph = adb_rdf.import_rdf(f"./examples/data/sfo-aircraft-partial.ttl", format="ttl", config=config, save_config=True)
 
 
 # RDF Export
@@ -75,7 +80,7 @@ adb_rdf.import_rdf(f"./examples/data/sfo-aircraft-partial.ttl", format="ttl", co
 # Exports ALL collections of the database,
 # currently does not account for default_graph or sub_graph
 # Results may vary, minifying may occur
-adb_rdf.export(f"./examples/data/rdfExport.xml", format="xml")
+rdf_graph = adb_rdf.export_rdf(f"./examples/data/rdfExport.xml", format="xml")
 
 # Drop graph and ALL documents and collections to test import from exported data
 if db.has_graph("default_graph"):
@@ -92,7 +97,7 @@ config = adb_rdf.get_config_by_latest() # gets the last config saved
 # config = adb_rdf.get_config_by_key_value('AnyKeySuppliedInConfig', 'SomeValue')
 
 # Re-import Exported data
-adb_rdf.import_rdf(f"./examples/data/rdfExport.xml", format="xml", config=config)
+adb_graph = adb_rdf.import_rdf(f"./examples/data/rdfExport.xml", format="xml", config=config)
 
 ```
 
@@ -103,4 +108,14 @@ adb_rdf.import_rdf(f"./examples/data/rdfExport.xml", format="xml", config=config
 3. (create virtual environment of choice)
 4. `pip install -e .[dev]`
 5. (create an ArangoDB instance with method of choice)
-6. `python tests/test.py` (assumes `username=root`, `password=openSesame`)
+6. `pytest --url <> --dbName <> --username <> --password <>`
+
+**Note**: A `pytest` parameter can be omitted if the endpoint is using its default value:
+```python
+def pytest_addoption(parser):
+    parser.addoption("--url", action="store", default="http://localhost:8529")
+    parser.addoption("--dbName", action="store", default="_system")
+    parser.addoption("--username", action="store", default="root")
+    parser.addoption("--password", action="store", default="")
+```
+
