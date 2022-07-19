@@ -281,69 +281,6 @@ class ArangoRDF:
 
         return
 
-    # DO NOT USE ontology-specific functions, incomplete
-    def import_ontology(self, data: str, format: str = "xml") -> None:
-        """
-        NOTE: DO NOT USE ontology-specific functions (incomplete)
-        Imports an ontology from a file into Arangodb
-
-        Parameters
-        ----------
-        data: str
-            path to rdf file
-        format: str
-            format of the rdf file (default is "xml")
-        """
-
-        raise NotImplementedError("DO NOT USE ontology-specific functions (incomplete)")
-
-        # self.rdf_graph.parse(data, format=format)
-        # graph_id = self.rdf_graph.identifier.toPython()
-
-        # for s, p, o in self.rdf_graph:
-        #     if isinstance(o, Literal) is False:
-        #         if "#Class" in o.toPython():
-        #             self.build_and_insert_node(self.collections["class"], s)
-        #         elif "#ObjectProperty" in o.toPython():
-        #             self.build_and_insert_node(self.collections["rel"], s)
-        #         elif "#DatatypeProperty" in o.toPython():
-        #             self.build_and_insert_node(self.collections["prop"], s)
-        #         else:
-        #             raise ValueError(f"Unrecognized object {o.toPython()}")
-
-        #     else:
-        #         # if predicate is subclass of, add s and o to class collection and connect them w/ subClassOf edge
-        #         if "#subClassOf" in p.toPython():
-        #             o_id = self.build_and_insert_node(self.collections["class"], o)
-        #             s_id = self.build_and_insert_node(self.collections["class"], s)
-
-        #             edge = self.build_statement_edge(p, s_id, o_id, graph_id)
-        #             self.insert_edge(self.collections["sub_class"], edge)
-
-        #         # if predicate is #domain create relationship node and connect to class node
-        #         elif "#domain" in p.toPython():
-        #             s_id = self.build_and_insert_node(self.collections["rel"], s)
-        #             o_id = self.build_and_insert_node(self.collections["class"], o)
-
-        #             edge = self.build_statement_edge(p, s_id, o_id, graph_id)
-        #             self.insert_edge(self.collections["domain"], edge)
-
-        #         elif "#range" in p.toPython():
-        #             s_id = self.build_and_insert_node(self.collections["rel"], s)
-        #             o_id = self.build_and_insert_node(self.collections["class"], o)
-
-        #             edge = self.build_statement_edge(p, s_id, o_id, graph_id)
-        #             self.insert_edge(self.collections["range"], edge)
-
-        #         elif "#subPropertyOf" in p.toPython():
-        #             o_id = self.build_and_insert_node(self.collections["prop"], o)
-        #             s_id = self.build_and_insert_node(self.collections["prop"], o)
-
-        #             edge = self.build_statement_edge(p, s_id, o_id, graph_id)
-        #             self.insert_edge(self.collections["sub_prop"], edge)
-        #         else:
-        #             raise ValueError(f"Unrecognized predicate {p.toPython()}")
-
     def export(self, file_name: str, format: str) -> None:
         """
         Builds a rdf graph from the database graph and exports to a file
