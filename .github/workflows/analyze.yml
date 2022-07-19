@@ -13,9 +13,9 @@ name: analyze
 on:
   workflow_dispatch:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
   schedule:
     - cron: "00 9 1,15 * *"
 jobs:
