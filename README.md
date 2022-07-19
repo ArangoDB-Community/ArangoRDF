@@ -103,4 +103,14 @@ adb_rdf.import_rdf(f"./examples/data/rdfExport.xml", format="xml", config=config
 3. (create virtual environment of choice)
 4. `pip install -e .[dev]`
 5. (create an ArangoDB instance with method of choice)
-6. `python tests/test.py` (assumes `username=root`, `password=openSesame`)
+6. `pytest --url <> --dbName <> --username <> --password <>`
+
+**Note**: A `pytest` parameter can be omitted if the endpoint is using its default value:
+```python
+def pytest_addoption(parser):
+    parser.addoption("--url", action="store", default="http://localhost:8529")
+    parser.addoption("--dbName", action="store", default="_system")
+    parser.addoption("--username", action="store", default="root")
+    parser.addoption("--password", action="store", default="")
+```
+
