@@ -10,8 +10,8 @@ ___
 [![Code style: black](https://img.shields.io/static/v1?style=for-the-badge&label=code%20style&message=black&color=black)](https://github.com/psf/black)
 [![Downloads](https://img.shields.io/badge/dynamic/json?style=for-the-badge&color=282661&label=Downloads&query=total_downloads&url=https://api.pepy.tech/api/projects/arango-rdf)](https://pepy.tech/project/arango-rdf)
 
-<a href="https://www.arangodb.com/" rel="arangodb.com"><img src="./examples/assets/adb_logo.png" width=10%/>
-<a href="https://www.w3.org/RDF/" rel="w3.org/RDF"><img src="./examples/assets/rdf_logo.png" width=7% /></a>
+<a href="https://www.arangodb.com/" rel="arangodb.com"><img src="https://raw.githubusercontent.com/ArangoDB-Community/ArangoRDF/main/examples/assets/adb_logo.png" width=10%/>
+<a href="https://www.w3.org/RDF/" rel="w3.org/RDF"><img src="https://raw.githubusercontent.com/ArangoDB-Community/ArangoRDF/main/examples/assets/rdf_logo.png" width=7% /></a>
 
 Import/Export RDF graphs with ArangoDB
 
