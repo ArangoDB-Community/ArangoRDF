@@ -3,6 +3,11 @@ ___
 
 # Arango-RDF
 
+[![build](https://github.com/ArangoDB-Community/ArangoRDF/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/ArangoDB-Community/ArangoRDF/actions/workflows/build.yml)
+[![CodeQL](https://github.com/ArangoDB-Community/ArangoRDF/actions/workflows/analyze.yml/badge.svg?branch=main)](https://github.com/ArangoDB-Community/ArangoRDF/actions/workflows/analyze.yml)
+[![Coverage Status](https://coveralls.io/repos/github/ArangoDB-Community/ArangoRDF/badge.svg?branch=main)](https://coveralls.io/github/ArangoDB-Community/ArangoRDF?branch=main)
+[![Last commit](https://img.shields.io/github/last-commit/ArangoDB-Community/ArangoRDF)](https://github.com/ArangoDB-Community/ArangoRDF/commits/main)
+
 [![PyPI version badge](https://img.shields.io/pypi/v/arango-rdf?color=3775A9&style=for-the-badge&logo=pypi&logoColor=FFD43B)](https://pypi.org/project/arango-rdf/)
 [![Python versions badge](https://img.shields.io/pypi/pyversions/arango-rdf?color=3776AB&style=for-the-badge&logo=python&logoColor=FFD43B)](https://pypi.org/project/arango-rdf/)
 
