@@ -119,3 +119,6 @@ localdata/
 adbdgl_adapter/version.py
 
 .vscode
+
+# export rdf file
+examples/data/rdfExport.xml

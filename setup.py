@@ -20,12 +20,14 @@ setup(
         "rdflib>=6.0.0",
         "python-arango>=7.4.1",
         "requests>=2.27.1",
+        "tqdm>=4.64.0",
         "setuptools>=45",
     ],
     extras_require={
         "dev": [
             "black",
             "isort>=5.0.0",
+            "pytest>=6.0.0",
         ],
     },
     classifiers=[

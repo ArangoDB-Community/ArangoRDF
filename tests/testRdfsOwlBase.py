@@ -1,7 +1,7 @@
 # NOTE: Temporarily Out of Service
 
-from arango_rdf import ArangoRDF
-from tests import PROJECT_DIR
+# from arango_rdf import ArangoRDF
+# from .conftest import PROJECT_DIR
 
 # Test the loading of the RDFS/OWL/SKOS metamodel
 # ToDo implement this an option on kg.init_rdf_collection
