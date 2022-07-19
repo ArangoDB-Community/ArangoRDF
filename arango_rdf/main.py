@@ -8,6 +8,7 @@ import hashlib
 import string
 import sys
 import time
+from random import choice
 from typing import Any, List, Optional, Union
 
 # from rdflib.namespace import RDFS, OWL
@@ -16,6 +17,7 @@ from arango.collection import EdgeCollection, StandardCollection
 from arango.cursor import Cursor
 from arango.database import StandardDatabase
 from rdflib import BNode, Graph, Literal, URIRef
+from tqdm import tqdm
 
 
 class ArangoRDF:
@@ -233,7 +235,9 @@ class ArangoRDF:
 
             self.save_config(config)
 
-        for s, p, o in self.rdf_graph:
+        file_name = data.split("/")[-1]
+        colour = self.__get_random_colour()
+        for s, p, o in tqdm(self.rdf_graph, desc=file_name, colour=colour):
 
             # build subject doc
             if isinstance(s, URIRef):
@@ -280,6 +284,7 @@ class ArangoRDF:
     # DO NOT USE ontology-specific functions, incomplete
     def import_ontology(self, data: str, format: str = "xml") -> None:
         """
+        NOTE: DO NOT USE ontology-specific functions (incomplete)
         Imports an ontology from a file into Arangodb
 
         Parameters
@@ -290,52 +295,54 @@ class ArangoRDF:
             format of the rdf file (default is "xml")
         """
 
-        self.rdf_graph.parse(data, format=format)
-        graph_id = self.rdf_graph.identifier.toPython()
+        raise NotImplementedError("DO NOT USE ontology-specific functions (incomplete)")
 
-        for s, p, o in self.rdf_graph:
-            if isinstance(o, Literal) is False:
-                if "#Class" in o.toPython():
-                    self.build_and_insert_node(self.collections["class"], s)
-                elif "#ObjectProperty" in o.toPython():
-                    self.build_and_insert_node(self.collections["rel"], s)
-                elif "#DatatypeProperty" in o.toPython():
-                    self.build_and_insert_node(self.collections["prop"], s)
-                else:
-                    raise ValueError(f"Unrecognized object {o.toPython()}")
+        # self.rdf_graph.parse(data, format=format)
+        # graph_id = self.rdf_graph.identifier.toPython()
 
-            else:
-                # if predicate is subclass of, add s and o to class collection and connect them w/ subClassOf edge
-                if "#subClassOf" in p.toPython():
-                    o_id = self.build_and_insert_node(self.collections["class"], o)
-                    s_id = self.build_and_insert_node(self.collections["class"], s)
+        # for s, p, o in self.rdf_graph:
+        #     if isinstance(o, Literal) is False:
+        #         if "#Class" in o.toPython():
+        #             self.build_and_insert_node(self.collections["class"], s)
+        #         elif "#ObjectProperty" in o.toPython():
+        #             self.build_and_insert_node(self.collections["rel"], s)
+        #         elif "#DatatypeProperty" in o.toPython():
+        #             self.build_and_insert_node(self.collections["prop"], s)
+        #         else:
+        #             raise ValueError(f"Unrecognized object {o.toPython()}")
 
-                    edge = self.build_statement_edge(p, s_id, o_id, graph_id)
-                    self.insert_edge(self.collections["sub_class"], edge)
+        #     else:
+        #         # if predicate is subclass of, add s and o to class collection and connect them w/ subClassOf edge
+        #         if "#subClassOf" in p.toPython():
+        #             o_id = self.build_and_insert_node(self.collections["class"], o)
+        #             s_id = self.build_and_insert_node(self.collections["class"], s)
 
-                # if predicate is #domain create relationship node and connect to class node
-                elif "#domain" in p.toPython():
-                    s_id = self.build_and_insert_node(self.collections["rel"], s)
-                    o_id = self.build_and_insert_node(self.collections["class"], o)
+        #             edge = self.build_statement_edge(p, s_id, o_id, graph_id)
+        #             self.insert_edge(self.collections["sub_class"], edge)
 
-                    edge = self.build_statement_edge(p, s_id, o_id, graph_id)
-                    self.insert_edge(self.collections["domain"], edge)
+        #         # if predicate is #domain create relationship node and connect to class node
+        #         elif "#domain" in p.toPython():
+        #             s_id = self.build_and_insert_node(self.collections["rel"], s)
+        #             o_id = self.build_and_insert_node(self.collections["class"], o)
 
-                elif "#range" in p.toPython():
-                    s_id = self.build_and_insert_node(self.collections["rel"], s)
-                    o_id = self.build_and_insert_node(self.collections["class"], o)
+        #             edge = self.build_statement_edge(p, s_id, o_id, graph_id)
+        #             self.insert_edge(self.collections["domain"], edge)
 
-                    edge = self.build_statement_edge(p, s_id, o_id, graph_id)
-                    self.insert_edge(self.collections["range"], edge)
+        #         elif "#range" in p.toPython():
+        #             s_id = self.build_and_insert_node(self.collections["rel"], s)
+        #             o_id = self.build_and_insert_node(self.collections["class"], o)
 
-                elif "#subPropertyOf" in p.toPython():
-                    o_id = self.build_and_insert_node(self.collections["prop"], o)
-                    s_id = self.build_and_insert_node(self.collections["prop"], o)
+        #             edge = self.build_statement_edge(p, s_id, o_id, graph_id)
+        #             self.insert_edge(self.collections["range"], edge)
 
-                    edge = self.build_statement_edge(p, s_id, o_id, graph_id)
-                    self.insert_edge(self.collections["sub_prop"], edge)
-                else:
-                    raise ValueError(f"Unrecognized predicate {p.toPython()}")
+        #         elif "#subPropertyOf" in p.toPython():
+        #             o_id = self.build_and_insert_node(self.collections["prop"], o)
+        #             s_id = self.build_and_insert_node(self.collections["prop"], o)
+
+        #             edge = self.build_statement_edge(p, s_id, o_id, graph_id)
+        #             self.insert_edge(self.collections["sub_prop"], edge)
+        #         else:
+        #             raise ValueError(f"Unrecognized predicate {p.toPython()}")
 
     def export(self, file_name: str, format: str) -> None:
         """
@@ -351,16 +358,14 @@ class ArangoRDF:
         # init rdf graph
         g = Graph()
 
-        # get all collections from db
-        collections = self.db.collections()
         names = []
-        for i in collections:
-            if i["name"][0] != "_":
-                names.append(i["name"])
+        col: StandardCollection
+        for _, col in self.collections.items():
+            names.append(col.name)
 
         all_adb_docs = self.get_all_docs(names)
 
-        for n in all_adb_docs:
+        for n in tqdm(all_adb_docs, colour=self.__get_random_colour()):
             if "_to" in n:
                 # find and build subect/object
                 to_node = self.find_by_id(n["_to"], all_adb_docs)
@@ -525,3 +530,7 @@ class ArangoRDF:
             sys.exit("No configuration found")
 
         return cursor.pop()
+
+    def __get_random_colour(self) -> str:
+        # I am a child
+        return choice(["RED", "GREEN", "YELLOW", "BLUE", "MAGENTA", "CYAN"])
