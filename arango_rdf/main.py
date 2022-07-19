@@ -83,46 +83,6 @@ class ArangoRDF:
             edge, [iri, bnode], [iri, literal, bnode], "statement"
         )
 
-    # DO NOT USE ontology-specific functions, incomplete
-    def init_ontology_collections(
-        self,
-        cls: str = "Class",
-        rel: str = "Relationship",
-        prop: str = "Property",
-        sub_cls: str = "SubClassOf",
-        sub_prop: str = "SubPropertyOf",
-        range: str = "Range",
-        domain: str = "Domain",
-    ):
-        """
-        Creates the node and edge collections for ontology import.
-
-        Parameters
-        ----------
-        cls: str
-            the name of the collection that will store classes (default is "Class")
-        rel: str
-            the name of the collection that will store relationships (default is "Relationship")
-        prop: str
-            the name of the collection that will store properties (default is "Property")
-        sub_cls: str
-            the name of the edge collection that will connect classes (default is "SubClassOf")
-        sub_prop: str
-            the name of the edge collection that will connect properties (default is "SubPropertyOf")
-        range: str
-            the name of the edge collection that will connect relationships to range classes (default is "Range")
-        domain: str
-            the name of the edge collection that will connect relationships to domain classes (default is "Domain")
-        """
-        self.init_collection(cls, "class")
-        self.init_collection(rel, "rel")
-        self.init_collection(prop, "prop")
-
-        self.init_edge_collection(sub_cls, [cls], [cls], "sub_class")
-        self.init_edge_collection(sub_prop, [prop], [prop], "sub_prop")
-        self.init_edge_collection(range, [rel], [cls], "range")
-        self.init_edge_collection(domain, [rel], [cls], "domain")
-
     def init_collection(self, name: str, default_name: str) -> None:
         """
         Creates collection if it doesn't already exist
