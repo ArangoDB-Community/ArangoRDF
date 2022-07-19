@@ -281,7 +281,7 @@ class ArangoRDF:
 
         return
 
-    def export(self, file_name: str, format: str) -> None:
+    def export_rdf(self, file_name: str, format: str) -> None:
         """
         Builds a rdf graph from the database graph and exports to a file
 
