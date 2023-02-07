@@ -47,58 +47,63 @@ pip install git+https://github.com/ArangoDB-Community/ArangoRDF
 Run the full version with Google Colab: <a href="https://colab.research.google.com/github/ArangoDB-Community/ArangoRDF/blob/main/examples/ArangoRDF.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
 ```py
-from arango import ArangoClient
 from arango_rdf import ArangoRDF
+
+from arango import ArangoClient
+from rdflib import Graph
 
 db = ArangoClient(hosts="http://localhost:8529").db(
     "rdf", username="root", password="openSesame"
 )
 
-# Clean up existing data and collections
-if db.has_graph("default_graph"):
-    db.delete_graph("default_graph", drop_collections=True, ignore_missing=True)
+adbrdf = ArangoRDF(db)
 
-# Initializes default_graph and sets RDF graph identifier (ArangoDB sub_graph)
-# Optional: sub_graph (stores graph name as the 'graph' attribute on all edges in Statement collection)
-# Optional: default_graph (name of ArangoDB Named Graph, defaults to 'default_graph',
-#           is root graph that contains all collections/relations)
-adb_rdf = ArangoRDF(db, sub_graph="http://data.sfgov.org/ontology") 
-config = {"normalize_literals": False}  # default: False
+g = Graph()
+g.parse("https://raw.githubusercontent.com/stardog-union/stardog-tutorials/master/music/beatles.ttl", format="ttl")
 
-# RDF Import
-adb_rdf.init_rdf_collections(bnode="Blank")
+db.delete_graph("BeatlesPGT", ignore_missing=True, drop_collections=True)
+db.delete_graph("BeatlesRPT", ignore_missing=True, drop_collections=True)
 
-# Start with importing the ontology
-adb_graph = adb_rdf.import_rdf("./examples/data/airport-ontology.owl", format="xml", config=config, save_config=True)
+# RDF to ArangoDB: RDF-Topology Presevering Transformation (RPT)
 
-# Next, let's import the actual graph data
-adb_graph = adb_rdf.import_rdf(f"./examples/data/sfo-aircraft-partial.ttl", format="ttl", config=config, save_config=True)
+adbrdf.rdf_to_arangodb_by_rpt("BeatlesRPT", g)
 
+# RDF to ArangoDB: Property Graph Transformation (PGT)
 
-# RDF Export
-# WARNING:
-# Exports ALL collections of the database,
-# currently does not account for default_graph or sub_graph
-# Results may vary, minifying may occur
-rdf_graph = adb_rdf.export_rdf(f"./examples/data/rdfExport.xml", format="xml")
+adbrdf.rdf_to_arangodb_by_pgt("BeatlesPGT", g)
 
-# Drop graph and ALL documents and collections to test import from exported data
-if db.has_graph("default_graph"):
-    db.delete_graph("default_graph", drop_collections=True, ignore_missing=True)
+# ArangoDB to RDF: By Graph Name
 
-# Re-initialize our RDF Graph
-# Initializes default_graph and sets RDF graph identifier (ArangoDB sub_graph)
-adb_rdf = ArangoRDF(db, sub_graph="http://data.sfgov.org/ontology")
+adbrdf.arangodb_graph_to_rdf("BeatlesRPT", Graph())
+adbrdf.arangodb_graph_to_rdf("BeatlesPGT", Graph())
 
-adb_rdf.init_rdf_collections(bnode="Blank")
+# ArangoDB to RDF: By Collection Names
 
-config = adb_rdf.get_config_by_latest() # gets the last config saved
-# config = adb_rdf.get_config_by_key_value('graph', 'music')
-# config = adb_rdf.get_config_by_key_value('AnyKeySuppliedInConfig', 'SomeValue')
+adbrdf.arangodb_collections_to_rdf(
+    "BeatlesRPT",
+    Graph(),
+    v_cols={"BeatlesRPT_URIRef", "BeatlesRPT_BNode", "BeatlesRPT_Literal"},
+    e_cols={"BeatlesRPT_Statement"},
+)
 
-# Re-import Exported data
-adb_graph = adb_rdf.import_rdf(f"./examples/data/rdfExport.xml", format="xml", config=config)
+adbrdf.arangodb_collections_to_rdf(
+    "BeatlesPGT",
+    Graph(),
+    v_cols={"Band", "SoloArtist", "Album", "Song"},
+    e_cols={"member", "artist", "track", "writer"},
+)
 
+# ArangoDB to RDF: By Metagraph
+
+metagraph = {
+    "vertexCollections": {
+        "SoloArtist": {},  # TODO - Figure out use case
+        "Band": {},
+    },
+    "edgeCollections": {"member": {}},
+}
+
+adbrdf.arangodb_to_rdf("BeatlesPGT", Graph(), metagraph)
 ```
 
 ##  Development & Testing
