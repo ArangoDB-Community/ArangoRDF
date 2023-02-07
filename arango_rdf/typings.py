@@ -1,0 +1,25 @@
+__all__ = [
+    "Json",
+    "ADBMetagraph",
+    "ADBDocs",
+    "RDFObject",
+    "RDFSubject",
+    "RDFTermMetadataPGT",
+    "RDFTermMetadataRPT",
+]
+
+from typing import Any, DefaultDict, Dict, Set, Tuple, Union
+
+from rdflib import BNode, Literal, URIRef
+
+Json = Dict[str, Any]
+ADBMetagraph = Dict[str, Dict[str, Set[str]]]
+
+# ADBDocsRPT = DefaultDict[str, List[Json]]
+ADBDocs = DefaultDict[str, DefaultDict[str, Json]]
+
+RDFObject = Union[URIRef, BNode, Literal]
+RDFSubject = Union[URIRef, BNode]
+
+RDFTermMetadataPGT = Tuple[str, str, str]
+RDFTermMetadataRPT = Tuple[str, type, str]
