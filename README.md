@@ -52,9 +52,7 @@ from arango_rdf import ArangoRDF
 from arango import ArangoClient
 from rdflib import Graph
 
-db = ArangoClient(hosts="http://localhost:8529").db(
-    "rdf", username="root", password="openSesame"
-)
+db = ArangoClient(hosts="http://localhost:8529").db("_system_", username="root", password="")
 
 adbrdf = ArangoRDF(db)
 
