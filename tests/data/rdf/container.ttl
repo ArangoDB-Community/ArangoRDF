@@ -1,0 +1,68 @@
+PREFIX ex: <http://example.org/test#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+ex:Doc a ex:TestDoc .
+ex:Mars a ex:Planet .
+ex:Earth a ex:Planet .
+ex:Venus a ex:Planet .
+ex:Jupiter a ex:Planet .
+
+ex:Doc ex:numbers [
+    rdf:_1 1;
+    rdf:_2 [
+        rdf:_1 2; 
+        rdf:_2 3
+    ];
+    rdf:_3 [
+        rdf:_1 [
+            rdf:_1 4;
+            rdf:_2 5
+        ]
+    ];
+    rdf:_4 [
+        rdf:_1 [
+            rdf:_1 6;
+            rdf:_2 7
+        ]
+    ];
+    rdf:_5 [
+        rdf:_1 [
+            rdf:_1 8;
+            rdf:_2 9
+        ];
+        rdf:_2 [
+            rdf:_1 10;
+            rdf:_2 11
+        ]
+    ];
+    rdf:_6 [
+        rdf:_1 [
+            rdf:_1 [
+                rdf:_1 12
+            ];
+            rdf:_2 13
+        ];
+        rdf:_2 14
+    ];
+    rdf:_7 [
+        rdf:_1 15;
+        rdf:_2 [
+            rdf:_1 16;
+            rdf:_2 [
+                rdf:_5 17
+            ]
+        ]
+    ];
+    rdf:_8 18
+] .
+
+ex:Doc ex:planets [
+    rdf:li ex:Mars;
+    rdf:li [
+        rdf:li ex:Jupiter;
+        rdf:li [
+            rdf:li ex:Venus;
+            rdf:li ex:Earth
+        ]
+    ]
+] .

@@ -1,0 +1,14 @@
+PREFIX : <http://example.org/test#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+:Book a owl:Class .
+:Writer a owl:Class .
+
+:Novel a owl:Class ;
+ rdfs:subClassOf :Book .
+
+:Poet a owl:Class ;
+ rdfs:subClassOf :Writer .
+
+:Book owl:disjointWith :Writer .

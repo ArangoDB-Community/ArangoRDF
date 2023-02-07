@@ -1,0 +1,31 @@
+PREFIX ex: <http://example.org/test#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+ex:Doc a ex:TestDoc .
+ex:Mars a ex:Planet .
+ex:Earth a ex:Planet .
+ex:Venus a ex:Planet .
+ex:Jupiter a ex:Planet .
+
+ex:Doc ex:numbers (
+    1 (2 3) ((4 5)) ((6 7)) ((8 9) (10 11)) (((12) 13) 14) (15 (16 (17))) 18
+) .
+
+ex:Doc ex:planets (
+    ex:Mars (ex:Jupiter (ex:Venus ex:Earth))
+) .
+
+ex:Doc ex:random (
+    ("a" 1 ("b" 2 ("c" 3) 4) 5) (ex:Mars) true 6.5
+) .
+
+ex:Doc ex:nested_container (
+    [
+        rdf:_1 1;
+        rdf:_2 2
+    ]
+    [
+        rdf:_4 6;
+        rdf:_5 (7 8 9)
+    ]
+) .

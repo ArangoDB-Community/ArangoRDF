@@ -1,0 +1,3 @@
+@prefix ex: <http://example.com/> .
+
+ex:bob ex:nationality _:c .

@@ -1,0 +1,12 @@
+PREFIX dbo: <http://dbpedia.org/ontology/>
+PREFIX xsd: <http://www.w3c.org/2001/XMLSchema#>
+PREFIX : <http://dbpedia.org/resource/>
+
+:Pluto a dbo:Planet .
+:Pluto dbo:SpaceMission _:ID1, _:ID2 .
+
+_:ID1 dbo:spaceShip :New_Horizons ;
+ dbo:visited "2015-07-14"^^xsd:date .
+
+_:ID2 dbo:spaceShip :USS_Enterprise ;
+ dbo:visited "2245-07-14"^^xsd:date .

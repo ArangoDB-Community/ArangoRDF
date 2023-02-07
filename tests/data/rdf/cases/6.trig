@@ -1,0 +1,16 @@
+PREFIX ex: <http://example.com/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+ex:Graph1 {
+    ex:Management a ex:Skill .
+    ex:Monica ex:name "Monica" .
+    ex:Monica ex:homepage <http://www.Monicahompage.org> .
+    ex:Monica ex:hasSkill ex:Management .
+}
+
+ex:Graph2 {
+    ex:Programming a ex:Skill .
+    <http://www.Monicahompage.org> a ex:Website .
+    ex:Monica rdf:type ex:Person .
+    ex:Monica ex:hasSkill ex:Programming .
+}

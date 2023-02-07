@@ -1,0 +1,3 @@
+@prefix ex: <http://example.com/> .
+ex:alice a ex:Artist .
+ex:alice a ex:Author .

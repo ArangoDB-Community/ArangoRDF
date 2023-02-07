@@ -1,0 +1,9 @@
+@prefix ex: <http://example.com/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:Sam ex:mentor ex:Lee .
+ex:mentor rdfs:label "project supervisor" .
+ex:mentor ex:name "mentor's name" .
+
+ex:Sam a ex:Person .
+ex:Lee a ex:Person .

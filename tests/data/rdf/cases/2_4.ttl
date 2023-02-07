@@ -1,0 +1,5 @@
+@prefix ex: <http://example.com/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+
+ex:Tom ex:friend ex:Chris .
+ex:friend rdf:type ex:relation .
