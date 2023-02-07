@@ -1,20 +1,18 @@
-import pytest
+from typing import Any, Dict
 
-from arango_rdf import ArangoRDF
-from rdflib import Graph as RDFGraph, Dataset, URIRef, BNode, Literal
+import pytest
+from rdflib import Dataset
+from rdflib import Graph as RDFGraph
+from rdflib import Literal, URIRef
 from rdflib.namespace import RDF, RDFS
 
-from .conftest import (
-    PROJECT_DIR,
-    db,
-    adbrdf,
-    arango_restore,
-    get_rdf_graph,
-)
+from arango_rdf import ArangoRDF
+
+from .conftest import adbrdf, db, get_rdf_graph
 
 
 def test_constructor() -> None:
-    bad_db = dict()
+    bad_db: Dict[str, Any] = dict()
 
     with pytest.raises(TypeError):
         ArangoRDF(bad_db)
@@ -72,7 +70,7 @@ def test_rpt_basic_cases(
     "name, rdf_graph",
     [("Case_1_PGT", get_rdf_graph("cases/1.ttl"))],
 )
-def test_pgt_case_1(name: str, rdf_graph: RDFGraph):
+def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
 
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
@@ -122,7 +120,7 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph):
     "name, rdf_graph",
     [("Case_2_1_PGT", get_rdf_graph("cases/2_1.ttl"))],
 )
-def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph):
+def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
 
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
@@ -181,7 +179,7 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph):
     "name, rdf_graph",
     [("Case_2_2_PGT", get_rdf_graph("cases/2_2.ttl"))],
 )
-def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph):
+def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
 
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
@@ -233,7 +231,7 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph):
     "name, rdf_graph",
     [("Case_2_3_PGT", get_rdf_graph("cases/2_3.ttl"))],
 )
-def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph):
+def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
 
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
@@ -287,7 +285,7 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph):
     "name, rdf_graph",
     [("Case_2_4_PGT", get_rdf_graph("cases/2_4.ttl"))],
 )
-def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph):
+def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
 
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
@@ -328,7 +326,7 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph):
     "name, rdf_graph",
     [("Case_3_1_PGT", get_rdf_graph("cases/3_1.ttl"))],
 )
-def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph):
+def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
 
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
@@ -390,7 +388,7 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph):
     "name, rdf_graph",
     [("Case_3_2_PGT", get_rdf_graph("cases/3_2.ttl"))],
 )
-def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph):
+def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
 
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
@@ -442,7 +440,7 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph):
     "name, rdf_graph",
     [("Case_4_PGT", get_rdf_graph("cases/4.ttl"))],
 )
-def test_pgt_case_4(name: str, rdf_graph: RDFGraph):
+def test_pgt_case_4(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
     assert adb_graph.has_vertex_collection(f"{name}_UnidentifiedNode")
@@ -473,14 +471,11 @@ def test_pgt_case_4(name: str, rdf_graph: RDFGraph):
     db.delete_graph(name, drop_collections=True)
 
 
-# TODO: Add more Case 4 test cases (4_2, collection.ttl, container.ttl, disjoint.ttl, etc.)
-
-
 @pytest.mark.parametrize(
     "name, rdf_graph",
     [("Case_5_PGT", get_rdf_graph("cases/5.ttl"))],
 )
-def test_pgt_case_5(name: str, rdf_graph: RDFGraph):
+def test_pgt_case_5(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
     assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").count() == 2
@@ -510,7 +505,7 @@ def test_pgt_case_5(name: str, rdf_graph: RDFGraph):
     "name, rdf_graph",
     [("Case_6_PGT", get_rdf_graph("cases/6.trig"))],
 )
-def test_pgt_case_6(name: str, rdf_graph: RDFGraph):
+def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
     assert adb_graph.has_vertex_collection("Person")
@@ -578,9 +573,9 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph):
     "name, rdf_graph",
     [("Case_7_PGT", get_rdf_graph("cases/7.ttl"))],
 )
-def test_pgt_case_7(name: str, rdf_graph: RDFGraph):
-    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
-    
+def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
+    adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
+
     # TODO
     # assert True == False
 
@@ -591,7 +586,7 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph):
     "name, rdf_graph",
     [("Collection_PGT", get_rdf_graph("collection.ttl"))],
 )
-def test_pgt_collection(name: str, rdf_graph: RDFGraph):
+def test_pgt_collection(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
     doc = adb_graph.vertex_collection("TestDoc").get("Doc")
@@ -641,7 +636,7 @@ def test_pgt_collection(name: str, rdf_graph: RDFGraph):
     "name, rdf_graph",
     [("Container_PGT", get_rdf_graph("container.ttl"))],
 )
-def test_pgt_container(name: str, rdf_graph: RDFGraph):
+def test_pgt_container(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
     doc = adb_graph.vertex_collection("TestDoc").get("Doc")

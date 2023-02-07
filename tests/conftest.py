@@ -1,16 +1,18 @@
+import logging
+import os
+import subprocess
 from pathlib import Path
 from typing import Any, Dict
-import subprocess
-import os
-import logging
 
-from arango_rdf import ArangoRDF
-from rdflib import Graph, Dataset
 from arango import ArangoClient, DefaultHTTPClient
 from arango.database import StandardDatabase
+from rdflib import Dataset, Graph
+
+from arango_rdf import ArangoRDF
 
 db: StandardDatabase
 PROJECT_DIR = Path(__file__).parent.parent
+adbrdf: ArangoRDF
 
 
 def pytest_addoption(parser: Any) -> None:
@@ -91,7 +93,7 @@ def pytest_exception_interact(node: Any, call: Any, report: Any) -> None:
         print("Could not delete graph")
 
 
-def get_rdf_graph(path: str):
+def get_rdf_graph(path: str) -> Graph:
     g = Dataset() if path.endswith(".trig") else Graph()
     g.parse(f"{PROJECT_DIR}/tests/data/rdf/{path}")
     return g
