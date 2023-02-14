@@ -19,19 +19,20 @@ def test_constructor() -> None:
 
 
 @pytest.mark.parametrize(
-    "name, rdf_graph, num_urirefs, num_bnodes, num_literals",
+    "name, rdf_graph, num_urirefs, num_bnodes, num_literals, load_base_ontology",
     [
-        ("Case_1_RPT", get_rdf_graph("cases/1.ttl"), 3, 0, 0),
-        ("Case_2_1_RPT", get_rdf_graph("cases/2_1.ttl"), 4, 0, 2),
-        ("Case_2_2_RPT", get_rdf_graph("cases/2_2.ttl"), 4, 0, 0),
-        ("Case_2_3_RPT", get_rdf_graph("cases/2_3.ttl"), 5, 0, 0),
-        ("Case_2_4_RPT", get_rdf_graph("cases/2_4.ttl"), 4, 0, 0),
-        ("Case_3_1_RPT", get_rdf_graph("cases/3_1.ttl"), 1, 0, 4),
-        ("Case_3_2_RPT", get_rdf_graph("cases/3_2.ttl"), 1, 0, 2),
-        ("Case_4_RPT", get_rdf_graph("cases/4.ttl"), 2, 3, 3),
-        ("Case_5_RPT", get_rdf_graph("cases/5.ttl"), 1, 1, 0),
-        ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 8, 0, 1),
-        ("Case_7_RPT", get_rdf_graph("cases/7.ttl"), 3, 0, 0),
+        ("Case_1_RPT", get_rdf_graph("cases/1.ttl"), 3, 0, 0, False),
+        ("Case_2_1_RPT", get_rdf_graph("cases/2_1.ttl"), 4, 0, 2, False),
+        ("Case_2_2_RPT", get_rdf_graph("cases/2_2.ttl"), 4, 0, 0, False),
+        ("Case_2_3_RPT", get_rdf_graph("cases/2_3.ttl"), 5, 0, 0, False),
+        ("Case_2_4_RPT", get_rdf_graph("cases/2_4.ttl"), 4, 0, 0, False),
+        ("Case_3_1_RPT", get_rdf_graph("cases/3_1.ttl"), 1, 0, 4, False),
+        ("Case_3_2_RPT", get_rdf_graph("cases/3_2.ttl"), 1, 0, 2, False),
+        ("Case_4_RPT", get_rdf_graph("cases/4.ttl"), 2, 3, 3, False),
+        ("Case_5_RPT", get_rdf_graph("cases/5.ttl"), 1, 1, 0, False),
+        ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 8, 0, 1, False),
+        ("Case_7_RPT", get_rdf_graph("cases/7.ttl"), 3, 0, 0, False),
+        ("RDFOwl", RDFGraph(), 42, 0, 1, True),
     ],
 )
 def test_rpt_basic_cases(
@@ -40,6 +41,7 @@ def test_rpt_basic_cases(
     num_urirefs: int,
     num_bnodes: int,
     num_literals: int,
+    load_base_ontology: bool,
 ) -> None:
     STATEMENT_COL = f"{name}_Statement"
     URIREF_COL = f"{name}_URIRef"
@@ -47,7 +49,7 @@ def test_rpt_basic_cases(
     LITERAL_COL = f"{name}_Literal"
 
     # RDF to ArangoDB
-    adb_graph = adbrdf.rdf_to_arangodb_by_rpt(name, rdf_graph, True)
+    adb_graph = adbrdf.rdf_to_arangodb_by_rpt(name, rdf_graph, True, load_base_ontology)
 
     assert adb_graph.edge_collection(STATEMENT_COL).count() == len(rdf_graph)
     assert adb_graph.vertex_collection(URIREF_COL).count() == num_urirefs
