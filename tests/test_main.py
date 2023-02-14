@@ -71,7 +71,6 @@ def test_rpt_basic_cases(
     [("Case_1_PGT", get_rdf_graph("cases/1.ttl"))],
 )
 def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
-
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
@@ -121,7 +120,6 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_2_1_PGT", get_rdf_graph("cases/2_1.ttl"))],
 )
 def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
-
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
@@ -180,7 +178,6 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_2_2_PGT", get_rdf_graph("cases/2_2.ttl"))],
 )
 def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
-
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
@@ -232,7 +229,6 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_2_3_PGT", get_rdf_graph("cases/2_3.ttl"))],
 )
 def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
-
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
@@ -286,7 +282,6 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_2_4_PGT", get_rdf_graph("cases/2_4.ttl"))],
 )
 def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
-
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
@@ -327,7 +322,6 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_3_1_PGT", get_rdf_graph("cases/3_1.ttl"))],
 )
 def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
-
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
@@ -389,7 +383,6 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_3_2_PGT", get_rdf_graph("cases/3_2.ttl"))],
 )
 def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
-
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
