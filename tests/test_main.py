@@ -30,7 +30,7 @@ def test_constructor() -> None:
         ("Case_3_2_RPT", get_rdf_graph("cases/3_2.ttl"), 1, 0, 2),
         ("Case_4_RPT", get_rdf_graph("cases/4.ttl"), 2, 3, 3),
         ("Case_5_RPT", get_rdf_graph("cases/5.ttl"), 1, 1, 0),
-        ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 7, 0, 1),
+        ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 8, 0, 1),
         ("Case_7_RPT", get_rdf_graph("cases/7.ttl"), 3, 0, 0),
     ],
 )
@@ -572,7 +572,7 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_2
     assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_2
 
-    assert len(rdf_graph_2) == 17
+    assert len(rdf_graph_2) == 20
 
     db.delete_graph(name, drop_collections=True)
 
