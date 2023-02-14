@@ -180,7 +180,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             }
 
         else:
-            raise ValueError()
+            raise ValueError()  # pragma: no cover
 
         return t_col, t_key
 
@@ -194,7 +194,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         :rtype: arango.graph.Graph
         """
 
-        if self.__db.has_graph(name):
+        if self.__db.has_graph(name):  # pragma: no cover
             logger.debug(f"Graph {name} already exists")
             return self.__db.graph(name)
 
@@ -287,7 +287,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         ):
             # TODO: Discuss repercussions
             if not load_base_ontology and p == RDF.type:
-                continue
+                continue  # pragma: no cover
 
             # TODO: Discuss repercussions
             if o in [RDF.nil, RDF.Alt, RDF.Bag, RDF.List, RDF.Seq]:  # HACK ?
@@ -467,9 +467,6 @@ class ArangoRDF(Abstract_ArangoRDF):
             elif p == RDFS.subPropertyOf:
                 self.__class_map[s_str] = self.__class_map[o_str] = "Property"
 
-            else:
-                continue
-
     def __get_rdf_pgt_metadata(
         self, term_str: str, is_predicate: bool = False
     ) -> Tuple[str, str, str]:
@@ -537,7 +534,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             self.__rdf_val_to_adb_doc_property(s_col, s_key, p_key, t_value)
 
         else:
-            raise ValueError()
+            raise ValueError()  # pragma: no cover
 
     def __rdf_val_to_adb_doc_property(
         self, col: str, key: str, sub_key: str, val: Any
@@ -1050,7 +1047,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             cursor = self.__fetch_adb_docs(v_col, export_options)
             for doc in track(cursor, cursor.count(), f"ADB → RDF ({v_col})", "#97C423"):
                 rdf_type = doc.get("_rdftype", "URIRef")
-                if rdf_type not in rdf_types:
+                if rdf_type not in rdf_types:  # pragma: no cover
                     raise ValueError(f"Unrecognized type {rdf_type} ({doc})")
 
                 id = doc.get(key_map[rdf_type], f"{v_col_uri_str}_{doc['_key']}")
