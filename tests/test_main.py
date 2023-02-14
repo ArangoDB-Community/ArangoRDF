@@ -59,7 +59,6 @@ def test_rpt_basic_cases(
 
     assert len(rdf_graph) == len(rdf_graph_2)
 
-    # TODO: Maybe extract Case 6 RPT into its own test case
     if type(rdf_graph_2) is not Dataset:
         assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
 
@@ -192,7 +191,6 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     assert adb_graph.has_vertex_collection(f"{name}_UnidentifiedNode")
     assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has("Martin")
     assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has("Joe")
-    # TODO: Can this be avoided?
     assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has("teacher")
     assert adb_graph.has_edge_collection("type")
     assert adb_graph.edge_collection("type").has("mentorJoe-type-Property")
@@ -392,19 +390,16 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     assert type(doc["title"]) is list
     assert set(doc["title"]) == {"Book", "Bog"}
 
-    # ArangoDB to RDF
+    # ArangoDB to RDF (List Conversion Method = "collection")
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
     book = URIRef("http://example.com/book")
     title = URIRef("http://example.com/title")
 
     # Original Statement assertions
-    # TODO: Find a way to persist datatypes
-    # (which are currently discarded during transformation)
     assert (book, title, None) in rdf_graph_2
-
-    # assert (book, title, Literal("Book")) in rdf_graph_2
-    # assert (book, title, Literal("Bog")) in rdf_graph_2
+    assert (None, RDF.first, Literal("Bog")) in rdf_graph_2
+    assert (None, RDF.first, Literal("Book")) in rdf_graph_2
 
     # Ontology Assertions
     assert (title, RDF.type, RDF.Property) in rdf_graph_2
@@ -414,7 +409,36 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
 
     assert len(rdf_graph_2) == 9
 
-    # assert len(rdf_graph_2) == 6
+    # ArangoDB to RDF (List Conversion Method = "container")
+    rdf_graph_3 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), "container")
+
+    # Original Statement assertions
+    assert (book, title, None) in rdf_graph_3
+    assert (None, None, Literal("Bog")) in rdf_graph_3
+    assert (None, None, Literal("Book")) in rdf_graph_3
+
+    # Ontology Assertions
+    assert (title, RDF.type, RDF.Property) in rdf_graph_3
+    assert (RDF.Property, RDF.type, RDFS.Class) in rdf_graph_3
+    assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_3
+    assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_3
+
+    assert len(rdf_graph_3) == 7
+
+    # ArangoDB to RDF (List Conversion Method = "static")
+    rdf_graph_4 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), "static")
+
+    # Original Statement assertions
+    assert (book, title, Literal("Book")) in rdf_graph_4
+    assert (book, title, Literal("Bog")) in rdf_graph_4
+
+    # Ontology Assertions
+    assert (title, RDF.type, RDF.Property) in rdf_graph_4
+    assert (RDF.Property, RDF.type, RDFS.Class) in rdf_graph_4
+    assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_4
+    assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_4
+
+    assert len(rdf_graph_4) == 6
 
     db.delete_graph(name, drop_collections=True)
 
@@ -533,7 +557,6 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     graph2 = URIRef("http://example.com/Graph2")
 
     # Original Statement assertions
-    # TODO: See if you can persist this into Graph1
     assert (monica, monica_name, Literal("Monica")) in rdf_graph_2
 
     assert (management, RDF.type, skill, graph1) in rdf_graph_2
