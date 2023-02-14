@@ -28,7 +28,7 @@ def progress(
     )
 
 
-def track(sequence: Any, total: int, text: str, colour: str) -> Any:
+def track(sequence: Any, total: Any, text: str, colour: str) -> Any:
     return progress_track(
         sequence,
         total=total,
