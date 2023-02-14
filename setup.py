@@ -26,9 +26,9 @@ setup(
     extras_require={
         "dev": [
             "black",
+            "mypy",
             "flake8>=3.8.0",
             "isort>=5.0.0",
-            "mypy>=0.790",
             "pytest>=6.0.0",
             "pytest-cov>=2.0.0",
             "coveralls>=3.3.1",
