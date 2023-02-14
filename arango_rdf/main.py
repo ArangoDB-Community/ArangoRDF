@@ -1008,6 +1008,13 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         has_quads_support = isinstance(rdf_graph, (RDFDataset, RDFConjunctiveGraph))
 
+        self.__rdf_graph = rdf_graph
+        self.__list_conversion = list_conversion_mode
+
+        self.__property_map: Dict[str, str] = {}
+        self.__uri_map: Dict[str, str] = {}
+        self.__rdf_map: Dict[str, Node] = {}
+
         self.__base_namespace = "http://www.arangodb.com"
         rdf_types = ["URIRef", "BNode", "Literal"]
         key_map: Dict[str, str] = {
@@ -1024,12 +1031,6 @@ class ArangoRDF(Abstract_ArangoRDF):
             f"{name}_UnidentifiedNode",
         ]
 
-        self.__property_map: Dict[str, str] = {}
-        self.__uri_map: Dict[str, str] = {}
-        self.__rdf_map: Dict[str, Node] = {}
-        self.__rdf_graph = rdf_graph
-        self.__list_conversion = list_conversion_mode
-
         doc: Json
         if "Class" in metagraph["vertexCollections"]:
             for doc in self.__db.collection("Class"):  # Name TBD ?
@@ -1042,11 +1043,12 @@ class ArangoRDF(Abstract_ArangoRDF):
         rdf_term: Union[RDFSubject, RDFObject]
         for v_col, _ in metagraph["vertexCollections"].items():
             v_col_uri_str = f"{self.__base_namespace}#{v_col}"
-            rdf_class = URIRef(self.__uri_map.get(v_col, v_col_uri_str))
+            v_col_rdf_class = URIRef(self.__uri_map.get(v_col, v_col_uri_str))
 
             cursor = self.__fetch_adb_docs(v_col, export_options)
             for doc in track(cursor, cursor.count(), f"ADB → RDF ({v_col})", "#97C423"):
                 rdf_type = doc.get("_rdftype", "URIRef")
+
                 if rdf_type not in rdf_types:  # pragma: no cover
                     raise ValueError(f"Unrecognized type {rdf_type} ({doc})")
 
@@ -1059,7 +1061,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                     continue
 
                 if v_col not in adb_v_col_blacklist:  # HACK?
-                    rdf_graph.add((rdf_term, RDF.type, rdf_class))
+                    rdf_graph.add((rdf_term, RDF.type, v_col_rdf_class))
 
                 # TODO: Iterate through metagraph values instead?
                 for k, v in doc.items():
