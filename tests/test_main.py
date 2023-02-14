@@ -375,7 +375,6 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
 
 
 # NOTE: No current support for Literal datatype persistence in PGT Transformation
-# This test is sort of useless for now
 @pytest.mark.parametrize(
     "name, rdf_graph",
     [("Case_3_2_PGT", get_rdf_graph("cases/3_2.ttl"))],
@@ -440,19 +439,13 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
 
     assert len(rdf_graph_4) == 6
 
+    # ArangoDB to RDF (List Conversion Method = "bad_name")
+    with pytest.raises(ValueError):
+        adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), "bad_name")
+
     db.delete_graph(name, drop_collections=True)
 
 
-# NOTE: This test currently fails
-# Reason: functionality is not yet implemented
-# Ideally we get:
-# {
-#   '_id': 'Case_4_PGT_UnidentifiedNode/List1',
-#   '_key': 'List1',
-#   '_rev' ...,
-#   '_rdftype': 'URIRef',
-#   'contents': ['one', 'two', 'three']
-# }
 @pytest.mark.parametrize(
     "name, rdf_graph",
     [("Case_4_PGT", get_rdf_graph("cases/4.ttl"))],
@@ -464,7 +457,7 @@ def test_pgt_case_4(name: str, rdf_graph: RDFGraph) -> None:
     assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has("List1")
     doc = adb_graph.vertex_collection(f"{name}_UnidentifiedNode").get("List1")
 
-    assert "contents" in doc  # NOTE: This will fail (for now)
+    assert "contents" in doc
     assert type(doc["contents"]) is list
     assert set(doc["contents"]) == {"one", "two", "three"}
 
@@ -683,5 +676,47 @@ def test_pgt_container(name: str, rdf_graph: RDFGraph) -> None:
 
     assert (doc, numbers, None) in rdf_graph_2
     assert (doc, planets, None) in rdf_graph_2
+
+    db.delete_graph(name, drop_collections=True)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [("TestGraph")],
+)
+def test_adb_doc_with_dict_property_to_rdf(name: str) -> None:
+    db.delete_graph(name, ignore_missing=True, drop_collections=True)
+    db.create_graph(name, orphan_collections=["TestDoc"])
+
+    doc = {
+        "_key": "1",
+        "val": {
+            "sub_val_1": 1,
+            "sub_val_2": {"sub_val_3": 3, "sub_val_4": [4]},
+            "sub_val_5": [{"sub_val_6": 6}, {"sub_val_7": 7}],
+        },
+    }
+
+    db.collection("TestDoc").insert(doc)
+
+    adb = "http://www.arangodb.com#"
+    test_doc = URIRef(f"{adb}TestDoc_1")
+
+    rdf_graph = adbrdf.arangodb_graph_to_rdf("TestGraph", RDFGraph())
+    assert len(rdf_graph) == 15
+    assert (test_doc, URIRef(f"{adb}val"), None) in rdf_graph
+    assert (None, URIRef(f"{adb}sub_val_1"), Literal(1)) in rdf_graph
+    assert (None, URIRef(f"{adb}sub_val_2"), None) in rdf_graph
+    assert (None, URIRef(f"{adb}sub_val_3"), Literal(3)) in rdf_graph
+    assert (None, URIRef(f"{adb}sub_val_4"), None) in rdf_graph
+    assert (None, RDF.first, Literal(4)) in rdf_graph
+    assert (None, URIRef(f"{adb}sub_val_5"), None) in rdf_graph
+    assert (None, URIRef(f"{adb}sub_val_6"), Literal(6)) in rdf_graph
+    assert (None, URIRef(f"{adb}sub_val_7"), Literal(7)) in rdf_graph
+
+    # TODO: Should this bring back the original dict structure?
+    # Need to discuss...
+    # adb_graph = adbrdf.rdf_to_arangodb_by_pgt(f"{name}2", rdf_graph)
+    # db.delete_graph(f"{name}2", drop_collections=True)
 
     db.delete_graph(name, drop_collections=True)

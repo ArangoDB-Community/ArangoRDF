@@ -1,5 +1,6 @@
 PREFIX ex: <http://example.com/>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
 ex:Graph1 {
     ex:Management a ex:Skill .
@@ -12,5 +13,6 @@ ex:Graph2 {
     ex:Programming a ex:Skill .
     <http://www.Monicahompage.org> a ex:Website .
     ex:Monica rdf:type ex:Person .
+    ex:Person rdfs:subClassOf ex:Entity .
     ex:Monica ex:hasSkill ex:Programming .
 }
