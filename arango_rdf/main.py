@@ -170,10 +170,11 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         t_col = ""
         t_str = str(t)
-        t_key = self._rdf_id_to_adb_key(t_str)
 
         if isinstance(t, URIRef):
             t_col = self.__URIREF_COL
+            t_key = self._rdf_id_to_adb_key(t_str)
+
             self.adb_docs[t_col][t_key] = {
                 "_key": t_key,
                 "_uri": t_str,
@@ -182,10 +183,13 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         elif isinstance(t, BNode):
             t_col = self.__BNODE_COL
-            self.adb_docs[t_col][t_key] = {"_key": t_str, "_rdftype": "BNode"}
+            t_key = t_str
+
+            self.adb_docs[t_col][t_key] = {"_key": t_key, "_rdftype": "BNode"}
 
         elif isinstance(t, Literal):
             t_col = self.__LITERAL_COL
+            t_key = str(hash(t_str))
 
             t_value = t_str if isinstance(t.value, date) else t.value or t_str
             t_datatype = t.datatype or "http://www.w3.org/2001/XMLSchema#string"
@@ -1028,7 +1032,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                 res += s
 
         if not res:
-            return str(hash(res))
+            return str(hash(res))  # pragma: no cover
 
         return res
 
