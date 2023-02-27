@@ -6,7 +6,7 @@ from ast import literal_eval
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
-from typing import Any, DefaultDict, Dict, List, Set, Tuple, Union
+from typing import Any, DefaultDict, Dict, List, Optional, Set, Tuple, Union
 
 from arango.cursor import Cursor
 from arango.database import Database
@@ -19,10 +19,12 @@ from rdflib import Graph as RDFGraph
 from rdflib import Literal, URIRef
 from rdflib.namespace import RDF, RDFS
 from rdflib.term import Node
+from rich.console import Group
+from rich.live import Live
 
 from .abc import Abstract_ArangoRDF
-from .typings import ADBDocs, ADBMetagraph, Json, RDFObject, RDFSubject
-from .utils import logger, progress, track
+from .typings import ADBDocs, ADBMetagraph, Json, RDFLists, RDFObject, RDFSubject
+from .utils import adb_track, logger, rdf_track
 
 
 class ArangoRDF(Abstract_ArangoRDF):
@@ -68,6 +70,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         rdf_graph: RDFGraph,
         overwrite_graph: bool = False,
         load_base_ontology: bool = False,
+        batch_size: Optional[int] = None,
         **import_options: Any,
     ) -> ADBGraph:
         """Create an ArangoDB Graph from an RDF Graph using
@@ -85,6 +88,10 @@ class ArangoRDF(Abstract_ArangoRDF):
         :param load_base_ontology: Imports the arango_rdf/ontologies/rdfowl.ttl
             to the ArangoDB graph to serve as a base ontology. Defaults to False.
         :type load_base_ontology: bool
+        :param batch_size: If specified, runs the ArangoDB Data Import process for every
+            **batch_size** triples within the **rdf_graph**.
+            If unspecified, **batch_size** will be set to `len(rdf_graph)`.
+        :type batch_size: int
         :param import_options: Keyword arguments to specify additional
             parameters for ArangoDB document insertion. Full parameter list:
             https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.import_bulk
@@ -94,49 +101,62 @@ class ArangoRDF(Abstract_ArangoRDF):
         :rtype: arango.graph.Graph
         """
 
+        # Reset Config
+        self.adb_docs.clear()
+        self.__import_options = import_options
+        self.__import_options["on_duplicate"] = "update"
+
         self.__URIREF_COL = f"{name}_URIRef"
         self.__BNODE_COL = f"{name}_BNode"
         self.__LITERAL_COL = f"{name}_Literal"
         self.__STATEMENT_COL = f"{name}_Statement"
-
-        self.adb_docs.clear()
 
         if overwrite_graph:
             logger.debug("Overwrite graph flag is True. Deleting old graph.")
             self.__db.delete_graph(name, ignore_missing=True, drop_collections=True)
 
         if load_base_ontology:
+            # TODO: Should we call load_base_rpt_ontology as well?
             rdf_graph.parse(f"{Path(__file__).parent}/ontologies/rdfowl.ttl")
 
-        s: RDFSubject  # Subject
-        p: URIRef  # Predicate
-        o: RDFObject  # Object
-        sg: URIRef  # Sub Graph
+        size = len(rdf_graph)
+        if batch_size is None:
+            batch_size = size
 
-        for s, p, o, *sg in track(
-            rdf_graph, len(rdf_graph), "RDF → ADB (RPT)", "#BD0F89"
-        ):
-            s_col, s_key = self.__process_rpt_term(s)
-            o_col, o_key = self.__process_rpt_term(o)
+        self.__setup_iterators("RDF → ADB (RPT)", "#08479E", "    ")
+        with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
+            rdf_task = self.__rdf_iterator.add_task("", total=size)
 
-            p_str = str(p)
-            p_key = self._rdf_id_to_adb_key(p_str)
-            e_key = f"{s_key}-{p_key}-{o_key}"
-            self.adb_docs[self.__STATEMENT_COL][e_key] = {
-                "_key": e_key,
-                "_from": f"{s_col}/{s_key}",
-                "_to": f"{o_col}/{o_key}",
-                "_uri": p_str,
-                "_label": p_key,
-                "_sub_graph_uri": str(sg[0]) if sg else "",
-            }
+            s: RDFSubject  # Subject
+            p: URIRef  # Predicate
+            o: RDFObject  # Object
+            sg: URIRef  # Sub Graph
 
-        adb_graph = self.__create_rpt_adb_graph(name)
-        self.__insert_adb_docs(import_options)
+            for i, (s, p, o, *sg) in enumerate(rdf_graph, 1):  # type: ignore
+                self.__rdf_iterator.update(rdf_task, advance=1)
 
-        self.adb_docs.clear()
+                s_col, s_key = self.__process_rpt_term(s)
+                o_col, o_key = self.__process_rpt_term(o)
 
-        return adb_graph
+                p_str = str(p)
+                p_key = self._rdf_id_to_adb_key(p_str)
+                e_key = f"{s_key}-{p_key}-{o_key}"
+
+                self.adb_docs[self.__STATEMENT_COL][e_key] = {
+                    "_key": e_key,
+                    "_from": f"{s_col}/{s_key}",
+                    "_to": f"{o_col}/{o_key}",
+                    "_uri": p_str,
+                    "_label": p_key,
+                    "_sub_graph_uri": str(sg[0]) if sg else "",
+                }
+
+                if i % batch_size == 0:
+                    self.__insert_adb_docs()
+
+            self.__insert_adb_docs()
+
+        return self.__create_rpt_adb_graph(name)
 
     def __process_rpt_term(self, t: Union[RDFSubject, RDFObject]) -> Tuple[str, str]:
         """Process an RDF Term as an ArangoDB document by RPT. Returns the
@@ -224,6 +244,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         rdf_graph: RDFGraph,
         overwrite_graph: bool = False,
         load_base_ontology: bool = False,
+        batch_size: Optional[int] = None,
         **import_options: Any,
     ) -> ADBGraph:
         """Create an ArangoDB Graph from an RDF Graph using
@@ -240,6 +261,10 @@ class ArangoRDF(Abstract_ArangoRDF):
         :type overwrite_graph: bool
         :param load_base_ontology: TODO - properly define
         :type load_base_ontology: bool
+        :param batch_size: If specified, runs the ArangoDB Data Import process for every
+            **batch_size** triples within the **rdf_graph**.
+            If unspecified, **batch_size** will be set to `len(rdf_graph)`.
+        :type batch_size: int
         :param import_options: Keyword arguments to specify additional
             parameters for ArangoDB document insertion. Full parameter list:
             https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.import_bulk
@@ -251,9 +276,14 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         # Reset config
         self.adb_docs.clear()
-        self.__process_value_as_string = False
-
         self.__rdf_graph = rdf_graph
+        self.__import_options = import_options
+        self.__import_options["on_duplicate"] = "update"
+
+        self.__process_value_as_string = False
+        self.__adb_col_blacklist: Set[str] = set()
+        self.__rdf_lists: RDFLists = defaultdict(lambda: defaultdict(dict))
+
         # Maps URIs to RDF Classes
         self.__class_map: Dict[str, str] = {}
         # Stores unidentified resources
@@ -273,86 +303,109 @@ class ArangoRDF(Abstract_ArangoRDF):
             self.__e_col_map["type"]["from"].add("Property")
             self.__e_col_map["type"]["to"].add("Class")
 
-        self.___build_pgt_class_map(load_base_ontology)
+        size = len(rdf_graph)
+        if batch_size is None:
+            batch_size = size
 
-        s: RDFSubject  # Subject
-        p: URIRef  # Predicate
-        o: RDFObject  # Object
+        ############## Pre Processing ##############
+        self.__setup_iterators("RDF → ADB (PGT Pre-Process)", "#BD0F89", "    ")
+        with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
+            self.__build_pgt_class_map(load_base_ontology)
+            self.__insert_adb_docs()
+        ############## ############## ##############
 
-        for s, p, o, *sub_graph in track(
-            rdf_graph,
-            len(rdf_graph),
-            "RDF → ADB (PGT)",
-            "#BD0F89",
-        ):
-            # TODO: Discuss repercussions
-            if not load_base_ontology and p == RDF.type:
-                continue  # pragma: no cover
+        ############## PGT Processing ##############
+        self.__setup_iterators("RDF → ADB (PGT)", "#08479E", "    ")
+        with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
+            rdf_task = self.__rdf_iterator.add_task("", total=size)
 
-            # TODO: Discuss repercussions
-            if o in [RDF.nil, RDF.Alt, RDF.Bag, RDF.List, RDF.Seq]:  # HACK ?
-                continue
+            s: RDFSubject  # Subject
+            p: URIRef  # Predicate
+            o: RDFObject  # Object
 
-            s_str = str(s)
-            p_str = str(p)
-            o_str = str(o)
+            for i, (s, p, o, *sub_graph) in enumerate(rdf_graph, 1):  # type: ignore
+                self.__rdf_iterator.update(rdf_task, advance=1)
 
-            p_metadata = self.__get_rdf_pgt_metadata(p_str, is_predicate=True)
-            _, p_key, _ = p_metadata
+                # TODO: Discuss repercussions
+                if not load_base_ontology and p == RDF.type:
+                    continue  # pragma: no cover
 
-            adb_temp_col = self.__statement_is_part_of_rdf_list(s, p_str)
-            if adb_temp_col:
-                self.__rdf_val_to_adb_doc_property(adb_temp_col, s_str, p_key, o)
+                # TODO: Discuss repercussions
+                if o in [RDF.nil, RDF.Alt, RDF.Bag, RDF.List, RDF.Seq]:  # HACK ?
+                    continue
 
-            else:
-                s_metadata = self.__get_rdf_pgt_metadata(s_str)
-                o_metadata = self.__get_rdf_pgt_metadata(o_str)
+                s_str = str(s)
+                p_str = str(p)
+                o_str = str(o)
 
-                sg = str(sub_graph[0]) if sub_graph else ""
+                p_metadata = self.__get_rdf_pgt_metadata(p_str, is_predicate=True)
+                _, p_key, _ = p_metadata
 
-                self.__process_pgt_subject(s, s_metadata)
-                self.__process_pgt_object(s_metadata, p_metadata, o, o_metadata, sg)
-                self.__process_pgt_edge(s_metadata, p_metadata, o, o_metadata, sg)
+                rdf_list_col = self.__statement_is_part_of_rdf_list(s, p_str)
+                if rdf_list_col:
+                    doc = self.__rdf_lists[rdf_list_col][s_str]
+                    self.__rdf_val_to_adb_doc_property(doc, p_key, o)
 
-                if load_base_ontology:
-                    self.adb_docs["Property"][p_key] = {
-                        **self.adb_docs["Property"][p_key],
-                        "_key": p_key,
-                        "_uri": p_str,
-                        "_rdftype": "URIRef",
-                    }
+                else:
+                    s_metadata = self.__get_rdf_pgt_metadata(s_str)
+                    o_metadata = self.__get_rdf_pgt_metadata(o_str)
 
-                    e_key = f"{p_key}-type-Property"
-                    self.adb_docs["type"][e_key] = {
-                        "_key": e_key,
-                        "_from": f"Property/{p_key}",
-                        "_to": "Class/Property",
-                        "_uri": str(RDF.type),
-                        "_label": "type",
-                        "_sub_graph_uri": "",
-                    }
+                    sg = str(sub_graph[0]) if sub_graph else ""
 
-        self.__process_rdf_lists()
+                    self.__process_pgt_subject(s, s_metadata)
+                    self.__process_pgt_object(s_metadata, p_metadata, o, o_metadata, sg)
+                    self.__process_pgt_edge(s_metadata, p_metadata, o, o_metadata, sg)
 
-        adb_graph = self.__create_pgt_adb_graph(name)
-        self.__insert_adb_docs(import_options)
+                    # THIS IS A HACK
+                    # replaces `self.__adb_col_blacklist.add(s_col)`
+                    # len(list(self.__rdf_graph.objects(s, p))) > 1:
+                    # sum(1 for _ in self.__rdf_graph.objects(s, p)) > 1
+                    # if type(o) is Literal and ___:
+                    #     self.__adb_col_blacklist.add(s_metadata[-1])
 
-        if self.__UNIDENTIFIED_NODE_COL in self.adb_docs:
-            unidentified_nodes = self.adb_docs[self.__UNIDENTIFIED_NODE_COL]
+                    if load_base_ontology:
+                        self.adb_docs["Property"][p_key] = {
+                            **self.adb_docs["Property"][p_key],
+                            "_key": p_key,
+                            "_uri": p_str,
+                            "_rdftype": "URIRef",
+                        }
 
+                        e_key = f"{p_key}-type-Property"
+                        self.adb_docs["type"][e_key] = {
+                            "_key": e_key,
+                            "_from": f"Property/{p_key}",
+                            "_to": "Class/Property",
+                            "_uri": str(RDF.type),
+                            "_label": "type",
+                            "_sub_graph_uri": "",
+                        }
+
+                if i % batch_size == 0:
+                    self.__insert_adb_docs(self.__adb_col_blacklist)
+
+        ############## ############## ##############
+
+        ############## Post Processing ##############
+        self.__setup_iterators("RDF → ADB (PGT Post-Process)", "#EF7D00", "    ")
+        with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
+            self.__process_rdf_lists()
+            self.__insert_adb_docs()
+        ############## ############### ##############
+
+        if self.db.has_collection(self.__UNIDENTIFIED_NODE_COL):
+            count = self.db.collection(self.__UNIDENTIFIED_NODE_COL).count()
             logger.info(
                 f"""\n
                 ----------------
-                UnidentifiedNodes found ({len(unidentified_nodes)}).
-                No `rdf:type` statement found for the following URIs/BNodes:
-                {[val for val in unidentified_nodes.values()]}
+                UnidentifiedNodes found in graph '{name}'.
+                No `rdf:type` statement found for the
+                following number of URIRefs/BNodes: {count}.
                 ----------------
                 """
             )
 
-        self.adb_docs.clear()
-
-        return adb_graph
+        return self.__create_pgt_adb_graph(name)
 
     def __load_pgt_ontology(self) -> None:
         """Loads the baseline ontology required to support the
@@ -415,7 +468,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             "_label": "type",
         }
 
-    def ___build_pgt_class_map(self, load_base_ontology: bool) -> None:
+    def __build_pgt_class_map(self, load_base_ontology: bool) -> None:
         """A pre-processing step that iterates through the RDF Graph
         statements to build a URI-to-ArangoDB-Collection mapping of all
         RDF Nodes within the graph.
@@ -427,12 +480,13 @@ class ArangoRDF(Abstract_ArangoRDF):
         :param load_base_ontology: TODO-define properly
         :type load_base_ontology: bool
         """
-        for s, p, o, *_ in track(
-            self.__rdf_graph,
-            len(self.__rdf_graph),
-            "RDF → ADB (PGT Pre-Process)",
-            "#08479E",
-        ):
+
+        size = len(self.__rdf_graph)
+        rdf_task = self.__rdf_iterator.add_task("", total=size)
+
+        for s, p, o, *_ in self.__rdf_graph:
+            self.__rdf_iterator.update(rdf_task, advance=1)
+
             # TODO: Discuss Repurcssions
             if o in [RDF.nil, RDF.Alt, RDF.Bag, RDF.List, RDF.Seq]:  # HACK ?
                 continue
@@ -530,15 +584,16 @@ class ArangoRDF(Abstract_ArangoRDF):
             }
 
         elif isinstance(t, Literal) and all([s_col, s_key, p_key]):
+            doc = self.adb_docs[s_col][s_key]
             t_value = t_str if isinstance(t.value, date) else t.value or t_str
-            self.__rdf_val_to_adb_doc_property(s_col, s_key, p_key, t_value)
+            self.__rdf_val_to_adb_doc_property(doc, p_key, t_value)
+
+            self.__adb_col_blacklist.add(s_col)  # TODO: REVISIT
 
         else:
             raise ValueError()  # pragma: no cover
 
-    def __rdf_val_to_adb_doc_property(
-        self, col: str, key: str, sub_key: str, val: Any
-    ) -> None:
+    def __rdf_val_to_adb_doc_property(self, doc: Json, p_key: str, val: Any) -> None:
         """A helper function used to insert an arbitrary RDF value
         as a document property of some arbitrary document.
 
@@ -547,35 +602,29 @@ class ArangoRDF(Abstract_ArangoRDF):
         current value of the document property (instead of relying
         on a list structure).
 
-        :param col: The ArangoDB collection name of the document.
-        :type col: str
-        :param key: The ArangoDB document key of the document.
-        :type key: str
-        :param sub_key: The ArangoDB property key of the document.
-            that will be used to store the value.
-        :type sub_key: str
-        :param val: Some ArangoDB Document Property value to insert.
+        :param doc: An arbitrary document
+        :type doc: Dict[str, Any]
+        :param p_key: The property key that will be
+            used to store the value.
+        :type p_key: str
+        :param val: Some document property value to insert.
         :type val: Any
         """
 
         # This flag is set active in ArangoRDF.__process_rdf_lists()
         if self.__process_value_as_string:
-            val_str = f"'{val}'," if type(val) is str else f"{val},"
-            self.adb_docs[col][key][sub_key] += val_str
+            doc[p_key] += f"'{val}'," if type(val) is str else f"{val},"
+            return
 
-        else:
-            try:
-                # Assume p_key is a valid key (#1) and points to a list (#2)
-                self.adb_docs[col][key][sub_key].append(val)
-            except KeyError:
-                # Catch assumption #1
-                self.adb_docs[col][key][sub_key] = val
-            except AttributeError:
-                # Catch assumption #2
-                self.adb_docs[col][key][sub_key] = [
-                    self.adb_docs[col][key][sub_key],
-                    val,
-                ]
+        try:
+            # Assume p_key is a valid key (#1) and points to a list (#2)
+            doc[p_key].append(val)
+        except KeyError:
+            # Catch assumption #1
+            doc[p_key] = val
+        except AttributeError:
+            # Catch assumption #2
+            doc[p_key] = [doc[p_key], val]
 
     def __process_pgt_subject(
         self, s: RDFSubject, s_metadata: Tuple[str, str, str]
@@ -622,7 +671,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         p_str, p_key, _ = p_metadata
 
         if self.__object_is_head_of_rdf_list(o):
-            self.adb_docs["_LIST_HEAD"][s_str][p_str] = {
+            self.__rdf_lists["_LIST_HEAD"][s_str][p_str] = {
                 "root": o,
                 "sub_graph": sg,
             }
@@ -751,7 +800,12 @@ class ArangoRDF(Abstract_ArangoRDF):
         """
         self.__process_value_as_string = True
 
-        for s_str, s_dict in self.adb_docs["_LIST_HEAD"].items():
+        list_heads = self.__rdf_lists["_LIST_HEAD"].items()
+        rdf_task = self.__rdf_iterator.add_task("", total=len(list_heads))
+
+        for s_str, s_dict in list_heads:
+            self.__rdf_iterator.update(rdf_task, advance=1)
+
             s_metadata = self.__get_rdf_pgt_metadata(s_str)
             _, s_key, s_col = s_metadata
 
@@ -760,6 +814,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                 _, p_key, _ = p_metadata
 
                 doc = self.adb_docs[s_col][s_key]
+                doc["_key"] = s_key  # NOTE: Is this really necessary?
 
                 root: RDFObject = p_dict["root"]
                 sg: str = p_dict["sub_graph"]
@@ -774,9 +829,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                 else:
                     doc[p_key] = literal_eval(doc[p_key])
 
-        self.adb_docs.pop("_LIST_HEAD", None)
-        self.adb_docs.pop("_COLLECTION_BNODE", None)
-        self.adb_docs.pop("_CONTAINER_BNODE", None)
+        self.__rdf_lists.clear()
 
     def __process_rdf_list_object(
         self,
@@ -813,22 +866,22 @@ class ArangoRDF(Abstract_ArangoRDF):
         """
         o_str = str(o)
 
-        if o_str in self.adb_docs["_COLLECTION_BNODE"]:
+        if o_str in self.__rdf_lists["_COLLECTION_BNODE"]:
             _, p_key, _ = p_metadata
             doc[p_key] += "["
 
-            next_bnode_dict = self.adb_docs["_COLLECTION_BNODE"][o_str]
+            next_bnode_dict = self.__rdf_lists["_COLLECTION_BNODE"][o_str]
             self.__unpack_rdf_collection(
                 doc, s_metadata, p_metadata, next_bnode_dict, sg
             )
 
             doc[p_key] = str(doc[p_key]).rstrip(",") + "],"
 
-        elif o_str in self.adb_docs["_CONTAINER_BNODE"]:
+        elif o_str in self.__rdf_lists["_CONTAINER_BNODE"]:
             _, p_key, _ = p_metadata
             doc[p_key] += "["
 
-            next_bnode_dict = self.adb_docs["_CONTAINER_BNODE"][o_str]
+            next_bnode_dict = self.__rdf_lists["_CONTAINER_BNODE"][o_str]
             self.__unpack_rdf_container(
                 doc, s_metadata, p_metadata, next_bnode_dict, sg
             )
@@ -870,7 +923,7 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         if "rest" in bnode_dict:
             rest = bnode_dict["rest"]
-            next_bnode_dict = self.adb_docs["_COLLECTION_BNODE"][str(rest)]
+            next_bnode_dict = self.__rdf_lists["_COLLECTION_BNODE"][str(rest)]
             self.__unpack_rdf_collection(
                 doc, s_metadata, p_metadata, next_bnode_dict, sg
             )
@@ -919,7 +972,9 @@ class ArangoRDF(Abstract_ArangoRDF):
         :return: The ArangoDB Graph API wrapper.
         :rtype: arango.graph.Graph
         """
+        non_orphan_collections: Set[str] = set()
         edge_definitions: List[Dict[str, Union[str, List[str]]]] = []
+
         for e_col, v_cols in self.__e_col_map.items():
             edge_definitions.append(
                 {
@@ -929,10 +984,8 @@ class ArangoRDF(Abstract_ArangoRDF):
                 }
             )
 
-        non_orphan_collections: Set[str] = set()
-        for e_col, data in self.__e_col_map.items():
-            non_orphan_collections = non_orphan_collections | data["from"]
-            non_orphan_collections = non_orphan_collections | data["to"]
+            non_orphan_collections = non_orphan_collections | v_cols["from"]
+            non_orphan_collections = non_orphan_collections | v_cols["to"]
 
         orphan_collections = list(
             non_orphan_collections
@@ -956,11 +1009,13 @@ class ArangoRDF(Abstract_ArangoRDF):
         :rtype: str
         """
         # NOTE: What if we have two namespaces with the same RDF Label?
-        regex_match = re.split("/|#", rdf_id)[-1]
-        return self._string_to_arangodb_key(regex_match)
+        str = re.split("/|#", rdf_id)[-1] or rdf_id
+        return self._string_to_arangodb_key(str)
 
     def _string_to_arangodb_key(self, string: str) -> str:
         """Given a string, derive a valid ArangoDB _key string.
+        If unable to derive a valid _key, return hash of original
+        string.
 
         :param string: A (possibly) invalid _key string value.
         :type string: str
@@ -971,6 +1026,9 @@ class ArangoRDF(Abstract_ArangoRDF):
         for s in string:
             if s.isalnum() or s in self.VALID_ADB_KEY_CHARS:
                 res += s
+
+        if not res:
+            return str(hash(res))
 
         return res
 
@@ -1006,10 +1064,11 @@ class ArangoRDF(Abstract_ArangoRDF):
         :rtype: rdflib.graph.Graph
         """
 
-        has_quads_support = isinstance(rdf_graph, (RDFDataset, RDFConjunctiveGraph))
+        graph_supports_quads = isinstance(rdf_graph, (RDFDataset, RDFConjunctiveGraph))
 
         self.__rdf_graph = rdf_graph
         self.__list_conversion = list_conversion_mode
+        self.__export_options = export_options
 
         self.__property_map: Dict[str, str] = {}
         self.__uri_map: Dict[str, str] = {}
@@ -1045,52 +1104,65 @@ class ArangoRDF(Abstract_ArangoRDF):
             v_col_uri_str = f"{self.__base_namespace}#{v_col}"
             v_col_rdf_class = URIRef(self.__uri_map.get(v_col, v_col_uri_str))
 
-            cursor = self.__fetch_adb_docs(v_col, export_options)
-            for doc in track(cursor, cursor.count(), f"ADB → RDF ({v_col})", "#97C423"):
-                rdf_type = doc.get("_rdftype", "URIRef")
+            self.__setup_iterators(f"     ADB → RDF ({v_col})", "#97C423", "")
+            with Live(Group(self.__adb_iterator, self.__rdf_iterator)):
+                cursor = self.__fetch_adb_docs(v_col)
+                rdf_task = self.__rdf_iterator.add_task("", total=cursor.count())
 
-                if rdf_type not in rdf_types:  # pragma: no cover
-                    raise ValueError(f"Unrecognized type {rdf_type} ({doc})")
+                for doc in cursor:
+                    self.__rdf_iterator.update(rdf_task, advance=1)
 
-                id = doc.get(key_map[rdf_type], f"{v_col_uri_str}_{doc['_key']}")
-                rdf_term = getattr(sys.modules[__name__], rdf_type)(id)
+                    rdf_type = doc.get("_rdftype", "URIRef")
 
-                self.__rdf_map[doc["_id"]] = rdf_term
+                    if rdf_type not in rdf_types:  # pragma: no cover
+                        raise ValueError(f"Unrecognized type {rdf_type} ({doc})")
 
-                if isinstance(rdf_term, Literal):  # RPT Case
-                    continue
+                    id = doc.get(key_map[rdf_type], f"{v_col_uri_str}_{doc['_key']}")
+                    rdf_term = getattr(sys.modules[__name__], rdf_type)(id)
 
-                if v_col not in adb_v_col_blacklist:  # HACK?
-                    rdf_graph.add((rdf_term, RDF.type, v_col_rdf_class))
+                    self.__rdf_map[doc["_id"]] = rdf_term
 
-                # TODO: Iterate through metagraph values instead?
-                for k, v in doc.items():
-                    if k not in adb_key_blacklist:  # HACK?
-                        p = self.__property_map.get(k, f"{self.__base_namespace}#{k}")
-                        self.__adb_doc_property_to_rdf_val(rdf_term, URIRef(p), v)
+                    if isinstance(rdf_term, Literal):  # RPT Case
+                        continue
+
+                    if v_col not in adb_v_col_blacklist:  # HACK?
+                        rdf_graph.add((rdf_term, RDF.type, v_col_rdf_class))
+
+                    # TODO: Iterate through metagraph values instead?
+                    for k, v in doc.items():
+                        if k not in adb_key_blacklist:  # HACK?
+                            p = self.__property_map.get(
+                                k, f"{self.__base_namespace}#{k}"
+                            )
+                            self.__adb_doc_property_to_rdf_val(rdf_term, URIRef(p), v)
 
         for e_col, _ in metagraph["edgeCollections"].items():
             e_col_uri_str = f"{self.__base_namespace}#{e_col}"
 
-            cursor = self.__fetch_adb_docs(e_col, export_options)
-            for doc in track(cursor, cursor.count(), f"ADB → RDF ({e_col})", "#5E3108"):
-                statement = (
-                    self.__rdf_map[doc["_from"]],
-                    URIRef(doc.get("_uri", e_col_uri_str)),
-                    self.__rdf_map[doc["_to"]],
-                )
+            self.__setup_iterators(f"     ADB → RDF ({e_col})", "#5E3108", "")
+            with Live(Group(self.__adb_iterator, self.__rdf_iterator)):
+                cursor = self.__fetch_adb_docs(e_col)
+                rdf_task = self.__rdf_iterator.add_task("", total=cursor.count())
 
-                if doc.get("_sub_graph_uri") and has_quads_support:
-                    rdf_graph.remove(statement)  # type: ignore[no-untyped-call]
-                    statement += (URIRef(doc["_sub_graph_uri"]),)  # type: ignore
+                for doc in cursor:
+                    self.__rdf_iterator.update(rdf_task, advance=1)
 
-                rdf_graph.add(statement)
+                    statement = (
+                        self.__rdf_map[doc["_from"]],
+                        URIRef(doc.get("_uri", e_col_uri_str)),
+                        self.__rdf_map[doc["_to"]],
+                    )
 
-                # TODO: When RDF-star support is introduced into `rdflib`:
-                # for k, v in doc.items():
-                #     if k not in adb_key_blacklist:
-                #         p = self.__property_map.get(k, f"{self.__base_namespace}#{k}")
-                #         self.__adb_doc_property_to_rdf_val(statement, URIRef(p), v)
+                    if doc.get("_sub_graph_uri") and graph_supports_quads:
+                        rdf_graph.remove(statement)  # type: ignore[no-untyped-call]
+                        statement += (URIRef(doc["_sub_graph_uri"]),)  # type: ignore
+
+                    rdf_graph.add(statement)
+
+                    # TODO: When RDF-star support is introduced into `rdflib`:
+                    # for k, v in doc.items():
+                    #     if k not in adb_key_blacklist:
+                    #         ...
 
         return self.__rdf_graph
 
@@ -1239,48 +1311,62 @@ class ArangoRDF(Abstract_ArangoRDF):
             # TODO: Datatype? Lang?
             self.__rdf_graph.add((s, p, Literal(val)))
 
-    def __fetch_adb_docs(
-        self,
-        col: str,
-        export_options: Any,
-    ) -> Result[Cursor]:
+    def __setup_iterators(
+        self, rdf_iter_text: str, rdf_iter_color: str, adb_iter_text: str
+    ) -> None:
+        self.__rdf_iterator = rdf_track(rdf_iter_text, rdf_iter_color)
+        self.__adb_iterator = adb_track(adb_iter_text)
+
+    def __fetch_adb_docs(self, col: str) -> Result[Cursor]:
         """Fetches ArangoDB documents within a collection.
 
         :param col: The ArangoDB collection.
         :type col: str
-        :param export_options: Keyword arguments to specify AQL query options when
-            fetching documents from the ArangoDB instance.
-        :type export_options: Any
         :return: Result cursor.
         :rtype: arango.cursor.Cursor
         """
-        aql = """
-            FOR doc IN @@col
-                RETURN doc
-        """
+        action = f"ArangoDB Export: {col}"
+        adb_task = self.__adb_iterator.add_task("", action=action)
 
-        with progress(f"ArangoDB Export: {col}") as p:
-            p.add_task("__fetch_adb_docs")
+        aql = f"FOR doc IN {col} RETURN doc"
+        cursor = self.__db.aql.execute(aql, count=True, **self.__export_options)
 
-            return self.__db.aql.execute(
-                aql, count=True, bind_vars={"@col": col}, **export_options
-            )
+        self.__adb_iterator.stop_task(adb_task)
+        self.__adb_iterator.update(adb_task, visible=True)
 
-    def __insert_adb_docs(
-        self,
-        import_options: Any,
-    ) -> None:
+        return cursor
+
+    def __insert_adb_docs(self, adb_col_blacklist: Set[str] = set()) -> None:
         """Insert ArangoDB documents into their ArangoDB collection.
 
-        :param import_options: Keyword arguments to specify additional
-            parameters for ArangoDB document insertion. Full parameter list:
-            https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.import_bulk
+        :param adb_col_blacklist: A list of ArangoDB Collections that will not be
+            populated on this call of __insert_adb_docs. Essential for allowing List
+            construction of RDF Literals.
+        :type adb_col_blacklist: Set[str]
         """
-        import_options["on_duplicate"] = "update"
-        for col, data in self.adb_docs.items():
-            with progress(f"ArangoDB Import: {col} ({len(data)})") as p:
-                p.add_task("__insert_adb_docs")
 
-                documents = list(data.values())
-                r = self.__db.collection(col).import_bulk(documents, **import_options)
-                logger.debug(r)
+        for col, data in self.adb_docs.items():
+            if not data or col in adb_col_blacklist:
+                continue
+
+            docs = list(data.values())
+
+            action = f"ArangoDB Import: {col} ({len(data)})"
+            adb_task = self.__adb_iterator.add_task("", action=action)
+
+            if not self.__db.has_collection(col):
+                is_edge = {"_from", "_to"} <= docs[0].keys()  # HACK?
+                self.db.create_collection(col, edge=is_edge)
+
+            self.__db.collection(col).import_bulk(docs, **self.__import_options)
+
+            self.__adb_iterator.stop_task(adb_task)
+            self.__adb_iterator.update(adb_task, visible=True)
+
+        # For memory purposes, remove any adb_docs data that
+        # has just been imported into ArangoDB
+        for key in list(self.adb_docs):
+            if key not in adb_col_blacklist:
+                del self.adb_docs[key]
+
+        # gc.collect() TODO: Check if worth introducing
