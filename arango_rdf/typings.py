@@ -1,4 +1,4 @@
-__all__ = ["Json", "ADBMetagraph", "ADBDocs", "RDFObject", "RDFSubject"]
+__all__ = ["Json", "ADBMetagraph", "ADBDocs", "RDFLists", "RDFObject", "RDFSubject"]
 
 from typing import Any, DefaultDict, Dict, Set, Union
 
@@ -12,3 +12,5 @@ ADBDocs = DefaultDict[str, DefaultDict[str, Json]]
 
 RDFObject = Union[URIRef, BNode, Literal]
 RDFSubject = Union[URIRef, BNode]
+
+RDFLists = DefaultDict[str, DefaultDict[str, Json]]
