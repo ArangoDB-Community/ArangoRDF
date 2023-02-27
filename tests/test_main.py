@@ -56,6 +56,8 @@ def test_rpt_basic_cases(
     assert adb_graph.vertex_collection(BNODE_COL).count() == num_bnodes
     assert adb_graph.vertex_collection(LITERAL_COL).count() == num_literals
 
+    print("\n")
+
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -90,6 +92,8 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     assert adb_graph.edge_collection("type").has("Person-type-Class")
     assert adb_graph.has_edge_collection("meets")
     assert adb_graph.edge_collection("meets").has("alice-meets-bob")
+
+    print("\n")
 
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
@@ -143,6 +147,8 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     assert adb_graph.edge_collection("type").has("Person-type-Class")
     assert adb_graph.has_edge_collection("mentor")
     assert adb_graph.edge_collection("mentor").has("Sam-mentor-Lee")
+
+    print("\n")
 
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
@@ -199,6 +205,8 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     assert adb_graph.has_edge_collection("mentorJoe")
     assert adb_graph.edge_collection("mentorJoe").has("Martin-mentorJoe-Joe")
 
+    print("\n")
+
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -248,6 +256,8 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
         "supervise-subPropertyOf-administer"
     )
 
+    print("\n")
+
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -292,6 +302,8 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
 
     assert adb_graph.has_edge_collection("friend")
     assert adb_graph.edge_collection("friend").has("Tom-friend-Chris")
+
+    print("\n")
 
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
@@ -347,6 +359,8 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     assert adb_graph.has_edge_collection("type")
     assert adb_graph.edge_collection("type").has("index-type-Property")
 
+    print("\n")
+
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -391,6 +405,8 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     assert type(doc["title"]) is list
     assert set(doc["title"]) == {"Book", "Bog"}
 
+    print("\n")
+
     # ArangoDB to RDF (List Conversion Method = "collection")
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -410,6 +426,8 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
 
     assert len(rdf_graph_2) == 9
 
+    print("\n")
+
     # ArangoDB to RDF (List Conversion Method = "container")
     rdf_graph_3 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), "container")
 
@@ -425,6 +443,8 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_3
 
     assert len(rdf_graph_3) == 7
+
+    print("\n")
 
     # ArangoDB to RDF (List Conversion Method = "static")
     rdf_graph_4 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), "static")
@@ -463,6 +483,8 @@ def test_pgt_case_4(name: str, rdf_graph: RDFGraph) -> None:
     assert type(doc["contents"]) is list
     assert set(doc["contents"]) == {"one", "two", "three"}
 
+    print("\n")
+
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -492,6 +514,8 @@ def test_pgt_case_5(name: str, rdf_graph: RDFGraph) -> None:
 
     assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").count() == 2
     assert adb_graph.edge_collection("nationality").count() == 1
+
+    print("\n")
 
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
@@ -532,6 +556,8 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
 
     edge = adb_graph.edge_collection("type").get("Monica-type-Person")
     assert edge["_sub_graph_uri"] == "http://example.com/Graph2"
+
+    print("\n")
 
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
@@ -622,6 +648,8 @@ def test_pgt_collection(name: str, rdf_graph: RDFGraph) -> None:
     assert adb_graph.edge_collection("random").count() == 1
     assert adb_graph.edge_collection("random").get("Doc-random-Mars")
 
+    print("\n")
+
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -665,6 +693,8 @@ def test_pgt_container(name: str, rdf_graph: RDFGraph) -> None:
     assert "planets" not in doc
 
     assert adb_graph.edge_collection("planets").count() == 4
+
+    print("\n")
 
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(
