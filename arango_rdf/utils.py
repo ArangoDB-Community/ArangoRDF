@@ -1,9 +1,15 @@
 import logging
 import os
-from typing import Any
 
-from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
-from rich.progress import track as progress_track
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
 
 logger = logging.getLogger(__package__)
 handler = logging.StreamHandler()
@@ -15,26 +21,22 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 
-def progress(
-    text: str,
-    spinner_name: str = "aesthetic",
-    spinner_style: str = "#5BC0DE",
-) -> Progress:
+def rdf_track(text: str, color: str) -> Progress:
     return Progress(
         TextColumn(text),
-        SpinnerColumn(spinner_name, spinner_style),
-        TimeElapsedColumn(),
-        # transient=True,
+        BarColumn(complete_style=color, finished_style=color),
+        TaskProgressColumn(),
+        TextColumn("({task.completed}/{task.total})"),
+        TimeRemainingColumn(),
+        transient=False,
     )
 
 
-def track(sequence: Any, total: Any, text: str, colour: str) -> Any:
-    return progress_track(
-        sequence,
-        total=total,
-        description=text,
-        complete_style=colour,
-        finished_style=colour,
-        disable=logger.level != logging.INFO,
-        # transient=True,
+def adb_track(text: str) -> Progress:
+    return Progress(
+        TextColumn(text),
+        TimeElapsedColumn(),
+        TextColumn("{task.fields[action]}"),
+        SpinnerColumn("aesthetic", "#5BC0DE"),
+        transient=False,
     )
