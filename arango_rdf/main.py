@@ -49,17 +49,13 @@ class ArangoRDF(Abstract_ArangoRDF):
             msg = "**db** parameter must inherit from arango.database.Database"
             raise TypeError(msg)
 
-        self.__db = db
+        self.db = db
 
         # A dictionary mapping all of the to-be-inserted ArangoDB
         # documents to their ArangoDB collection.
         self.adb_docs: ADBDocs = defaultdict(lambda: defaultdict(dict))
 
         logger.info(f"Instantiated ArangoRDF with database '{db.name}'")
-
-    @property
-    def db(self) -> Database:
-        return self.__db  # pragma: no cover
 
     def set_logging(self, level: Union[int, str]) -> None:
         logger.setLevel(level)
@@ -112,8 +108,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         self.__STATEMENT_COL = f"{name}_Statement"
 
         if overwrite_graph:
-            logger.debug("Overwrite graph flag is True. Deleting old graph.")
-            self.__db.delete_graph(name, ignore_missing=True, drop_collections=True)
+            self.db.delete_graph(name, ignore_missing=True, drop_collections=True)
 
         if load_base_ontology:
             # TODO: Should we call load_base_rpt_ontology as well?
@@ -218,29 +213,26 @@ class ArangoRDF(Abstract_ArangoRDF):
         :rtype: arango.graph.Graph
         """
 
-        if self.__db.has_graph(name):  # pragma: no cover
-            logger.debug(f"Graph {name} already exists")
-            return self.__db.graph(name)
+        if self.db.has_graph(name):  # pragma: no cover
+            return self.db.graph(name)
 
-        else:
-            logger.debug(f"Creating graph {name}")
-            return self.__db.create_graph(  # type: ignore[return-value]
-                name,
-                [
-                    {
-                        "edge_collection": self.__STATEMENT_COL,
-                        "from_vertex_collections": [
-                            self.__URIREF_COL,
-                            self.__BNODE_COL,
-                        ],
-                        "to_vertex_collections": [
-                            self.__URIREF_COL,
-                            self.__BNODE_COL,
-                            self.__LITERAL_COL,
-                        ],
-                    }
-                ],
-            )
+        return self.db.create_graph(  # type: ignore[return-value]
+            name,
+            [
+                {
+                    "edge_collection": self.__STATEMENT_COL,
+                    "from_vertex_collections": [
+                        self.__URIREF_COL,
+                        self.__BNODE_COL,
+                    ],
+                    "to_vertex_collections": [
+                        self.__URIREF_COL,
+                        self.__BNODE_COL,
+                        self.__LITERAL_COL,
+                    ],
+                }
+            ],
+        )
 
     def rdf_to_arangodb_by_pgt(
         self,
@@ -270,6 +262,8 @@ class ArangoRDF(Abstract_ArangoRDF):
             **batch_size** triples within the **rdf_graph**.
             If unspecified, **batch_size** will be set to `len(rdf_graph)`.
         :type batch_size: int
+        :param adb_collection_uri: TODO - properly define
+        :type adb_collection_uri: URIRef
         :param import_options: Keyword arguments to specify additional
             parameters for ArangoDB document insertion. Full parameter list:
             https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.import_bulk
@@ -298,8 +292,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         self.__e_col_map = defaultdict(lambda: defaultdict(set))
 
         if overwrite_graph:
-            logger.debug("Overwrite graph flag is True. Deleting old graph.")
-            self.__db.delete_graph(name, ignore_missing=True, drop_collections=True)
+            self.db.delete_graph(name, ignore_missing=True, drop_collections=True)
 
         if load_base_ontology:
             # TODO: Re-enable when tests are adjusted...
@@ -487,7 +480,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         :param load_base_ontology: TODO-define properly
         :type load_base_ontology: bool
         :param adb_collection_uri: TODO-define properly
-        :type adb_collection_uri: rdflib.URIRef
+        :type adb_collection_uri: URIRef
         """
 
         adb_col_map: Dict[str, str] = dict()
@@ -510,11 +503,12 @@ class ArangoRDF(Abstract_ArangoRDF):
                 type_map[p_str].add("Property")
 
             if p == adb_collection_uri:
-                if type(o) is not Literal:
-                    raise ValueError(f"Object {o} must be a Literal")
+                if not isinstance(o, Literal):
+                    raise ValueError(f"Object {o} must be Literal")  # pragma: no cover
 
                 if s_str in adb_col_map:
-                    raise ValueError(  # TODO: Create custom error
+                    # TODO: Create custom error
+                    raise ValueError(  # pragma: no cover
                         f"""
                         Subject {s} can only have 1 ArangoDB Collection association.
                         Found '{adb_col_map[s_str]}' and '{o_str}'.
@@ -560,7 +554,7 @@ class ArangoRDF(Abstract_ArangoRDF):
 
                 return get_depth(sub_class_str, depth + 1)
 
-            return -1
+            return -1  # pragma: no cover
 
         rdf_task = self.__rdf_iterator.add_task("", total=len(type_map))
         for s_str, o_str_set in type_map.items():
@@ -781,7 +775,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         p_str, p_key, p_col = p_metadata
         _, o_key, o_col = o_metadata
 
-        if type(o) is not Literal and not self.__object_is_head_of_rdf_list(o):
+        if not isinstance(o, Literal) and not self.__object_is_head_of_rdf_list(o):
             e_key = f"{s_key}-{p_key}-{o_key}"
             self.adb_docs[p_col][e_key] = {
                 "_key": e_key,
@@ -835,7 +829,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         :rtype: str
         """
 
-        if type(s) is BNode:  # TODO: Discuss repercussions of this assumption
+        if isinstance(s, BNode):  # TODO: Discuss repercussions of this assumption
             _n = r"^http://www.w3.org/1999/02/22-rdf-syntax-ns#_[0-9]{1,}$"
             li = r"^http://www.w3.org/1999/02/22-rdf-syntax-ns#li$"
 
@@ -1042,6 +1036,9 @@ class ArangoRDF(Abstract_ArangoRDF):
         :return: The ArangoDB Graph API wrapper.
         :rtype: arango.graph.Graph
         """
+        if self.db.has_graph(name):  # pragma: no cover
+            return self.db.graph(name)
+
         non_orphan_collections: Set[str] = set()
         edge_definitions: List[Dict[str, Union[str, List[str]]]] = []
 
@@ -1063,7 +1060,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             ^ set(self.__class_map.values())
         )
 
-        return self.__db.create_graph(  # type: ignore[return-value]
+        return self.db.create_graph(  # type: ignore[return-value]
             name, edge_definitions, orphan_collections
         )
 
@@ -1162,11 +1159,11 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         doc: Json
         if "Class" in metagraph["vertexCollections"]:
-            for doc in self.__db.collection("Class"):  # Name TBD ?
+            for doc in self.db.collection("Class"):  # Name TBD ?
                 self.__uri_map[doc["_key"]] = doc["_uri"]
 
         if "Property" in metagraph["vertexCollections"]:
-            for doc in self.__db.collection("Property"):  # Name TBD ?
+            for doc in self.db.collection("Property"):  # Name TBD ?
                 self.__property_map[doc["_key"]] = doc["_uri"]
 
         rdf_term: Union[RDFSubject, RDFObject]
@@ -1305,7 +1302,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         :return: An RDF Graph equivalent to the ArangoDB Graph specified
         :rtype: rdflib.graph.Graph
         """
-        graph = self.__db.graph(name)
+        graph = self.db.graph(name)
         v_cols = {col for col in graph.vertex_collections()}
         e_cols = {col["edge_collection"] for col in graph.edge_definitions()}
 
@@ -1399,7 +1396,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         adb_task = self.__adb_iterator.add_task("", action=action)
 
         aql = f"FOR doc IN {col} RETURN doc"
-        cursor = self.__db.aql.execute(aql, count=True, **self.__export_options)
+        cursor = self.db.aql.execute(aql, count=True, **self.__export_options)
 
         self.__adb_iterator.stop_task(adb_task)
         self.__adb_iterator.update(adb_task, visible=True)
@@ -1424,11 +1421,11 @@ class ArangoRDF(Abstract_ArangoRDF):
             action = f"ArangoDB Import: {col} ({len(data)})"
             adb_task = self.__adb_iterator.add_task("", action=action)
 
-            if not self.__db.has_collection(col):
+            if not self.db.has_collection(col):
                 is_edge = {"_from", "_to"} <= docs[0].keys()  # HACK?
                 self.db.create_collection(col, edge=is_edge)
 
-            self.__db.collection(col).import_bulk(docs, **self.__import_options)
+            self.db.collection(col).import_bulk(docs, **self.__import_options)
 
             self.__adb_iterator.stop_task(adb_task)
             self.__adb_iterator.update(adb_task, visible=True)
