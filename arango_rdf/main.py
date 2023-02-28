@@ -249,6 +249,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         overwrite_graph: bool = False,
         load_base_ontology: bool = False,
         batch_size: Optional[int] = None,
+        adb_collection_uri: URIRef = URIRef("http://www.arangodb.com/collection"),
         **import_options: Any,
     ) -> ADBGraph:
         """Create an ArangoDB Graph from an RDF Graph using
@@ -314,7 +315,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         ############## Pre Processing ##############
         self.__setup_iterators("RDF → ADB (PGT Pre-Process)", "#BD0F89", "    ")
         with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
-            self.__build_pgt_class_map(load_base_ontology)
+            self.__build_pgt_class_map(load_base_ontology, adb_collection_uri)
             self.__insert_adb_docs()
         ############## ############## ##############
 
@@ -331,8 +332,8 @@ class ArangoRDF(Abstract_ArangoRDF):
                 self.__rdf_iterator.update(rdf_task, advance=1)
 
                 # TODO: Discuss repercussions
-                if not load_base_ontology and p == RDF.type:
-                    continue  # pragma: no cover
+                if p == adb_collection_uri:
+                    continue
 
                 # TODO: Discuss repercussions
                 if o in [RDF.nil, RDF.Alt, RDF.Bag, RDF.List, RDF.Seq]:  # HACK ?
@@ -472,7 +473,9 @@ class ArangoRDF(Abstract_ArangoRDF):
             "_label": "type",
         }
 
-    def __build_pgt_class_map(self, load_base_ontology: bool) -> None:
+    def __build_pgt_class_map(
+        self, load_base_ontology: bool, adb_collection_uri: URIRef
+    ) -> None:
         """A pre-processing step that iterates through the RDF Graph
         statements to build a URI-to-ArangoDB-Collection mapping of all
         RDF Nodes within the graph.
@@ -483,11 +486,15 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         :param load_base_ontology: TODO-define properly
         :type load_base_ontology: bool
+        :param adb_collection_uri: TODO-define properly
+        :type adb_collection_uri: rdflib.URIRef
         """
 
-        size = len(self.__rdf_graph)
-        rdf_task = self.__rdf_iterator.add_task("", total=size)
+        adb_col_map: Dict[str, str] = dict()
+        type_map: DefaultDict[str, Set[str]] = defaultdict(set)
+        subclass_map: DefaultDict[str, Set[str]] = defaultdict(set)
 
+        rdf_task = self.__rdf_iterator.add_task("", total=len(self.__rdf_graph))
         for s, p, o, *_ in self.__rdf_graph:
             self.__rdf_iterator.update(rdf_task, advance=1)
 
@@ -500,15 +507,29 @@ class ArangoRDF(Abstract_ArangoRDF):
             o_str = str(o)
 
             if load_base_ontology:
-                self.__class_map[p_str] = "Property"  # Case 7 issue
+                type_map[p_str].add("Property")
 
-            if p == RDF.type:
-                o_key = self._rdf_id_to_adb_key(o_str)
-                self.__class_map[s_str] = o_key
+            if p == adb_collection_uri:
+                if type(o) is not Literal:
+                    raise ValueError(f"Object {o} must be a Literal")
+
+                if s_str in adb_col_map:
+                    raise ValueError(  # TODO: Create custom error
+                        f"""
+                        Subject {s} can only have 1 ArangoDB Collection association.
+                        Found '{adb_col_map[s_str]}' and '{o_str}'.
+                        """
+                    )
+
+                adb_col_map[s_str] = o_str
+
+            elif p == RDF.type:
+                type_map[s_str].add(o_str)
 
                 if load_base_ontology:
-                    self.__class_map[o_str] = "Class"  # Case 7 Issue
+                    type_map[o_str].add("Class")
 
+                    o_key = self._rdf_id_to_adb_key(o_str)
                     e_key = f"{o_key}-type-Class"
                     self.adb_docs["type"][e_key] = {
                         "_key": e_key,
@@ -520,10 +541,55 @@ class ArangoRDF(Abstract_ArangoRDF):
                     }
 
             elif p == RDFS.subClassOf:
-                self.__class_map[s_str] = self.__class_map[o_str] = "Class"
+                subclass_map[s_str].add(o_str)
+                type_map[s_str].add("Class")
+                type_map[o_str].add("Class")
 
             elif p == RDFS.subPropertyOf:
-                self.__class_map[s_str] = self.__class_map[o_str] = "Property"
+                type_map[s_str].add("Property")
+                type_map[o_str].add("Property")
+
+        # Helper function to recursively iterate through `subclass_map`
+        def get_depth(class_str: str, depth: int) -> int:
+            if class_str not in subclass_map:
+                return depth
+
+            for sub_class_str in subclass_map[class_str]:
+                if sub_class_str == class_str:
+                    return depth
+
+                return get_depth(sub_class_str, depth + 1)
+
+            return -1
+
+        rdf_task = self.__rdf_iterator.add_task("", total=len(type_map))
+        for s_str, o_str_set in type_map.items():
+            self.__rdf_iterator.update(rdf_task, advance=1)
+
+            # Case 1 (Only one type statement associated to s_str)
+            if len(o_str_set) == 1:
+                self.__class_map[s_str] = self._rdf_id_to_adb_key(o_str_set.pop())
+
+            # Case 2 (ArangoDB Collection Property)
+            elif s_str in adb_col_map:
+                self.__class_map[s_str] = adb_col_map[s_str]
+
+            # Case 3 (Taxonomy)
+            elif any([o_str in subclass_map for o_str in o_str_set]):
+                max_depth = -1
+                best_class = ""
+                for o_str in o_str_set:
+                    depth = get_depth(o_str, 0)
+
+                    if depth > max_depth:
+                        max_depth = depth
+                        best_class = o_str
+
+                self.__class_map[s_str] = self._rdf_id_to_adb_key(best_class)
+
+            # Case 4 (Multiple types without adb_col_map or sub_class_map entry)
+            else:
+                self.__class_map[s_str] = self._rdf_id_to_adb_key(sorted(o_str_set)[0])
 
     def __get_rdf_pgt_metadata(
         self, term_str: str, is_predicate: bool = False
@@ -1105,7 +1171,7 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         rdf_term: Union[RDFSubject, RDFObject]
         for v_col, _ in metagraph["vertexCollections"].items():
-            v_col_uri_str = f"{self.__base_namespace}#{v_col}"
+            v_col_uri_str = f"{self.__base_namespace}/{v_col}"
             v_col_rdf_class = URIRef(self.__uri_map.get(v_col, v_col_uri_str))
 
             self.__setup_iterators(f"     ADB → RDF ({v_col})", "#97C423", "")
@@ -1136,12 +1202,12 @@ class ArangoRDF(Abstract_ArangoRDF):
                     for k, v in doc.items():
                         if k not in adb_key_blacklist:  # HACK?
                             p = self.__property_map.get(
-                                k, f"{self.__base_namespace}#{k}"
+                                k, f"{self.__base_namespace}/{k}"
                             )
                             self.__adb_doc_property_to_rdf_val(rdf_term, URIRef(p), v)
 
         for e_col, _ in metagraph["edgeCollections"].items():
-            e_col_uri_str = f"{self.__base_namespace}#{e_col}"
+            e_col_uri_str = f"{self.__base_namespace}/{e_col}"
 
             self.__setup_iterators(f"     ADB → RDF ({e_col})", "#5E3108", "")
             with Live(Group(self.__adb_iterator, self.__rdf_iterator)):
@@ -1308,7 +1374,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             self.__rdf_graph.add((s, p, bnode))
 
             for k, v in val.items():
-                p_str = self.__property_map.get(k, f"{self.__base_namespace}#{k}")
+                p_str = self.__property_map.get(k, f"{self.__base_namespace}/{k}")
                 self.__adb_doc_property_to_rdf_val(bnode, URIRef(p_str), v)
 
         else:

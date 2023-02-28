@@ -1,3 +1,30 @@
-@prefix ex: <http://example.com/> .
-ex:alice a ex:Artist .
-ex:alice a ex:Author .
+@prefix : <http://example.com/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix adb: <http://www.arangodb.com/> .
+
+:alice a :Arson .
+:alice a :Author .
+
+:Zenkey rdfs:subClassOf :Zebra .
+:Zenkey rdfs:subClassOf :Donkey .
+:Donkey rdfs:subClassOf :Animal . 
+:Zebra rdfs:subClassOf :Animal .
+:Human rdfs:subClassOf :Animal .
+:Animal rdfs:subClassOf :LivingThing .
+:LivingThing rdfs:subClassOf :Thing .
+:Thing rdfs:subClassOf :Object .
+:Object rdfs:subClassOf rdfs:Class .
+rdfs:Class rdfs:subClassOf rdfs:Class .
+
+:charlie a :LivingThing .
+:charlie a :Animal .
+:charlie a :Zenkey .
+
+:marty a :LivingThing .
+:marty a :Animal .
+:marty a :Human .
+
+:john a :Singer .
+:john a :Writer .
+:john a :Guitarist .
+:john adb:collection "Artist" .
