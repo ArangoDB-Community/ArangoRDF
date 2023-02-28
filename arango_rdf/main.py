@@ -283,8 +283,8 @@ class ArangoRDF(Abstract_ArangoRDF):
         self.__adb_col_blacklist: Set[str] = set()
         self.__rdf_lists: RDFLists = defaultdict(lambda: defaultdict(dict))
 
-        # Maps URIs to RDF Classes
-        self.__class_map: Dict[str, str] = {}
+        # Maps URI strings to ArangoDB Collection names
+        self.__col_map: Dict[str, str] = {}
         # Stores unidentified resources
         self.__UNIDENTIFIED_NODE_COL = f"{name}_UnidentifiedNode"
         # Stores edge definitions
@@ -419,7 +419,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         """
 
         class_str = str(RDFS.Class)
-        self.__class_map[class_str] = "Class"
+        self.__col_map[class_str] = "Class"
         self.adb_docs["Class"]["Class"] = {
             "_key": "Class",
             "_uri": class_str,
@@ -427,7 +427,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         }
 
         property_str = str(RDF.Property)
-        self.__class_map[property_str] = "Class"
+        self.__col_map[property_str] = "Class"
         self.adb_docs["Class"]["Property"] = {
             "_key": "Property",
             "_uri": property_str,
@@ -435,7 +435,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         }
 
         type_str = str(RDF.type)
-        self.__class_map[type_str] = "Property"
+        self.__col_map[type_str] = "Property"
         self.adb_docs["Property"]["type"] = {
             "_key": "type",
             "_uri": type_str,
@@ -562,11 +562,11 @@ class ArangoRDF(Abstract_ArangoRDF):
 
             # Case 1 (Only one type statement associated to s_str)
             if len(o_str_set) == 1:
-                self.__class_map[s_str] = self._rdf_id_to_adb_key(o_str_set.pop())
+                self.__col_map[s_str] = self._rdf_id_to_adb_key(o_str_set.pop())
 
             # Case 2 (ArangoDB Collection Property)
             elif s_str in adb_col_map:
-                self.__class_map[s_str] = adb_col_map[s_str]
+                self.__col_map[s_str] = adb_col_map[s_str]
 
             # Case 3 (Taxonomy)
             elif any([o_str in subclass_map for o_str in o_str_set]):
@@ -579,11 +579,11 @@ class ArangoRDF(Abstract_ArangoRDF):
                         max_depth = depth
                         best_class = o_str
 
-                self.__class_map[s_str] = self._rdf_id_to_adb_key(best_class)
+                self.__col_map[s_str] = self._rdf_id_to_adb_key(best_class)
 
             # Case 4 (Multiple types without adb_col_map or sub_class_map entry)
             else:
-                self.__class_map[s_str] = self._rdf_id_to_adb_key(sorted(o_str_set)[0])
+                self.__col_map[s_str] = self._rdf_id_to_adb_key(sorted(o_str_set)[0])
 
     def __get_rdf_pgt_metadata(
         self, term_str: str, is_predicate: bool = False
@@ -602,7 +602,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         if is_predicate:
             return term_str, term_key, term_key
 
-        term_col = self.__class_map.get(term_str, self.__UNIDENTIFIED_NODE_COL)
+        term_col = self.__col_map.get(term_str, self.__UNIDENTIFIED_NODE_COL)
         return term_str, term_key, term_col
 
     def __process_pgt_term(
@@ -1057,7 +1057,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         orphan_collections = list(
             non_orphan_collections
             ^ {self.__UNIDENTIFIED_NODE_COL}
-            ^ set(self.__class_map.values())
+            ^ set(self.__col_map.values())
         )
 
         return self.db.create_graph(  # type: ignore[return-value]
@@ -1137,9 +1137,10 @@ class ArangoRDF(Abstract_ArangoRDF):
         self.__list_conversion = list_conversion_mode
         self.__export_options = export_options
 
-        self.__property_map: Dict[str, str] = {}
+        # Maps ArangoDB Document Keys to URI strings
         self.__uri_map: Dict[str, str] = {}
-        self.__rdf_map: Dict[str, Node] = {}
+        # Maps ArangoDB Document IDs to RDFLib Terms (i.e URIRef, Literal, BNode)
+        self.__term_map: Dict[str, Node] = {}
 
         self.__base_namespace = "http://www.arangodb.com"
         rdf_types = ["URIRef", "BNode", "Literal"]
@@ -1158,13 +1159,10 @@ class ArangoRDF(Abstract_ArangoRDF):
         ]
 
         doc: Json
-        if "Class" in metagraph["vertexCollections"]:
-            for doc in self.db.collection("Class"):  # Name TBD ?
-                self.__uri_map[doc["_key"]] = doc["_uri"]
-
-        if "Property" in metagraph["vertexCollections"]:
-            for doc in self.db.collection("Property"):  # Name TBD ?
-                self.__property_map[doc["_key"]] = doc["_uri"]
+        for col in ["Class", "Property"]:  # TODO: Name TBD?
+            if col in metagraph["vertexCollections"]:
+                for doc in self.db.collection(col):
+                    self.__uri_map[doc["_key"]] = doc["_uri"]
 
         rdf_term: Union[RDFSubject, RDFObject]
         for v_col, _ in metagraph["vertexCollections"].items():
@@ -1186,8 +1184,7 @@ class ArangoRDF(Abstract_ArangoRDF):
 
                     id = doc.get(key_map[rdf_type], f"{v_col_uri_str}_{doc['_key']}")
                     rdf_term = getattr(sys.modules[__name__], rdf_type)(id)
-
-                    self.__rdf_map[doc["_id"]] = rdf_term
+                    self.__term_map[doc["_id"]] = rdf_term
 
                     if isinstance(rdf_term, Literal):  # RPT Case
                         continue
@@ -1198,9 +1195,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                     # TODO: Iterate through metagraph values instead?
                     for k, v in doc.items():
                         if k not in adb_key_blacklist:  # HACK?
-                            p = self.__property_map.get(
-                                k, f"{self.__base_namespace}/{k}"
-                            )
+                            p = self.__uri_map.get(k, f"{self.__base_namespace}/{k}")
                             self.__adb_doc_property_to_rdf_val(rdf_term, URIRef(p), v)
 
         for e_col, _ in metagraph["edgeCollections"].items():
@@ -1215,12 +1210,12 @@ class ArangoRDF(Abstract_ArangoRDF):
                     self.__rdf_iterator.update(rdf_task, advance=1)
 
                     statement = (
-                        self.__rdf_map[doc["_from"]],
+                        self.__term_map[doc["_from"]],
                         URIRef(doc.get("_uri", e_col_uri_str)),
-                        self.__rdf_map[doc["_to"]],
+                        self.__term_map[doc["_to"]],
                     )
 
-                    if doc.get("_sub_graph_uri") and graph_supports_quads:
+                    if graph_supports_quads and doc.get("_sub_graph_uri"):
                         rdf_graph.remove(statement)  # type: ignore[no-untyped-call]
                         statement += (URIRef(doc["_sub_graph_uri"]),)  # type: ignore
 
@@ -1371,7 +1366,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             self.__rdf_graph.add((s, p, bnode))
 
             for k, v in val.items():
-                p_str = self.__property_map.get(k, f"{self.__base_namespace}/{k}")
+                p_str = self.__uri_map.get(k, f"{self.__base_namespace}/{k}")
                 self.__adb_doc_property_to_rdf_val(bnode, URIRef(p_str), v)
 
         else:
