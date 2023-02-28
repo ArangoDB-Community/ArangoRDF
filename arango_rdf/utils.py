@@ -28,7 +28,6 @@ def rdf_track(text: str, color: str) -> Progress:
         TaskProgressColumn(),
         TextColumn("({task.completed}/{task.total})"),
         TimeRemainingColumn(),
-        transient=False,
     )
 
 
@@ -38,5 +37,4 @@ def adb_track(text: str) -> Progress:
         TimeElapsedColumn(),
         TextColumn("{task.fields[action]}"),
         SpinnerColumn("aesthetic", "#5BC0DE"),
-        transient=False,
     )
