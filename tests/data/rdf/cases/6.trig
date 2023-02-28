@@ -3,6 +3,7 @@ PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
 ex:Graph1 {
+    ex:Monica a ex:Entity .
     ex:Management a ex:Skill .
     ex:Monica ex:name "Monica" .
     ex:Monica ex:homepage <http://www.Monicahompage.org> .
