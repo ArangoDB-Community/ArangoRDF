@@ -2,11 +2,13 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 from arango import ArangoClient, DefaultHTTPClient
 from arango.database import StandardDatabase
-from rdflib import Dataset, Graph
+from rdflib import Dataset
+from rdflib import Graph as RDFGraph
+from rdflib import URIRef
 
 from arango_rdf import ArangoRDF
 
@@ -93,7 +95,28 @@ def pytest_exception_interact(node: Any, call: Any, report: Any) -> None:
         print("Could not delete graph")
 
 
-def get_rdf_graph(path: str) -> Graph:
-    g = Dataset() if path.endswith(".trig") else Graph()
+def get_rdf_graph(path: str) -> RDFGraph:
+    g = Dataset() if path.endswith(".trig") else RDFGraph()
     g.parse(f"{PROJECT_DIR}/tests/data/rdf/{path}")
     return g
+
+
+def get_adb_graph_count(name: str) -> Tuple[int, int]:
+    adb_graph = db.graph(name)
+
+    v_count = 0
+    for v in db.graph(name).vertex_collections():
+        v_count += adb_graph.vertex_collection(v).count()
+
+    e_count = 0
+    for e_d in adb_graph.edge_definitions():
+        e_count += adb_graph.edge_collection(e_d["edge_collection"]).count()
+
+    return (v_count, e_count)
+
+
+def compare_graphs(rdf_graph_1: RDFGraph, rdf_graph_2: RDFGraph):
+    adb_uri = URIRef("http://www.arangodb.com/collection")
+    for s, p, o in rdf_graph_1:
+        if p != adb_uri:
+            assert (s, p, o) in rdf_graph_2

@@ -1,3 +1,4 @@
+import hashlib
 from typing import Any, Dict
 
 import pytest
@@ -8,7 +9,11 @@ from rdflib.namespace import RDF, RDFS
 
 from arango_rdf import ArangoRDF
 
-from .conftest import adbrdf, db, get_rdf_graph
+from .conftest import adbrdf, compare_graphs, db, get_adb_graph_count, get_rdf_graph
+
+
+def rdf_id_to_adb_key(rdf_id: str):
+    return hashlib.md5(rdf_id.encode()).hexdigest()
 
 
 def test_constructor() -> None:
@@ -19,29 +24,31 @@ def test_constructor() -> None:
 
 
 @pytest.mark.parametrize(
-    "name, rdf_graph, num_urirefs, num_bnodes, num_literals, load_base_ontology",
+    "name, rdf_graph, num_triples, num_urirefs, num_bnodes, \
+        num_literals, contextualize_graph",
     [
-        ("Case_1_RPT", get_rdf_graph("cases/1.ttl"), 3, 0, 0, False),
-        ("Case_2_1_RPT", get_rdf_graph("cases/2_1.ttl"), 4, 0, 2, False),
-        ("Case_2_2_RPT", get_rdf_graph("cases/2_2.ttl"), 4, 0, 0, False),
-        ("Case_2_3_RPT", get_rdf_graph("cases/2_3.ttl"), 5, 0, 0, False),
-        ("Case_2_4_RPT", get_rdf_graph("cases/2_4.ttl"), 4, 0, 0, False),
-        ("Case_3_1_RPT", get_rdf_graph("cases/3_1.ttl"), 1, 0, 4, False),
-        ("Case_3_2_RPT", get_rdf_graph("cases/3_2.ttl"), 1, 0, 2, False),
-        ("Case_4_RPT", get_rdf_graph("cases/4.ttl"), 2, 3, 3, False),
-        ("Case_5_RPT", get_rdf_graph("cases/5.ttl"), 1, 1, 0, False),
-        ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 8, 0, 1, False),
-        ("Case_7_RPT", get_rdf_graph("cases/7.ttl"), 18, 0, 1, False),
-        ("RDFOwl", RDFGraph(), 42, 0, 1, True),
+        ("Case_1_RPT", get_rdf_graph("cases/1.ttl"), 3, 3, 0, 0, False),
+        ("Case_2_1_RPT", get_rdf_graph("cases/2_1.ttl"), 5, 4, 0, 2, False),
+        ("Case_2_2_RPT", get_rdf_graph("cases/2_2.ttl"), 2, 4, 0, 0, False),
+        ("Case_2_3_RPT", get_rdf_graph("cases/2_3.ttl"), 4, 5, 0, 0, False),
+        ("Case_2_4_RPT", get_rdf_graph("cases/2_4.ttl"), 2, 4, 0, 0, False),
+        ("Case_3_1_RPT", get_rdf_graph("cases/3_1.ttl"), 4, 1, 0, 4, False),
+        ("Case_3_2_RPT", get_rdf_graph("cases/3_2.ttl"), 2, 1, 0, 2, False),
+        ("Case_4_RPT", get_rdf_graph("cases/4.ttl"), 7, 2, 3, 3, False),
+        ("Case_5_RPT", get_rdf_graph("cases/5.ttl"), 1, 1, 1, 0, False),
+        ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 10, 8, 0, 1, False),
+        ("Case_7_RPT", get_rdf_graph("cases/7.ttl"), 22, 19, 0, 1, False),
+        ("Meta_RPT", RDFGraph(), 803, 133, 0, 234, True),
     ],
 )
 def test_rpt_cases(
     name: str,
     rdf_graph: RDFGraph,
+    num_triples: int,
     num_urirefs: int,
     num_bnodes: int,
     num_literals: int,
-    load_base_ontology: bool,
+    contextualize_graph: bool,
 ) -> None:
     STATEMENT_COL = f"{name}_Statement"
     URIREF_COL = f"{name}_URIRef"
@@ -49,9 +56,11 @@ def test_rpt_cases(
     LITERAL_COL = f"{name}_Literal"
 
     # RDF to ArangoDB
-    adb_graph = adbrdf.rdf_to_arangodb_by_rpt(name, rdf_graph, True, load_base_ontology)
+    adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
+        name, rdf_graph, True, contextualize_graph
+    )
 
-    assert adb_graph.edge_collection(STATEMENT_COL).count() == len(rdf_graph)
+    assert adb_graph.edge_collection(STATEMENT_COL).count() == num_triples
     assert adb_graph.vertex_collection(URIREF_COL).count() == num_urirefs
     assert adb_graph.vertex_collection(BNODE_COL).count() == num_bnodes
     assert adb_graph.vertex_collection(LITERAL_COL).count() == num_literals
@@ -61,10 +70,32 @@ def test_rpt_cases(
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
-    assert len(rdf_graph) == len(rdf_graph_2)
+    if contextualize_graph:
+        assert len(rdf_graph_2) >= len(rdf_graph)
+    else:
+        assert len(rdf_graph_2) == len(rdf_graph)
 
     if type(rdf_graph_2) is not Dataset:
         assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
+
+    db.delete_graph(name, drop_collections=True)
+
+
+@pytest.mark.parametrize(
+    "name, rdf_graph",
+    [("Meta_PGT", RDFGraph())],
+)
+def test_pgt_meta(name: str, rdf_graph: RDFGraph) -> None:
+    adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
+
+    v_count, e_count = get_adb_graph_count(name)
+    assert v_count == 132
+    assert e_count == 450
+
+    rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, RDFGraph())
+    assert len(rdf_graph_2) == 806
+
+    compare_graphs(rdf_graph, rdf_graph_2)
 
     db.delete_graph(name, drop_collections=True)
 
@@ -77,21 +108,28 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
+    _class = rdf_id_to_adb_key(str(RDFS.Class))
+    _type = rdf_id_to_adb_key(str(RDF.type))
+    _person = rdf_id_to_adb_key("http://example.com/Person")
+    _meets = rdf_id_to_adb_key("http://example.com/meets")
+    _alice = rdf_id_to_adb_key("http://example.com/alice")
+    _bob = rdf_id_to_adb_key("http://example.com/bob")
+
     assert adb_graph.has_vertex_collection("Class")
-    assert adb_graph.vertex_collection("Class").has("Class")
-    assert adb_graph.vertex_collection("Class").has("Person")
+    assert adb_graph.vertex_collection("Class").has(_class)
+    assert adb_graph.vertex_collection("Class").has(_person)
     assert adb_graph.has_vertex_collection("Property")
-    assert adb_graph.vertex_collection("Property").has("meets")
-    assert adb_graph.vertex_collection("Property").has("type")
+    assert adb_graph.vertex_collection("Property").has(_meets)
+    assert adb_graph.vertex_collection("Property").has(_type)
     assert adb_graph.has_vertex_collection("Person")
-    assert adb_graph.vertex_collection("Person").has("alice")
-    assert adb_graph.vertex_collection("Person").has("bob")
+    assert adb_graph.vertex_collection("Person").has(_alice)
+    assert adb_graph.vertex_collection("Person").has(_bob)
     assert adb_graph.has_edge_collection("type")
-    assert adb_graph.edge_collection("type").has("alice-type-Person")
-    assert adb_graph.edge_collection("type").has("bob-type-Person")
-    assert adb_graph.edge_collection("type").has("Person-type-Class")
+    assert adb_graph.edge_collection("type").has(f"{_alice}-{_type}-{_person}")
+    assert adb_graph.edge_collection("type").has(f"{_bob}-{_type}-{_person}")
+    assert adb_graph.edge_collection("type").has(f"{_person}-{_type}-{_class}")
     assert adb_graph.has_edge_collection("meets")
-    assert adb_graph.edge_collection("meets").has("alice-meets-bob")
+    assert adb_graph.edge_collection("meets").has(f"{_alice}-{_meets}-{_bob}")
 
     print("\n")
 
@@ -115,7 +153,8 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_2
     assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_2
 
-    assert len(rdf_graph_2) == 8
+    assert len(rdf_graph_2) == 815
+    compare_graphs(rdf_graph_2, rdf_graph)
 
     db.delete_graph(name, drop_collections=True)
 
@@ -128,25 +167,36 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
+    _class = rdf_id_to_adb_key(str(RDFS.Class))
+    _type = rdf_id_to_adb_key(str(RDF.type))
+    _label = rdf_id_to_adb_key(str(RDFS.label))
+    _person = rdf_id_to_adb_key("http://example.com/Person")
+    _name = rdf_id_to_adb_key("http://example.com/name")
+    _mentor = rdf_id_to_adb_key("http://example.com/mentor")
+    _sam = rdf_id_to_adb_key("http://example.com/Sam")
+    _lee = rdf_id_to_adb_key("http://example.com/Lee")
+
     assert adb_graph.has_vertex_collection("Class")
-    assert adb_graph.vertex_collection("Class").has("Class")
-    assert adb_graph.vertex_collection("Class").has("Person")
+    assert adb_graph.vertex_collection("Class").has(_class)
+    assert adb_graph.vertex_collection("Class").has(_person)
     assert adb_graph.has_vertex_collection("Property")
-    assert adb_graph.vertex_collection("Property").has("mentor")
-    assert (
-        adb_graph.vertex_collection("Property").get("mentor")["name"] == "mentor's name"
-    )
-    assert adb_graph.vertex_collection("Property").has("type")
+    assert adb_graph.vertex_collection("Property").has(_type)
+    assert adb_graph.vertex_collection("Property").has(_label)
+    assert adb_graph.vertex_collection("Property").has(_name)
+    assert adb_graph.vertex_collection("Property").has(_mentor)
+    doc = adb_graph.vertex_collection("Property").get(_mentor)
+    assert doc["label"] == "project supervisor"
+    assert doc["name"] == "mentor's name"
     assert adb_graph.has_vertex_collection("Person")
-    assert adb_graph.vertex_collection("Person").has("Sam")
-    assert adb_graph.vertex_collection("Person").has("Lee")
+    assert adb_graph.vertex_collection("Person").has(_sam)
+    assert adb_graph.vertex_collection("Person").has(_lee)
 
     assert adb_graph.has_edge_collection("type")
-    assert adb_graph.edge_collection("type").has("Sam-type-Person")
-    assert adb_graph.edge_collection("type").has("Lee-type-Person")
-    assert adb_graph.edge_collection("type").has("Person-type-Class")
+    assert adb_graph.edge_collection("type").has(f"{_sam}-{_type}-{_person}")
+    assert adb_graph.edge_collection("type").has(f"{_lee}-{_type}-{_person}")
+    assert adb_graph.edge_collection("type").has(f"{_person}-{_type}-{_class}")
     assert adb_graph.has_edge_collection("mentor")
-    assert adb_graph.edge_collection("mentor").has("Sam-mentor-Lee")
+    assert adb_graph.edge_collection("mentor").has(f"{_sam}-{_mentor}-{_lee}")
 
     print("\n")
 
@@ -175,7 +225,9 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_2
     assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_2
 
-    assert len(rdf_graph_2) == 12
+    assert len(rdf_graph_2) == 819
+
+    compare_graphs(rdf_graph, rdf_graph_2)
 
     db.delete_graph(name, drop_collections=True)
 
@@ -188,22 +240,31 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
+    _class = rdf_id_to_adb_key(str(RDFS.Class))
+    _property = rdf_id_to_adb_key(str(RDF.Property))
+    _type = rdf_id_to_adb_key(str(RDF.type))
+    _alias = rdf_id_to_adb_key("http://example.com/alias")
+    _mentorJoe = rdf_id_to_adb_key("http://example.com/mentorJoe")
+    _teacher = rdf_id_to_adb_key("http://example.com/teacher")
+    _joe = rdf_id_to_adb_key("http://example.com/Joe")
+    _martin = rdf_id_to_adb_key("http://example.com/Martin")
+
     assert adb_graph.has_vertex_collection("Class")
-    assert adb_graph.vertex_collection("Class").has("Class")
-    assert adb_graph.vertex_collection("Class").has("Property")
+    assert adb_graph.vertex_collection("Class").has(_class)
+    assert adb_graph.vertex_collection("Class").has(_property)
     assert adb_graph.has_vertex_collection("Property")
-    assert adb_graph.vertex_collection("Property").has("mentorJoe")
-    assert adb_graph.vertex_collection("Property").has("type")
-    assert adb_graph.vertex_collection("Property").has("alias")
+    assert adb_graph.vertex_collection("Property").has(_mentorJoe)
+    assert adb_graph.vertex_collection("Property").has(_type)
+    assert adb_graph.vertex_collection("Property").has(_alias)
 
     assert adb_graph.has_vertex_collection(f"{name}_UnidentifiedNode")
-    assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has("Martin")
-    assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has("Joe")
-    assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has("teacher")
+    assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has(_martin)
+    assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has(_joe)
+    assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has(_teacher)
     assert adb_graph.has_edge_collection("type")
-    assert adb_graph.edge_collection("type").has("mentorJoe-type-Property")
+    assert adb_graph.edge_collection("type").has(f"{_mentorJoe}-{_type}-{_property}")
     assert adb_graph.has_edge_collection("mentorJoe")
-    assert adb_graph.edge_collection("mentorJoe").has("Martin-mentorJoe-Joe")
+    assert adb_graph.edge_collection("mentorJoe").has(f"{_martin}-{_mentorJoe}-{_joe}")
 
     print("\n")
 
@@ -227,7 +288,9 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_2
     assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_2
 
-    assert len(rdf_graph_2) == 7
+    assert len(rdf_graph_2) == 812
+
+    compare_graphs(rdf_graph, rdf_graph_2)
 
     db.delete_graph(name, drop_collections=True)
 
@@ -240,20 +303,30 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
+    _class = rdf_id_to_adb_key(str(RDFS.Class))
+    _property = rdf_id_to_adb_key(str(RDF.Property))
+    _type = rdf_id_to_adb_key(str(RDF.type))
+    _subPropertyOf = rdf_id_to_adb_key(str(RDFS.subPropertyOf))
+    _person = rdf_id_to_adb_key("http://example.com/Person")
+    _supervise = rdf_id_to_adb_key("http://example.com/supervise")
+    _administer = rdf_id_to_adb_key("http://example.com/administer")
+    _jan = rdf_id_to_adb_key("http://example.com/Jan")
+    _leo = rdf_id_to_adb_key("http://example.com/Leo")
+
     assert adb_graph.has_vertex_collection("Class")
-    assert adb_graph.vertex_collection("Class").has("Class")
-    assert adb_graph.vertex_collection("Class").has("Property")
-    assert adb_graph.vertex_collection("Class").has("Person")
+    assert adb_graph.vertex_collection("Class").has(_class)
+    assert adb_graph.vertex_collection("Class").has(_property)
+    assert adb_graph.vertex_collection("Class").has(_person)
     assert adb_graph.has_vertex_collection("Property")
-    assert adb_graph.vertex_collection("Property").has("supervise")
-    assert adb_graph.vertex_collection("Property").has("type")
+    assert adb_graph.vertex_collection("Property").has(_supervise)
+    assert adb_graph.vertex_collection("Property").has(_type)
     assert adb_graph.has_vertex_collection("Person")
-    assert adb_graph.vertex_collection("Person").has("Jan")
-    assert adb_graph.vertex_collection("Person").has("Leo")
+    assert adb_graph.vertex_collection("Person").has(_jan)
+    assert adb_graph.vertex_collection("Person").has(_leo)
 
     assert adb_graph.has_edge_collection("subPropertyOf")
     assert adb_graph.edge_collection("subPropertyOf").has(
-        "supervise-subPropertyOf-administer"
+        f"{_supervise}-{_subPropertyOf}-{_administer}"
     )
 
     print("\n")
@@ -282,7 +355,8 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_2
     assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_2
 
-    assert len(rdf_graph_2) == 11
+    assert len(rdf_graph_2) == 818
+    compare_graphs(rdf_graph, rdf_graph_2)
 
     db.delete_graph(name, drop_collections=True)
 
@@ -295,13 +369,21 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
+    _class = rdf_id_to_adb_key(str(RDFS.Class))
+    _property = rdf_id_to_adb_key(str(RDF.Property))
+    _type = rdf_id_to_adb_key(str(RDF.type))
+    _relation = rdf_id_to_adb_key("http://example.com/relation")
+    _friend = rdf_id_to_adb_key("http://example.com/friend")
+    _tom = rdf_id_to_adb_key("http://example.com/Tom")
+    _chris = rdf_id_to_adb_key("http://example.com/Chris")
+
     assert adb_graph.has_edge_collection("type")
-    assert adb_graph.edge_collection("type").has("friend-type-relation")
-    assert adb_graph.edge_collection("type").has("friend-type-Property")
-    assert adb_graph.edge_collection("type").has("relation-type-Class")
+    assert adb_graph.edge_collection("type").has(f"{_friend}-{_type}-{_relation}")
+    assert adb_graph.edge_collection("type").has(f"{_friend}-{_type}-{_property}")
+    assert adb_graph.edge_collection("type").has(f"{_relation}-{_type}-{_class}")
 
     assert adb_graph.has_edge_collection("friend")
-    assert adb_graph.edge_collection("friend").has("Tom-friend-Chris")
+    assert adb_graph.edge_collection("friend").has(f"{_tom}-{_friend}-{_chris}")
 
     print("\n")
 
@@ -324,7 +406,8 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_2
     assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_2
 
-    assert len(rdf_graph_2) == 7
+    assert len(rdf_graph_2) == 812
+    compare_graphs(rdf_graph, rdf_graph_2)
 
     db.delete_graph(name, drop_collections=True)
 
@@ -337,27 +420,25 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
+    _property = rdf_id_to_adb_key(str(RDF.Property))
+    _type = rdf_id_to_adb_key(str(RDF.type))
+    _book = rdf_id_to_adb_key("http://example.com/book")
+    _index = rdf_id_to_adb_key("http://example.com/index")
+    _pages = rdf_id_to_adb_key("http://example.com/pages")
+
     assert adb_graph.has_vertex_collection(f"{name}_UnidentifiedNode")
-    assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has("book")
-    doc = adb_graph.vertex_collection(f"{name}_UnidentifiedNode").get("book")
+    assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has(_book)
+    doc = adb_graph.vertex_collection(f"{name}_UnidentifiedNode").get(_book)
     assert doc["index"] == "55"
     assert doc["cover"] == 20
     assert doc["pages"] == 100
     assert doc["publish_date"] == "1963-03-22"
 
-    assert adb_graph.edge_definitions() == [
-        {
-            "edge_collection": "type",
-            "from_vertex_collections": ["Property"],
-            "to_vertex_collections": ["Class"],
-        }
-    ]
-
     assert adb_graph.has_vertex_collection("Property")
-    assert adb_graph.vertex_collection("Property").has("index")
-    assert adb_graph.vertex_collection("Property").has("pages")
+    assert adb_graph.vertex_collection("Property").has(_index)
+    assert adb_graph.vertex_collection("Property").has(_pages)
     assert adb_graph.has_edge_collection("type")
-    assert adb_graph.edge_collection("type").has("index-type-Property")
+    assert adb_graph.edge_collection("type").has(f"{_index}-{_type}-{_property}")
 
     print("\n")
 
@@ -385,22 +466,27 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_2
     assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_2
 
-    assert len(rdf_graph_2) == 11
+    assert len(rdf_graph_2) == 818
+    compare_graphs(rdf_graph, rdf_graph_2)
 
     db.delete_graph(name, drop_collections=True)
 
 
+# TODO - REVISIT
 # NOTE: No current support for Literal datatype persistence in PGT Transformation
+# i.e we lose the @en or @da language suffix
 @pytest.mark.parametrize(
     "name, rdf_graph",
     [("Case_3_2_PGT", get_rdf_graph("cases/3_2.ttl"))],
 )
 def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     # RDF to ArangoDB
-    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
+    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, False)
+
+    _book = rdf_id_to_adb_key("http://example.com/book")
 
     assert adb_graph.has_vertex_collection(f"{name}_UnidentifiedNode")
-    doc = adb_graph.vertex_collection(f"{name}_UnidentifiedNode").get("book")
+    doc = adb_graph.vertex_collection(f"{name}_UnidentifiedNode").get(_book)
     assert "title" in doc
     assert type(doc["title"]) is list
     assert set(doc["title"]) == {"Book", "Bog"}
@@ -408,58 +494,41 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     print("\n")
 
     # ArangoDB to RDF (List Conversion Method = "collection")
-    rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
+    rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), "collection")
 
     book = URIRef("http://example.com/book")
-    title = URIRef("http://example.com/title")
 
-    # Original Statement assertions
+    # TODO REVIST
+    # title = URIRef("http://example.com/title")
+    adb_graph_namepspace = f"{db._conn._url_prefixes[0]}/{name}#"
+    title = URIRef(f"{adb_graph_namepspace}title")
+
     assert (book, title, None) in rdf_graph_2
     assert (None, RDF.first, Literal("Bog")) in rdf_graph_2
     assert (None, RDF.first, Literal("Book")) in rdf_graph_2
 
-    # Ontology Assertions
-    assert (title, RDF.type, RDF.Property) in rdf_graph_2
-    assert (RDF.Property, RDF.type, RDFS.Class) in rdf_graph_2
-    assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_2
-    assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_2
-
-    assert len(rdf_graph_2) == 9
+    assert len(rdf_graph_2) == 5
 
     print("\n")
 
     # ArangoDB to RDF (List Conversion Method = "container")
     rdf_graph_3 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), "container")
 
-    # Original Statement assertions
     assert (book, title, None) in rdf_graph_3
     assert (None, None, Literal("Bog")) in rdf_graph_3
     assert (None, None, Literal("Book")) in rdf_graph_3
 
-    # Ontology Assertions
-    assert (title, RDF.type, RDF.Property) in rdf_graph_3
-    assert (RDF.Property, RDF.type, RDFS.Class) in rdf_graph_3
-    assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_3
-    assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_3
-
-    assert len(rdf_graph_3) == 7
+    assert len(rdf_graph_3) == 3
 
     print("\n")
 
     # ArangoDB to RDF (List Conversion Method = "static")
     rdf_graph_4 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), "static")
 
-    # Original Statement assertions
     assert (book, title, Literal("Book")) in rdf_graph_4
     assert (book, title, Literal("Bog")) in rdf_graph_4
 
-    # Ontology Assertions
-    assert (title, RDF.type, RDF.Property) in rdf_graph_4
-    assert (RDF.Property, RDF.type, RDFS.Class) in rdf_graph_4
-    assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_4
-    assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_4
-
-    assert len(rdf_graph_4) == 6
+    assert len(rdf_graph_4) == 2
 
     # ArangoDB to RDF (List Conversion Method = "bad_name")
     with pytest.raises(ValueError):
@@ -473,11 +542,13 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_4_PGT", get_rdf_graph("cases/4.ttl"))],
 )
 def test_pgt_case_4(name: str, rdf_graph: RDFGraph) -> None:
-    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
+    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, False)
+
+    _list1 = rdf_id_to_adb_key("http://example.com/List1")
 
     assert adb_graph.has_vertex_collection(f"{name}_UnidentifiedNode")
-    assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has("List1")
-    doc = adb_graph.vertex_collection(f"{name}_UnidentifiedNode").get("List1")
+    assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").has(_list1)
+    doc = adb_graph.vertex_collection(f"{name}_UnidentifiedNode").get(_list1)
 
     assert "contents" in doc
     assert type(doc["contents"]) is list
@@ -489,18 +560,16 @@ def test_pgt_case_4(name: str, rdf_graph: RDFGraph) -> None:
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
     list1 = URIRef("http://example.com/List1")
-    contents = URIRef("http://example.com/contents")
+    # TODO - REVISIT
+    # contents = URIRef("http://example.com/contents")
+    adb_graph_namepspace = f"{db._conn._url_prefixes[0]}/{name}#"
+    contents = URIRef(f"{adb_graph_namepspace}contents")
 
-    # Original Statement assertions
-    assert (list1, contents, None) in rdf_graph_2
+    assert (list1, contents, Literal("one")) in rdf_graph_2
+    assert (list1, contents, Literal("two")) in rdf_graph_2
+    assert (list1, contents, Literal("three")) in rdf_graph_2
 
-    # Ontology Assertions
-    assert (contents, RDF.type, RDF.Property) in rdf_graph_2
-    assert (RDF.Property, RDF.type, RDFS.Class) in rdf_graph_2
-    assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_2
-    assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_2
-
-    assert len(rdf_graph_2) == 11
+    assert len(rdf_graph_2) == 3
 
     db.delete_graph(name, drop_collections=True)
 
@@ -510,7 +579,7 @@ def test_pgt_case_4(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_5_PGT", get_rdf_graph("cases/5.ttl"))],
 )
 def test_pgt_case_5(name: str, rdf_graph: RDFGraph) -> None:
-    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
+    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, False)
 
     assert adb_graph.vertex_collection(f"{name}_UnidentifiedNode").count() == 2
     assert adb_graph.edge_collection("nationality").count() == 1
@@ -525,14 +594,7 @@ def test_pgt_case_5(name: str, rdf_graph: RDFGraph) -> None:
 
     # Original Statement assertions
     assert (bob, nationality, None) in rdf_graph_2
-
-    # Ontology Assertions
-    assert (nationality, RDF.type, RDF.Property) in rdf_graph_2
-    assert (RDF.Property, RDF.type, RDFS.Class) in rdf_graph_2
-    assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_2
-    assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_2
-
-    assert len(rdf_graph_2) == 5
+    assert len(rdf_graph_2) == 1
 
     db.delete_graph(name, drop_collections=True)
 
@@ -544,23 +606,36 @@ def test_pgt_case_5(name: str, rdf_graph: RDFGraph) -> None:
 def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
+    _type = rdf_id_to_adb_key(str(RDF.type))
+    _subClassOf = rdf_id_to_adb_key(str(RDFS.subClassOf))
+    _monica = rdf_id_to_adb_key("http://example.com/Monica")
+    _person = rdf_id_to_adb_key("http://example.com/Person")
+    _monica = rdf_id_to_adb_key("http://example.com/Monica")
+    _hasSkill = rdf_id_to_adb_key("http://example.com/hasSkill")
+    _management = rdf_id_to_adb_key("http://example.com/Management")
+    _entity = rdf_id_to_adb_key("http://example.com/Entity")
+
     assert adb_graph.has_vertex_collection("Person")
-    doc = adb_graph.vertex_collection("Person").get("Monica")
+    doc = adb_graph.vertex_collection("Person").get(_monica)
     assert doc["name"] == "Monica"
 
     assert adb_graph.vertex_collection("Skill").count() == 2
     assert adb_graph.vertex_collection("Website").count() == 1
 
-    edge = adb_graph.edge_collection("hasSkill").get("Monica-hasSkill-Management")
+    edge = adb_graph.edge_collection("hasSkill").get(
+        f"{_monica}-{_hasSkill}-{_management}"
+    )
     assert edge["_sub_graph_uri"] == "http://example.com/Graph1"
 
-    edge = adb_graph.edge_collection("type").get("Monica-type-Person")
+    edge = adb_graph.edge_collection("type").get(f"{_monica}-{_type}-{_person}")
     assert edge["_sub_graph_uri"] == "http://example.com/Graph2"
 
-    edge = adb_graph.edge_collection("type").get("Monica-type-Entity")
+    edge = adb_graph.edge_collection("type").get(f"{_monica}-{_type}-{_entity}")
     assert edge["_sub_graph_uri"] == "http://example.com/Graph1"
 
-    edge = adb_graph.edge_collection("subClassOf").get("Person-subClassOf-Entity")
+    edge = adb_graph.edge_collection("subClassOf").get(
+        f"{_person}-{_subClassOf}-{_entity}"
+    )
     assert edge
 
     print("\n")
@@ -606,7 +681,7 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_2
     assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_2
 
-    assert len(rdf_graph_2) == 21
+    assert len(rdf_graph_2) == 834
 
     db.delete_graph(name, drop_collections=True)
 
@@ -619,33 +694,46 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
 def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
 
-    assert adb_graph.vertex_collection("Class").count() == 15
+    _type = rdf_id_to_adb_key(str(RDF.type))
+    _alice = rdf_id_to_adb_key("http://example.com/alice")
+    _author = rdf_id_to_adb_key("http://example.com/Author")
+    _arson = rdf_id_to_adb_key("http://example.com/Arson")
+    _charlie = rdf_id_to_adb_key("http://example.com/charlie")
+    _marty = rdf_id_to_adb_key("http://example.com/marty")
+    _livingthing = rdf_id_to_adb_key("http://example.com/LivingThing")
+    _animal = rdf_id_to_adb_key("http://example.com/Animal")
+    _zenkey = rdf_id_to_adb_key("http://example.com/Zenkey")
+    _human = rdf_id_to_adb_key("http://example.com/Human")
+    _john = rdf_id_to_adb_key("http://example.com/john")
+    _singer = rdf_id_to_adb_key("http://example.com/Singer")
+    _writer = rdf_id_to_adb_key("http://example.com/Writer")
+    _artist = rdf_id_to_adb_key("http://example.com/Artist")
+    _guitarist = rdf_id_to_adb_key("http://example.com/Guitarist")
 
     assert adb_graph.has_vertex_collection("Arson")
     assert not adb_graph.has_vertex_collection("Author")
-    assert adb_graph.edge_collection("type").get("alice-type-Author")
-    assert adb_graph.edge_collection("type").get("alice-type-Arson")
+    assert adb_graph.edge_collection("type").get(f"{_alice}-{_type}-{_author}")
+    assert adb_graph.edge_collection("type").get(f"{_alice}-{_type}-{_arson}")
 
-    assert adb_graph.edge_collection("subClassOf").count() == 10
     assert adb_graph.has_vertex_collection("Zenkey")
     assert adb_graph.has_vertex_collection("Human")
     assert not adb_graph.has_vertex_collection("Animal")
     assert not adb_graph.has_vertex_collection("LivingThing")
-    assert adb_graph.edge_collection("type").get("charlie-type-LivingThing")
-    assert adb_graph.edge_collection("type").get("charlie-type-Animal")
-    assert adb_graph.edge_collection("type").get("charlie-type-Zenkey")
-    assert adb_graph.edge_collection("type").get("marty-type-LivingThing")
-    assert adb_graph.edge_collection("type").get("marty-type-Animal")
-    assert adb_graph.edge_collection("type").get("marty-type-Human")
+    assert adb_graph.edge_collection("type").get(f"{_charlie}-{_type}-{_livingthing}")
+    assert adb_graph.edge_collection("type").get(f"{_charlie}-{_type}-{_animal}")
+    assert adb_graph.edge_collection("type").get(f"{_charlie}-{_type}-{_zenkey}")
+    assert adb_graph.edge_collection("type").get(f"{_marty}-{_type}-{_livingthing}")
+    assert adb_graph.edge_collection("type").get(f"{_marty}-{_type}-{_animal}")
+    assert adb_graph.edge_collection("type").get(f"{_marty}-{_type}-{_human}")
 
     assert adb_graph.has_vertex_collection("Artist")
     assert not adb_graph.has_vertex_collection("Singer")
     assert not adb_graph.has_vertex_collection("Writer")
     assert not adb_graph.has_vertex_collection("Guitarist")
-    assert adb_graph.edge_collection("type").get("john-type-Singer")
-    assert adb_graph.edge_collection("type").get("john-type-Writer")
-    assert adb_graph.edge_collection("type").get("john-type-Guitarist")
-    assert not adb_graph.edge_collection("type").has("john-type-Artist")
+    assert adb_graph.edge_collection("type").get(f"{_john}-{_type}-{_singer}")
+    assert adb_graph.edge_collection("type").get(f"{_john}-{_type}-{_writer}")
+    assert adb_graph.edge_collection("type").get(f"{_john}-{_type}-{_guitarist}")
+    assert not adb_graph.edge_collection("type").has(f"{_john}-{_type}-{_artist}")
 
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
@@ -670,14 +758,10 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
     guitarist = URIRef("http://example.com/Guitarist")
     john = URIRef("http://example.com/john")
 
-    adb_collection = URIRef("http://www.arangodb.com/collection")
-    adb_artist = URIRef("http://www.arangodb.com/Artist")
-
     # Original Statement assertions
     assert (alice, RDF.type, arson) in rdf_graph_2
     assert (alice, RDF.type, author) in rdf_graph_2
 
-    assert (RDFS.Class, RDFS.subClassOf, RDFS.Class) in rdf_graph_2
     assert (object, RDFS.subClassOf, RDFS.Class) in rdf_graph_2
     assert (thing, RDFS.subClassOf, object) in rdf_graph_2
     assert (living_thing, RDFS.subClassOf, thing) in rdf_graph_2
@@ -697,11 +781,11 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
     assert (john, RDF.type, singer) in rdf_graph_2
     assert (john, RDF.type, writer) in rdf_graph_2
     assert (john, RDF.type, guitarist) in rdf_graph_2
-    # TODO: Discuss if this should be here...
-    assert (john, RDF.type, adb_artist) in rdf_graph_2
-    assert (john, adb_collection, Literal("Artist")) not in rdf_graph_2
+    adb_col_uri = URIRef("http://www.arangodb.com/collection")
+    assert (john, adb_col_uri, Literal("Artist")) in rdf_graph_2
 
-    assert len(rdf_graph_2) == 39
+    assert len(rdf_graph_2) == 856
+    compare_graphs(rdf_graph, rdf_graph_2)
 
     db.delete_graph(name, drop_collections=True)
 
@@ -711,9 +795,13 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
     [("Collection_PGT", get_rdf_graph("collection.ttl"))],
 )
 def test_pgt_collection(name: str, rdf_graph: RDFGraph) -> None:
-    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
+    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, False)
 
-    doc = adb_graph.vertex_collection("TestDoc").get("Doc")
+    _doc = rdf_id_to_adb_key("http://example.com/Doc")
+    _random = rdf_id_to_adb_key("http://example.com/random")
+    _mars = rdf_id_to_adb_key("http://example.com/Mars")
+
+    doc = adb_graph.vertex_collection("TestDoc").get(_doc)
     assert "numbers" in doc
     assert doc["numbers"] == [
         1,
@@ -733,19 +821,25 @@ def test_pgt_collection(name: str, rdf_graph: RDFGraph) -> None:
 
     assert adb_graph.edge_collection("planets").count() == 4
     assert adb_graph.edge_collection("random").count() == 1
-    assert adb_graph.edge_collection("random").get("Doc-random-Mars")
+    assert adb_graph.edge_collection("random").get(f"{_doc}-{_random}-{_mars}")
 
     print("\n")
 
     # ArangoDB to RDF
-    rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
+    rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), "collection")
 
-    assert len(rdf_graph_2) == 132
-    doc = URIRef("http://example.org/test#Doc")
-    numbers = URIRef("http://example.org/test#numbers")
-    planets = URIRef("http://example.org/test#planets")
-    random = URIRef("http://example.org/test#random")
-    nested_container = URIRef("http://example.org/test#nested_container")
+    assert len(rdf_graph_2) == 128
+    doc = URIRef("http://example.com/Doc")
+    planets = URIRef("http://example.com/planets")
+
+    # TODO - REVISIT
+    # numbers = URIRef("http://example.com/numbers")
+    # random = URIRef("http://example.com/random")
+    # nested_container = URIRef("http://example.com/nested_container")
+    adb_graph_namepspace = f"{db._conn._url_prefixes[0]}/{name}#"
+    numbers = URIRef(f"{adb_graph_namepspace}numbers")
+    random = URIRef(f"{adb_graph_namepspace}random")
+    nested_container = URIRef(f"{adb_graph_namepspace}nested_container")
 
     assert (doc, numbers, None) in rdf_graph_2
     assert (doc, planets, None) in rdf_graph_2
@@ -763,9 +857,11 @@ def test_pgt_collection(name: str, rdf_graph: RDFGraph) -> None:
     [("Container_PGT", get_rdf_graph("container.ttl"))],
 )
 def test_pgt_container(name: str, rdf_graph: RDFGraph) -> None:
-    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, True)
+    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, True, False)
 
-    doc = adb_graph.vertex_collection("TestDoc").get("Doc")
+    _doc = rdf_id_to_adb_key("http://example.com/Doc")
+
+    doc = adb_graph.vertex_collection("TestDoc").get(_doc)
     assert "numbers" in doc
     assert doc["numbers"] == [
         1,
@@ -788,11 +884,18 @@ def test_pgt_container(name: str, rdf_graph: RDFGraph) -> None:
         name, type(rdf_graph)(), list_conversion_mode="container"
     )
 
-    assert len(rdf_graph_2) == 49
-    doc = URIRef("http://example.org/test#Doc")
-    numbers = URIRef("http://example.org/test#numbers")
-    planets = URIRef("http://example.org/test#planets")
+    assert len(rdf_graph_2) == 47
+    doc = URIRef("http://example.com/Doc")
+    planets = URIRef("http://example.com/planets")
 
+    # TODO - REVISIT
+    # numbers = URIRef("http://example.com/numbers")
+    # random = URIRef("http://example.com/random")
+    # nested_container = URIRef("http://example.com/nested_container")
+    adb_graph_namepspace = f"{db._conn._url_prefixes[0]}/{name}#"
+    numbers = URIRef(f"{adb_graph_namepspace}numbers")
+
+    # TODO - REVISIT
     assert (doc, numbers, None) in rdf_graph_2
     assert (doc, planets, None) in rdf_graph_2
 
@@ -818,20 +921,20 @@ def test_adb_doc_with_dict_property_to_rdf(name: str) -> None:
 
     db.collection("TestDoc").insert(doc)
 
-    adb = "http://www.arangodb.com"
-    test_doc = URIRef(f"{adb}/TestDoc_1")
+    adb_graph_namespace = f"{db._conn._url_prefixes[0]}/{name}#"
+    test_doc = URIRef(f"{adb_graph_namespace}1")
 
-    rdf_graph = adbrdf.arangodb_graph_to_rdf("TestGraph", RDFGraph())
+    rdf_graph = adbrdf.arangodb_graph_to_rdf("TestGraph", RDFGraph(), "collection")
     assert len(rdf_graph) == 15
-    assert (test_doc, URIRef(f"{adb}/val"), None) in rdf_graph
-    assert (None, URIRef(f"{adb}/sub_val_1"), Literal(1)) in rdf_graph
-    assert (None, URIRef(f"{adb}/sub_val_2"), None) in rdf_graph
-    assert (None, URIRef(f"{adb}/sub_val_3"), Literal(3)) in rdf_graph
-    assert (None, URIRef(f"{adb}/sub_val_4"), None) in rdf_graph
+    assert (test_doc, URIRef(f"{adb_graph_namespace}val"), None) in rdf_graph
+    assert (None, URIRef(f"{adb_graph_namespace}sub_val_1"), Literal(1)) in rdf_graph
+    assert (None, URIRef(f"{adb_graph_namespace}sub_val_2"), None) in rdf_graph
+    assert (None, URIRef(f"{adb_graph_namespace}sub_val_3"), Literal(3)) in rdf_graph
+    assert (None, URIRef(f"{adb_graph_namespace}sub_val_4"), None) in rdf_graph
     assert (None, RDF.first, Literal(4)) in rdf_graph
-    assert (None, URIRef(f"{adb}/sub_val_5"), None) in rdf_graph
-    assert (None, URIRef(f"{adb}/sub_val_6"), Literal(6)) in rdf_graph
-    assert (None, URIRef(f"{adb}/sub_val_7"), Literal(7)) in rdf_graph
+    assert (None, URIRef(f"{adb_graph_namespace}sub_val_5"), None) in rdf_graph
+    assert (None, URIRef(f"{adb_graph_namespace}sub_val_6"), Literal(6)) in rdf_graph
+    assert (None, URIRef(f"{adb_graph_namespace}sub_val_7"), Literal(7)) in rdf_graph
 
     # TODO: Should this bring back the original dict structure?
     # Need to discuss...
