@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 
 from abc import ABC
-from typing import Any, Set, Optional
+from typing import Any, Optional, Set
 
 from arango.graph import Graph as ADBGraph
-from rdflib import Graph as RDFGraph, URIRef
+from rdflib import Graph as RDFGraph
+from rdflib import URIRef
 
 from .typings import ADBMetagraph
 
