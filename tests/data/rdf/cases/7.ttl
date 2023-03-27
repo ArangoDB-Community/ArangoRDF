@@ -1,6 +1,7 @@
 @prefix : <http://example.com/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix adb: <http://www.arangodb.com/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
 
 :alice a :Arson .
 :alice a :Author .
@@ -14,7 +15,7 @@
 :LivingThing rdfs:subClassOf :Thing .
 :Thing rdfs:subClassOf :Object .
 :Object rdfs:subClassOf rdfs:Class .
-rdfs:Class rdfs:subClassOf rdfs:Class .
+owl:Class rdfs:subClassOf rdfs:Class .
 
 :charlie a :LivingThing .
 :charlie a :Animal .

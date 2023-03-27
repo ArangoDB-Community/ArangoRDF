@@ -1,7 +1,7 @@
 @prefix ex: <http://example.com/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-ex:book ex:publish_date "1963-03-22"^^xsd:date .
+ex:book ex:publish_date "1963-03-22" .
 ex:book ex:pages "100"^^xsd:integer .
 ex:book ex:cover 20 .
 ex:book ex:index "55" .
