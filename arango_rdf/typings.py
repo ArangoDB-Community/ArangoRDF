@@ -1,6 +1,15 @@
-__all__ = ["Json", "ADBMetagraph", "ADBDocs", "RDFLists", "RDFObject", "RDFSubject"]
+__all__ = [
+    "Json",
+    "ADBMetagraph",
+    "ADBDocs",
+    "RDFLists",
+    "RDFObject",
+    "RDFSubject",
+    "TermMetadata",
+    "DomainRangeMap",
+]
 
-from typing import Any, DefaultDict, Dict, Set, Union
+from typing import Any, DefaultDict, Dict, Set, Tuple, Union
 
 from rdflib import BNode, Literal, URIRef
 
@@ -14,3 +23,6 @@ RDFObject = Union[URIRef, BNode, Literal]
 RDFSubject = Union[URIRef, BNode]
 
 RDFLists = DefaultDict[str, DefaultDict[str, Json]]
+TermMetadata = Tuple[str, str, str, str]
+
+DomainRangeMap = DefaultDict[Union[URIRef, BNode], DefaultDict[str, Json]]

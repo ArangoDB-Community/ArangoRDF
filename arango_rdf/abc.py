@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 from abc import ABC
-from typing import Any, Set
+from typing import Any, Set, Optional
 
 from arango.graph import Graph as ADBGraph
-from rdflib import Graph as RDFGraph
+from rdflib import Graph as RDFGraph, URIRef
 
 from .typings import ADBMetagraph
 
@@ -18,8 +18,9 @@ class Abstract_ArangoRDF(ABC):
         self,
         name: str,
         rdf_graph: RDFGraph,
-        overwrite_graph: bool = False,
-        load_base_ontology: bool = False,
+        overwrite_graph: bool,
+        contextualize_graph: bool,
+        batch_size: Optional[int],
         **import_options: Any,
     ) -> ADBGraph:
         raise NotImplementedError  # pragma: no cover
@@ -28,8 +29,10 @@ class Abstract_ArangoRDF(ABC):
         self,
         name: str,
         rdf_graph: RDFGraph,
-        overwrite_graph: bool = False,
-        load_base_ontology: bool = False,
+        overwrite_graph: bool,
+        contextualize_graph: bool,
+        adb_collection_uri: URIRef,
+        batch_size: Optional[int],
         **import_options: Any,
     ) -> ADBGraph:
         raise NotImplementedError  # pragma: no cover
@@ -39,7 +42,10 @@ class Abstract_ArangoRDF(ABC):
         name: str,
         rdf_graph: RDFGraph,
         metagraph: ADBMetagraph,
-        **query_options: Any,
+        list_conversion_mode: str,
+        adb_graph_namespace: str,
+        reify_triples: bool,
+        **export_options: Any,
     ) -> RDFGraph:
         raise NotImplementedError  # pragma: no cover
 
@@ -49,12 +55,21 @@ class Abstract_ArangoRDF(ABC):
         rdf_graph: RDFGraph,
         v_cols: Set[str],
         e_cols: Set[str],
-        **query_options: Any,
+        list_conversion_mode: str,
+        adb_graph_namespace: str,
+        reify_triples: bool,
+        **export_options: Any,
     ) -> RDFGraph:
         raise NotImplementedError  # pragma: no cover
 
     def arangodb_graph_to_rdf(
-        self, name: str, rdf_graph: RDFGraph, **query_options: Any
+        self,
+        name: str,
+        rdf_graph: RDFGraph,
+        list_conversion_mode: str,
+        adb_graph_namespace: str,
+        reify_triples: bool,
+        **export_options: Any,
     ) -> RDFGraph:
         raise NotImplementedError  # pragma: no cover
 

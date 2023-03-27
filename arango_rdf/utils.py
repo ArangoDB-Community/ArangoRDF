@@ -1,14 +1,13 @@
 import logging
 import os
 
-from rich.progress import (
+from rich.progress import (  # TimeRemainingColumn,
     BarColumn,
     Progress,
     SpinnerColumn,
     TaskProgressColumn,
     TextColumn,
     TimeElapsedColumn,
-    TimeRemainingColumn,
 )
 
 logger = logging.getLogger(__package__)
@@ -27,7 +26,8 @@ def rdf_track(text: str, color: str) -> Progress:
         BarColumn(complete_style=color, finished_style=color),
         TaskProgressColumn(),
         TextColumn("({task.completed}/{task.total})"),
-        TimeRemainingColumn(),
+        TimeElapsedColumn(),
+        # TimeRemainingColumn()
     )
 
 
