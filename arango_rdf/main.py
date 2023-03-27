@@ -1272,7 +1272,7 @@ class ArangoRDF(Abstract_ArangoRDF):
 
                     statement = (subject, predicate, object)
                     if graph_supports_quads and doc.get("_sub_graph_uri"):
-                        rdf_graph.remove(statement)  # type: ignore[no-untyped-call]
+                        rdf_graph.remove(statement)
                         statement += (URIRef(doc["_sub_graph_uri"]),)  # type: ignore
 
                     rdf_graph.add(statement)
