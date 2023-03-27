@@ -154,7 +154,7 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_2
 
     assert len(rdf_graph_2) == 815
-    compare_graphs(rdf_graph_2, rdf_graph)
+    compare_graphs(rdf_graph, rdf_graph_2)
 
     db.delete_graph(name, drop_collections=True)
 
