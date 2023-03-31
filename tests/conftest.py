@@ -8,7 +8,6 @@ from arango import ArangoClient, DefaultHTTPClient
 from arango.database import StandardDatabase
 from rdflib import Dataset
 from rdflib import Graph as RDFGraph
-from rdflib import URIRef
 
 from arango_rdf import ArangoRDF
 
@@ -50,18 +49,39 @@ def pytest_configure(config: Any) -> None:
     global adbrdf
     adbrdf = ArangoRDF(db, logging_lvl=logging.DEBUG)
 
-    # db.delete_graph("imdb", drop_collections=True, ignore_missing=True)
-    # arango_restore(con, "tests/data/adb/imdb_dump")
-    # db.create_graph(
-    #     "imdb",
-    #     edge_definitions=[
-    #         {
-    #             "edge_collection": "Ratings",
-    #             "from_vertex_collections": ["Users"],
-    #             "to_vertex_collections": ["Movies"],
-    #         },
-    #     ],
-    # )
+    if db.has_graph("fraud-detection") is False:
+        arango_restore(con, "tests/data/adb/fraud_dump")
+        db.delete_collection("Class")
+        db.delete_collection("Relationship")
+        db.create_graph(
+            "fraud-detection",
+            edge_definitions=[
+                {
+                    "edge_collection": "accountHolder",
+                    "from_vertex_collections": ["customer"],
+                    "to_vertex_collections": ["account"],
+                },
+                {
+                    "edge_collection": "transaction",
+                    "from_vertex_collections": ["account"],
+                    "to_vertex_collections": ["account"],
+                },
+            ],
+            orphan_collections=["bank", "branch"],
+        )
+
+    if db.has_graph("imdb") is False:
+        arango_restore(con, "tests/data/adb/imdb_dump")
+        db.create_graph(
+            "imdb",
+            edge_definitions=[
+                {
+                    "edge_collection": "Ratings",
+                    "from_vertex_collections": ["Users"],
+                    "to_vertex_collections": ["Movies"],
+                },
+            ],
+        )
 
 
 def arango_restore(con: Dict[str, Any], path_to_data: str) -> None:
@@ -116,7 +136,17 @@ def get_adb_graph_count(name: str) -> Tuple[int, int]:
 
 
 def compare_graphs(rdf_graph_1: RDFGraph, rdf_graph_2: RDFGraph):
-    adb_uri = URIRef("http://www.arangodb.com/collection")
-    for s, p, o in rdf_graph_1:
-        if p != adb_uri:
-            assert (s, p, o) in rdf_graph_2
+    for s, p, o, *_ in rdf_graph_1:
+        assert (s, p, o) in rdf_graph_2
+
+    # for s,p,o in rdf_graph_2:
+    #     assert (s,p,o) in rdf_graph_1
+
+
+def contrast_graphs(rdf_graph_1: RDFGraph, rdf_graph_2: RDFGraph):
+    outersection = set()
+    for s, p, o in rdf_graph_2:
+        if (s, p, o) not in rdf_graph_1:
+            outersection.add((s, p, o))
+
+    return outersection

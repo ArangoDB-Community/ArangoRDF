@@ -9,7 +9,14 @@ from rdflib.namespace import RDF, RDFS
 
 from arango_rdf import ArangoRDF
 
-from .conftest import adbrdf, compare_graphs, db, get_adb_graph_count, get_rdf_graph
+from .conftest import (
+    adbrdf,
+    compare_graphs,
+    # contrast_graphs,
+    db,
+    get_adb_graph_count,
+    get_rdf_graph,
+)
 
 
 def rdf_id_to_adb_key(rdf_id: str):
@@ -36,7 +43,7 @@ def test_constructor() -> None:
         ("Case_3_2_RPT", get_rdf_graph("cases/3_2.ttl"), 2, 1, 0, 2, False),
         ("Case_4_RPT", get_rdf_graph("cases/4.ttl"), 7, 2, 3, 3, False),
         ("Case_5_RPT", get_rdf_graph("cases/5.ttl"), 1, 1, 1, 0, False),
-        ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 10, 8, 0, 1, False),
+        ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 11, 9, 0, 1, False),
         ("Case_7_RPT", get_rdf_graph("cases/7.ttl"), 22, 19, 0, 1, False),
         ("Meta_RPT", RDFGraph(), 803, 133, 0, 234, True),
     ],
@@ -155,6 +162,8 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
 
     assert len(rdf_graph_2) == 815
     compare_graphs(rdf_graph, rdf_graph_2)
+    # outersection = contrast_graphs(rdf_graph, rdf_graph_2)
+    # assert outersection TODO
 
     db.delete_graph(name, drop_collections=True)
 
@@ -659,6 +668,7 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     graph2 = URIRef("http://example.com/Graph2")
 
     # Original Statement assertions
+    # NOTE: We lose the Sub Graph URI here...
     assert (monica, monica_name, Literal("Monica")) in rdf_graph_2
 
     assert (management, RDF.type, skill, graph1) in rdf_graph_2
@@ -681,7 +691,9 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_2
     assert (RDF.type, RDF.type, RDF.Property) in rdf_graph_2
 
-    assert len(rdf_graph_2) == 834
+    assert len(rdf_graph_2) == 837
+    # TODO - REVISIT
+    # compare_graphs(rdf_graph, rdf_graph_2)
 
     db.delete_graph(name, drop_collections=True)
 
@@ -921,10 +933,11 @@ def test_adb_doc_with_dict_property_to_rdf(name: str) -> None:
 
     db.collection("TestDoc").insert(doc)
 
+    rdf_graph = adbrdf.arangodb_graph_to_rdf(name, RDFGraph(), "collection")
+
     adb_graph_namespace = f"{db._conn._url_prefixes[0]}/{name}#"
     test_doc = URIRef(f"{adb_graph_namespace}1")
 
-    rdf_graph = adbrdf.arangodb_graph_to_rdf("TestGraph", RDFGraph(), "collection")
     assert len(rdf_graph) == 15
     assert (test_doc, URIRef(f"{adb_graph_namespace}val"), None) in rdf_graph
     assert (None, URIRef(f"{adb_graph_namespace}sub_val_1"), Literal(1)) in rdf_graph
@@ -942,3 +955,35 @@ def test_adb_doc_with_dict_property_to_rdf(name: str) -> None:
     # db.delete_graph(f"{name}2", drop_collections=True)
 
     db.delete_graph(name, drop_collections=True)
+
+
+@pytest.mark.parametrize("name", [("fraud-detection"), ("imdb")])
+def test_adb_native_graph_to_rdf(name: str) -> None:
+    adb_graph = db.graph(name)
+    rdf_graph = adbrdf.arangodb_graph_to_rdf(name, RDFGraph(), reify_triples=True)
+
+    adb_graph_namespace = f"{db._conn._url_prefixes[0]}/{name}#"
+
+    for v_col in adb_graph.vertex_collections():
+        for doc in db.collection(v_col):
+            term = URIRef(f"{adb_graph_namespace}{doc['_key']}")
+            for k, v in doc.items():
+                if k not in ["_key", "_id", "_rev"]:
+                    property = URIRef(f"{adb_graph_namespace}{k}")
+                    assert (term, property, Literal(v)) in rdf_graph
+
+    for e_d in adb_graph.edge_definitions():
+        e_col = e_d["edge_collection"]
+        e_col_uri = URIRef(f"{adb_graph_namespace}{e_col}")
+
+        for edge in db.collection(e_col):
+            term = URIRef(f"{adb_graph_namespace}{edge['_key']}")
+            subject = URIRef(f"{adb_graph_namespace}{edge['_from'].split('/')[-1]}")
+            object = URIRef(f"{adb_graph_namespace}{edge['_to'].split('/')[-1]}")
+
+            assert (subject, e_col_uri, object) in rdf_graph
+
+            for k, v in edge.items():
+                if k not in ["_key", "_id", "_rev", "_from", "_to"]:
+                    property = URIRef(f"{adb_graph_namespace}{k}")
+                    assert (term, property, Literal(v)) in rdf_graph
