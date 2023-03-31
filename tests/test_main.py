@@ -12,7 +12,6 @@ from arango_rdf import ArangoRDF
 from .conftest import (
     adbrdf,
     compare_graphs,
-    # contrast_graphs,
     db,
     get_adb_graph_count,
     get_rdf_graph,
