@@ -9,13 +9,7 @@ from rdflib.namespace import RDF, RDFS
 
 from arango_rdf import ArangoRDF
 
-from .conftest import (
-    adbrdf,
-    compare_graphs,
-    db,
-    get_adb_graph_count,
-    get_rdf_graph,
-)
+from .conftest import adbrdf, compare_graphs, db, get_adb_graph_count, get_rdf_graph
 
 
 def rdf_id_to_adb_key(rdf_id: str):
