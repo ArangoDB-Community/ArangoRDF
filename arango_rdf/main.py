@@ -4,7 +4,6 @@ import hashlib
 import logging
 import os
 import re
-import sys
 from ast import literal_eval
 from collections import defaultdict
 from datetime import date
@@ -28,8 +27,8 @@ from .abc import Abstract_ArangoRDF
 from .typings import (
     ADBDocs,
     ADBMetagraph,
-    DomainRangeMap,
     Json,
+    PredicateScope,
     RDFLists,
     RDFObject,
     RDFSubject,
@@ -68,18 +67,181 @@ class ArangoRDF(Abstract_ArangoRDF):
         # A dictionary mapping all of the to-be-inserted ArangoDB
         # documents to their ArangoDB collection.
         self.adb_docs: ADBDocs
-        self.__domain_range_map: DomainRangeMap
         self.__rdf_lists: RDFLists
+        self.adb_col_uri = URIRef("http://www.arangodb.com/collection")
 
         self.__rdf_type_str = str(RDF.type)
         self.__rdf_type_key = self.rdf_id_to_adb_key(self.__rdf_type_str)
         self.__rdf_property_str = str(RDF.Property)
         self.__rdf_property_key = self.rdf_id_to_adb_key(self.__rdf_property_str)
 
+        self.__base_ontology_graph = RDFConjunctiveGraph()
+        for ns in os.listdir(f"{PROJECT_DIR}/meta"):
+            self.__base_ontology_graph.parse(f"{PROJECT_DIR}/meta/{ns}", format="trig")
+
         logger.info(f"Instantiated ArangoRDF with database '{db.name}'")
 
     def set_logging(self, level: Union[int, str]) -> None:
         logger.setLevel(level)
+
+    def build_adb_mapping(
+        self, rdf_graph: RDFGraph, adb_mapping: Optional[RDFGraph] = None
+    ) -> RDFGraph:
+        """A pre-processing step that iterates through specific RDF Graph
+        statements to build a URI-to-ArangoDB-Collection mapping of all
+        RDF Nodes within the graph.
+
+        This step is required for the PGT Processing stage in order to
+        ensure each RDF Node is properly identified and categorized under
+        a specific ArangoDB collection.
+
+        TODO: Add more to docstring
+        """
+        if adb_mapping is None:
+            adb_mapping = RDFGraph()
+
+        adb_mapping.bind("adb", "http://www.arangodb.com/")
+
+        statements = (
+            rdf_graph.quads
+            if isinstance(rdf_graph, (RDFDataset, RDFConjunctiveGraph))
+            else rdf_graph.triples
+        )
+
+        type_map: DefaultDict[URIRef, Set[str]] = defaultdict(set)
+        domain_range_map: DefaultDict[URIRef, Set[str]] = defaultdict(set)
+        subclass_map: DefaultDict[str, Set[str]] = defaultdict(set)
+        subproperty_map: DefaultDict[str, Set[str]] = defaultdict(set)
+
+        ############################################################
+        t = (None, self.adb_col_uri, None)
+        for s, _, o, *_ in statements(t):  # type: ignore
+            if not isinstance(o, Literal):
+                raise ValueError(f"Object {o} must be Literal")  # pragma: no cover
+
+            if (s, None, None) in adb_mapping and (s, None, o) not in adb_mapping:
+                # TODO: Create custom error
+                raise ValueError(  # pragma: no cover
+                    f"""
+                    Subject '{s}' can only have 1 ArangoDB Collection association.
+                    Found '{adb_mapping.value(s, self.adb_col_uri)}' and '{str(o)}'.
+                    """
+                )
+
+            adb_mapping.add((s, self.adb_col_uri, o))
+
+        ############################################################
+        self.build_predicate_scope(rdf_graph, adb_mapping)
+        ############################################################
+        t = (None, RDF.type, None)
+        for s, _, o, *_ in statements(t):  # type: ignore[operator]
+            if (s, None, None) not in adb_mapping:
+                type_map[s].add(str(o))
+
+            if (o, None, None) not in adb_mapping:
+                adb_mapping.add((o, self.adb_col_uri, Literal("Class")))
+
+        ############################################################
+        sub_map: DefaultDict[str, Set[str]]
+        for sub_map, adb_col, p in [
+            (subclass_map, "Class", RDFS.subClassOf),
+            (subproperty_map, "Property", RDFS.subPropertyOf),
+        ]:
+            t = (None, p, None)
+            for s, _, o, *_ in statements(t):  # type: ignore[operator]
+                sub_map[str(s)].add(str(o))
+
+                if (s, None, None) not in adb_mapping:
+                    adb_mapping.add((s, self.adb_col_uri, Literal(adb_col)))
+
+                if (o, None, None) not in adb_mapping:
+                    adb_mapping.add((o, self.adb_col_uri, Literal(adb_col)))
+
+        ############################################################
+        unique_predicates = rdf_graph.predicates(subject=None, object=None, unique=True)
+        for p in unique_predicates:  # type: ignore[assignment]
+            if (p, None, None) not in adb_mapping:
+                adb_mapping.add((p, self.adb_col_uri, Literal("Property")))
+
+        ############################################################
+        for p, data in self.__predicate_scope.items():
+            t = (None, p, None)
+            for s, _, o, *_ in statements(t):  # type: ignore[operator]
+                if (s, None, None) not in adb_mapping and data["domain"]:
+                    domain_range_map[s].add(data["domain"]["str"])
+
+                if (o, None, None) not in adb_mapping and data["range"]:
+                    domain_range_map[o].add(data["range"]["str"])
+        ############################################################
+
+        # Helper function to recursively iterate through `subclass_map`
+        def get_depth(class_str: str, depth: int) -> int:
+            if class_str not in subclass_map:
+                return depth
+
+            for sub_class_str in subclass_map[class_str]:
+                if sub_class_str == class_str:
+                    return depth  # pragma: no cover
+
+                return get_depth(sub_class_str, depth + 1)
+
+            return -1  # pragma: no cover
+
+        for rdf_map in [type_map, domain_range_map]:
+            for rdf_resource, class_set in rdf_map.items():
+                if (rdf_resource, None, None) in adb_mapping:
+                    continue
+
+                elif len(class_set) == 1:
+                    adb_col = self.rdf_id_to_adb_label(class_set.pop())
+
+                elif any([c in subclass_map for c in class_set]):
+                    max_depth = -1
+                    best_class = ""
+                    # NOTE: Process is not deterministic if `sorted()` is removed
+                    for c in sorted(class_set):
+                        depth = get_depth(c, 0)
+
+                        if depth > max_depth:
+                            max_depth = depth
+                            best_class = c
+
+                    adb_col = self.rdf_id_to_adb_label(best_class)
+
+                else:
+                    adb_col = self.rdf_id_to_adb_label(sorted(class_set)[0])
+
+                adb_mapping.add((rdf_resource, self.adb_col_uri, Literal(adb_col)))
+
+        return adb_mapping
+
+    def build_predicate_scope(
+        self, rdf_graph: RDFGraph, adb_mapping: Optional[RDFGraph] = None
+    ) -> None:
+        self.__predicate_scope: PredicateScope = defaultdict(lambda: defaultdict(dict))
+        class_blacklist = [str(RDFS.Literal), str(RDFS.Resource)]
+        statements = (
+            rdf_graph.quads
+            if isinstance(rdf_graph, (RDFDataset, RDFConjunctiveGraph))
+            else rdf_graph.triples
+        )
+
+        for label in ["domain", "range"]:
+            t = (None, RDFS[label], None)
+            for p, _, c, *_ in statements(t):  # type: ignore
+                class_str = str(c)
+                if class_str not in class_blacklist:
+                    self.__predicate_scope[p][label] = {
+                        "key": self.rdf_id_to_adb_key(class_str),
+                        "str": class_str,
+                    }
+
+                if adb_mapping is not None:
+                    if (p, None, None) not in adb_mapping:
+                        adb_mapping.add((p, self.adb_col_uri, Literal("Property")))
+
+                    if (c, None, None) not in adb_mapping:
+                        adb_mapping.add((c, self.adb_col_uri, Literal("Class")))
 
     def rdf_to_arangodb_by_rpt(
         self,
@@ -119,15 +281,8 @@ class ArangoRDF(Abstract_ArangoRDF):
         """
 
         self.adb_docs = defaultdict(lambda: defaultdict(dict))
-        self.__domain_range_map = defaultdict(lambda: defaultdict(dict))
-        self.__rdf_statements = (
-            rdf_graph.quads
-            if isinstance(rdf_graph, (RDFDataset, RDFConjunctiveGraph))
-            else rdf_graph.triples
-        )
 
         self.__rdf_graph = rdf_graph
-        self.__contextualize_graph = contextualize_graph
         self.__import_options = import_options
         self.__import_options["on_duplicate"] = "update"
 
@@ -137,28 +292,35 @@ class ArangoRDF(Abstract_ArangoRDF):
         self.__LITERAL_COL = f"{name}_Literal"
         self.__STATEMENT_COL = f"{name}_Statement"
 
-        if self.__contextualize_graph:
-            for ns in os.listdir(f"{PROJECT_DIR}/meta"):
-                rdf_graph.parse(f"{PROJECT_DIR}/meta/{ns}")
-
-            self.__build_domain_and_range_map()
-
         if overwrite_graph:
             self.db.delete_graph(name, ignore_missing=True, drop_collections=True)
 
-        size = len(rdf_graph)
+        if contextualize_graph:
+            self.__rdf_graph = self.__base_ontology_graph + rdf_graph
+            self.build_predicate_scope(self.__rdf_graph)
+
+        size = len(self.__rdf_graph)
         if batch_size is None:
             batch_size = size
+
+        s: RDFSubject  # Subject
+        p: URIRef  # Predicate
+        o: RDFObject  # Object
+        sg: Union[RDFGraph, str]  # Sub Graph
+
+        statements = (
+            self.__rdf_graph.quads
+            if isinstance(self.__rdf_graph, (RDFDataset, RDFConjunctiveGraph))
+            else self.__rdf_graph.triples
+        )
 
         self.__setup_iterators("RDF → ADB (RPT)", "#08479E", "    ")
         with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
             self.__rdf_task = self.__rdf_iterator.add_task("", total=size)
 
-            s: RDFSubject  # Subject
-            p: URIRef  # Predicate
-            o: RDFObject  # Object
-
-            for count, (s, p, o, *sub_graph) in enumerate(rdf_graph, 1):  # type: ignore
+            t = (None, None, None)
+            enum_object = enumerate(statements(t), 1)  # type: ignore[operator]
+            for count, (s, p, o, *rest) in enum_object:
                 self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
                 s_col, s_key = self.__rpt_process_term(s)
@@ -168,6 +330,8 @@ class ArangoRDF(Abstract_ArangoRDF):
                 p_key = self.rdf_id_to_adb_key(p_str)
                 p_label = self.rdf_id_to_adb_label(p_str)
 
+                sg = rest[0] if rest else ""  # sub graph
+
                 self.__add_adb_edge(
                     self.__STATEMENT_COL,
                     f"{s_key}-{p_key}-{o_key}",
@@ -175,10 +339,10 @@ class ArangoRDF(Abstract_ArangoRDF):
                     f"{o_col}/{o_key}",
                     p_str,
                     p_label,
-                    str(sub_graph[0]) if sub_graph else "",
+                    str(sg.identifier if isinstance(sg, RDFGraph) else sg),
                 )
 
-                if self.__contextualize_graph:
+                if contextualize_graph:
                     p_col, p_key = self.__rpt_process_term(p)
                     self.__add_adb_edge(
                         self.__STATEMENT_COL,
@@ -192,8 +356,8 @@ class ArangoRDF(Abstract_ArangoRDF):
 
                     dr_list = [(s_col, s_key, "domain"), (o_col, o_key, "range")]
                     for term_col, term_key, dr in dr_list:
-                        if self.__domain_range_map[p][dr]:
-                            dr_key = self.__domain_range_map[p][dr]["key"]
+                        if self.__predicate_scope[p][dr]:
+                            dr_key = self.__predicate_scope[p][dr]["key"]
 
                             self.__add_adb_edge(
                                 self.__STATEMENT_COL,
@@ -246,19 +410,19 @@ class ArangoRDF(Abstract_ArangoRDF):
         elif isinstance(t, Literal):
             t_col = self.__LITERAL_COL
             t_key = str(hash(t_str))
-
             t_value = t_str if isinstance(t.value, date) else t.value or t_str
-            t_datatype = t.datatype or "http://www.w3.org/2001/XMLSchema#string"
-            t_lang = t.language or "en"
 
             self.adb_docs[t_col][t_key] = {
                 "_key": t_key,
                 "_value": t_value,
                 "_label": t_value,  # TODO: REVISIT
-                "_lang": t_lang,
-                "_datatype": t_datatype,
                 "_rdftype": "Literal",
             }
+
+            if t.language:
+                self.adb_docs[t_col][t_key]["_lang"] = t.language
+            elif t.datatype:
+                self.adb_docs[t_col][t_key]["_datatype"] = str(t.datatype)
 
         else:
             raise ValueError()  # pragma: no cover
@@ -299,9 +463,9 @@ class ArangoRDF(Abstract_ArangoRDF):
         self,
         name: str,
         rdf_graph: RDFGraph,
+        adb_mapping: Optional[RDFGraph] = None,
         overwrite_graph: bool = False,
         contextualize_graph: bool = False,
-        adb_collection_uri: URIRef = URIRef("http://www.arangodb.com/collection"),
         batch_size: Optional[int] = None,
         **import_options: Any,
     ) -> ADBGraph:
@@ -314,6 +478,8 @@ class ArangoRDF(Abstract_ArangoRDF):
         :type name: str
         :param rdf_graph: The RDF Graph object
         :type: rdf_graph: rdflib.graph.Graph
+        :param adb_mapping: TODO: Define
+        :type: adb_mapping: rdflib.graph.Graph
         :param overwrite_graph: Overwrites the graph if it already exists, and drops its
             associated collections. Defaults to False.
         :type overwrite_graph: bool
@@ -341,17 +507,10 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         # Reset config
         self.adb_docs = defaultdict(lambda: defaultdict(dict))
-        self.__domain_range_map = defaultdict(lambda: defaultdict(dict))
         self.__rdf_lists = defaultdict(lambda: defaultdict(dict))
-        self.__rdf_statements = (
-            rdf_graph.quads
-            if isinstance(rdf_graph, (RDFDataset, RDFConjunctiveGraph))
-            else rdf_graph.triples
-        )
 
         self.__rdf_graph = rdf_graph
-        self.__contextualize_graph = contextualize_graph
-        self.__adb_collection_uri = adb_collection_uri
+        self.adb_mapping = adb_mapping or self.build_adb_mapping(rdf_graph)
         self.__import_options = import_options
         self.__import_options["on_duplicate"] = "update"
         self.__process_rdf_val_as_string = False
@@ -363,41 +522,48 @@ class ArangoRDF(Abstract_ArangoRDF):
         # are subject to change)
         self.__adb_col_blacklist: Set[str] = set()
         # ArangoDB Collection name for all unidentified RDF Resources
-        self.__UNIDENTIFIED_NODE_COL = f"{name}_UnidentifiedNode"
+        self.__UNKNOWN_RESOURCE = f"{name}_UnknownResource"
         # Maintains the set of ArangoDB Edge Definitions of the RDF Graph
         self.__e_col_map: DefaultDict[str, DefaultDict[str, Set[str]]]
         self.__e_col_map = defaultdict(lambda: defaultdict(set))
 
-        if self.__contextualize_graph:
-            for ns in os.listdir(f"{PROJECT_DIR}/meta"):
-                rdf_graph.parse(f"{PROJECT_DIR}/meta/{ns}")
-
         if overwrite_graph:
             self.db.delete_graph(name, ignore_missing=True, drop_collections=True)
 
-        size = len(rdf_graph)
+        if contextualize_graph:
+            self.__rdf_graph = self.__base_ontology_graph + rdf_graph
+            self.adb_mapping = self.build_adb_mapping(
+                self.__rdf_graph, self.adb_mapping
+            )
+
+        size = len(self.__rdf_graph)
         if batch_size is None:
             batch_size = size
 
-        self.__build_domain_and_range_map()
-        self.__pgt_build_col_map()
+        s: RDFSubject  # Subject
+        p: URIRef  # Predicate
+        o: RDFObject  # Object
+        sg: Union[RDFGraph, str]  # Sub Graph
+
+        statements = (
+            self.__rdf_graph.quads
+            if isinstance(self.__rdf_graph, (RDFDataset, RDFConjunctiveGraph))
+            else self.__rdf_graph.triples
+        )
 
         ############## PGT Processing ##############
         self.__setup_iterators("RDF → ADB (PGT)", "#08479E", "    ")
         with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
             self.__rdf_task = self.__rdf_iterator.add_task("", total=size)
 
-            s: RDFSubject  # Subject
-            p: URIRef  # Predicate
-            o: RDFObject  # Object
-
             # object_blacklist = [RDF.nil, RDF.Alt, RDF.Bag, RDF.List, RDF.Seq]
 
-            for count, (s, p, o, *sub_graph) in enumerate(rdf_graph, 1):  # type: ignore
+            t = (None, None, None)
+            enum_object = enumerate(statements(t), 1)  # type: ignore[operator]
+            for count, (s, p, o, *rest) in enum_object:
                 self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
-                # TODO: Discuss repercussions
-                if p == self.__adb_collection_uri:  # or o in object_blacklist:
+                if p == self.adb_col_uri:  # or o in object_blacklist:
                     continue
 
                 s_str = str(s)
@@ -412,16 +578,18 @@ class ArangoRDF(Abstract_ArangoRDF):
                     self.__rdf_val_to_adb_property(doc, p_label, o)
 
                 else:
-                    sg = str(sub_graph[0]) if sub_graph else ""
+                    # Get Sub Graph URI (if it exists)
+                    sg = rest[0] if rest else ""
+                    sg_str = str(sg.identifier if isinstance(sg, RDFGraph) else sg)
 
                     s_meta = self.__pgt_get_term_metadata(s_str)
                     o_meta = self.__pgt_get_term_metadata(o_str)
 
                     self.__pgt_process_subject(s, s_meta)
-                    self.__pgt_process_predicate(s_meta, p_meta, o, o_meta, sg)
-                    self.__pgt_process_object(s_meta, p_meta, o, o_meta, sg)
+                    self.__pgt_process_predicate(s_meta, p_meta, o, o_meta, sg_str)
+                    self.__pgt_process_object(s_meta, p_meta, o, o_meta, sg_str)
 
-                    if self.__contextualize_graph:
+                    if contextualize_graph:
                         # TODO: REVISIT
                         p_col = self.__col_map.get(p_str, "Property")
                         new_p_meta = (p_meta[0], p_meta[1], p_col, p_meta[3])
@@ -438,9 +606,9 @@ class ArangoRDF(Abstract_ArangoRDF):
 
                         dr_list = [(s_meta, "domain"), (o_meta, "range")]
                         for term_meta, dr in dr_list:
-                            if self.__domain_range_map[p][dr]:
+                            if self.__predicate_scope[p][dr]:
                                 _, term_key, term_col, _ = term_meta
-                                dr_key = self.__domain_range_map[p][dr]["key"]
+                                dr_key = self.__predicate_scope[p][dr]["key"]
 
                                 self.__add_adb_edge(
                                     "type",
@@ -467,141 +635,18 @@ class ArangoRDF(Abstract_ArangoRDF):
         gc.collect()
         ############## ############### ##############
 
-        if self.db.has_collection(self.__UNIDENTIFIED_NODE_COL):
-            un_count = self.db.collection(self.__UNIDENTIFIED_NODE_COL).count()
+        if self.db.has_collection(self.__UNKNOWN_RESOURCE):
+            un_count = self.db.collection(self.__UNKNOWN_RESOURCE).count()
             logger.info(
                 f"""\n
                 ----------------
-                UnidentifiedNodes found in graph '{name}'.
-                No `rdf:type` statement found for the
-                following number of URIRefs/BNodes: {un_count}.
+                Unknown Resource(s) found in graph '{name}'.
+                Unable to identify the nature of {un_count} URIRefs & BNodes.
                 ----------------
                 """
             )
 
         return self.__pgt_create_adb_graph(name)
-
-    def __pgt_build_col_map(self) -> None:
-        """A pre-processing step that iterates through specific RDF Graph
-        statements to build a URI-to-ArangoDB-Collection mapping of all
-        RDF Nodes within the graph.
-
-        This step is required for the PGT Processing stage in order to
-        ensure each RDF Node is properly identified and categorized under
-        a specific ArangoDB collection.
-        """
-        type_map: DefaultDict[str, Set[str]] = defaultdict(set)
-        subclass_map: DefaultDict[str, Set[str]] = defaultdict(set)
-
-        explicit_col_map = self.__pgt_build_explicit_col_map()
-
-        ############################################################
-        # TODO - REVISIT
-        for p, data in self.__domain_range_map.items():
-            t = (None, p, None)
-            for s, _, o, *_ in self.__rdf_statements(t):  # type: ignore
-                if data["domain"]:
-                    type_map[str(s)].add(data["domain"]["str"])
-
-                if data["range"]:
-                    type_map[str(o)].add(data["range"]["str"])
-
-        ############################################################
-        t = (None, RDF.type, None)
-        for s, _, o, *_ in self.__rdf_statements(t):  # type: ignore[operator]
-            type_map[str(s)].add(str(o))
-
-        ############################################################
-        t = (None, RDFS.subClassOf, None)
-        for s, _, o, *_ in self.__rdf_statements(t):  # type: ignore[operator]
-            subclass_map[str(s)].add(str(o))
-
-        ############################################################
-
-        ############################################################
-        if self.__contextualize_graph:
-            triple = (None, None, None)
-            for _, p, _, *_ in self.__rdf_statements(triple):  # type: ignore[operator]
-                type_map[str(p)].add(self.__rdf_property_str)
-        ############################################################
-
-        self.__pgt_finalize_col_map(type_map, subclass_map, explicit_col_map)
-
-    def __pgt_build_explicit_col_map(self) -> Dict[str, str]:
-        """TODO: DEFINE"""
-        explicit_col_map: Dict[str, str] = dict()
-
-        triple = (None, self.__adb_collection_uri, None)
-        for s, _, o, *_ in self.__rdf_statements(triple):  # type: ignore
-            s_str = str(s)
-            o_str = str(o)
-
-            if not isinstance(o, Literal):
-                raise ValueError(f"Object {o} must be Literal")  # pragma: no cover
-
-            if s_str in explicit_col_map:
-                # TODO: Create custom error
-                raise ValueError(  # pragma: no cover
-                    f"""
-                    Subject {s} can only have 1 ArangoDB Collection association.
-                    Found '{explicit_col_map[s_str]}' and '{o_str}'.
-                    """
-                )
-
-            explicit_col_map[s_str] = o_str
-
-        return explicit_col_map
-
-    def __pgt_finalize_col_map(
-        self,
-        type_map: DefaultDict[str, Set[str]],
-        subclass_map: DefaultDict[str, Set[str]],
-        explicit_col_map: Dict[str, str],
-    ) -> None:
-        """TODO: DEFINE"""
-
-        # Helper function to recursively iterate through `subclass_map`
-        def get_depth(class_str: str, depth: int) -> int:
-            if class_str not in subclass_map:
-                return depth
-
-            for sub_class_str in subclass_map[class_str]:
-                if sub_class_str == class_str:
-                    return depth  # pragma: no cover
-
-                return get_depth(sub_class_str, depth + 1)
-
-            return -1  # pragma: no cover
-
-        for s_str, class_set in type_map.items():
-            # Case 1 (ArangoDB Collection Property Used)
-            if s_str in explicit_col_map:
-                self.__col_map[s_str] = explicit_col_map[s_str]
-
-            # Case 2 (Only one type statement associated to s_str)
-            elif len(class_set) == 1:
-                self.__col_map[s_str] = self.rdf_id_to_adb_label(class_set.pop())
-
-            # Case 3 (Taxonomy)
-            elif any([c in subclass_map for c in class_set]):
-                max_depth = -1
-                best_class = ""
-                # NOTE: Process is not deterministic if `sorted()` is removed
-                for c in sorted(class_set):
-                    depth = get_depth(c, 0)
-
-                    if depth > max_depth:
-                        max_depth = depth
-                        best_class = c
-
-                self.__col_map[s_str] = self.rdf_id_to_adb_label(best_class)
-
-            # Case 4 (Multiple types without explicit_col_map or sub_class_map entry)
-            else:
-                # TODO - Deal with domain_range_map issue..
-                # Should it even be considered for `type_map`?
-                # Should it be in its own "Case" ?
-                self.__col_map[s_str] = self.rdf_id_to_adb_label(sorted(class_set)[0])
 
     def __pgt_get_term_metadata(
         self, term_str: str, is_predicate: bool = False
@@ -625,7 +670,11 @@ class ArangoRDF(Abstract_ArangoRDF):
             term_col = self.rdf_id_to_adb_label(term_str)
             return term_str, term_key, term_col, term_col
 
-        term_col = self.__col_map.get(term_str, self.__UNIDENTIFIED_NODE_COL)
+        term_col = str(
+            self.adb_mapping.value(URIRef(term_str), self.adb_col_uri)
+            or self.__UNKNOWN_RESOURCE
+        )
+
         term_label = self.rdf_id_to_adb_label(term_str)
 
         return term_str, term_key, term_col, term_label
@@ -758,8 +807,8 @@ class ArangoRDF(Abstract_ArangoRDF):
         p_str, _, _, p_label = p_meta
 
         if self.__pgt_object_is_head_of_rdf_list(o):
-            foo = {"root": o, "sub_graph": sg}
-            self.__rdf_lists["_LIST_HEAD"][s_str][p_str] = foo
+            head = {"root": o, "sub_graph": sg}
+            self.__rdf_lists["_LIST_HEAD"][s_str][p_str] = head
 
         else:
             self.__pgt_process_rdf_term(o, o_meta, s_key, s_col, p_label)
@@ -1068,7 +1117,7 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         orphan_collections = list(
             non_orphan_collections
-            ^ {self.__UNIDENTIFIED_NODE_COL}
+            ^ {self.__UNKNOWN_RESOURCE}
             ^ set(self.__col_map.values())
         )
 
@@ -1147,7 +1196,6 @@ class ArangoRDF(Abstract_ArangoRDF):
         self.__term_map: Dict[str, Node] = {}
 
         # TODO - REVISIT
-        adb_col_uri: URIRef = URIRef("http://www.arangodb.com/collection")
         self.__rdf_graph.bind("adb", "http://www.arangodb.com/")
         self.__adbg_ns = (
             adb_graph_namespace or f"{self.db._conn._url_prefixes[0]}/{name}#"
@@ -1161,7 +1209,6 @@ class ArangoRDF(Abstract_ArangoRDF):
         self.__rdf_graph.bind("dc", "http://purl.org/dc/elements/1.1/")
         self.__rdf_graph.bind("grddl", "http://www.w3.org/2003/g/data-view#")
 
-        rdf_types = ["URIRef", "BNode", "Literal"]
         key_map: Dict[str, str] = {
             "URIRef": "_uri",
             "Literal": "_value",
@@ -1185,7 +1232,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             f"{name}_URIRef",
             f"{name}_BNode",
             f"{name}_Literal",
-            f"{name}_UnidentifiedNode",
+            f"{name}_UnknownResource",
         ]
 
         doc: Json
@@ -1196,7 +1243,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                     # i.e "Class" -> owl:Class or rdf:Class?
                     self.__uri_map[doc["_label"]] = doc["_uri"]
 
-        rdf_term: Union[RDFSubject, RDFObject]
+        rdf_term: Union[URIRef, BNode, Literal]
         for v_col, _ in metagraph["vertexCollections"].items():
             # v_col_uri = self.__uri_map.get(v_col, f"{self.__adbg_ns}{v_col}")
 
@@ -1209,18 +1256,35 @@ class ArangoRDF(Abstract_ArangoRDF):
                     self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
                     rdf_type = doc.get("_rdftype", "URIRef")
-                    if rdf_type not in rdf_types:  # pragma: no cover
+
+                    val = doc.get(key_map[rdf_type], f"{self.__adbg_ns}{doc['_key']}")
+
+                    if rdf_type == "URIRef":
+                        rdf_term = URIRef(val)
+
+                    elif rdf_type == "BNode":
+                        rdf_term = BNode(val)
+
+                    elif rdf_type == "Literal":
+                        if "_lang" in doc:
+                            rdf_term = Literal(val, lang=doc["_lang"])
+
+                        elif "_datatype" in doc:
+                            rdf_term = Literal(val, datatype=doc["_datatype"])
+
+                        else:
+                            rdf_term = Literal(val)
+
+                    else:
                         raise ValueError(f"Unrecognized type {rdf_type} ({doc})")
 
-                    id = doc.get(key_map[rdf_type], f"{self.__adbg_ns}{doc['_key']}")
-                    rdf_term = getattr(sys.modules[__name__], rdf_type)(id)  # magic
                     self.__term_map[doc["_id"]] = rdf_term
 
                     if isinstance(rdf_term, Literal):  # RPT Case
                         continue
 
                     if v_col not in adb_v_col_blacklist:
-                        rdf_graph.add((rdf_term, adb_col_uri, Literal(v_col)))
+                        rdf_graph.add((rdf_term, self.adb_col_uri, Literal(v_col)))
                         # rdf_graph.add((rdf_term, RDF.type, URIRef(v_col_uri)))
 
                     # TODO: Iterate through metagraph values instead?
@@ -1271,7 +1335,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                             rdf_graph.add((edge, RDF.object, object))
 
                             if e_col not in adb_v_col_blacklist:
-                                rdf_graph.add((edge, adb_col_uri, Literal(e_col)))
+                                rdf_graph.add((edge, self.adb_col_uri, Literal(e_col)))
                                 # rdf_graph.add((edge, RDF.type, URIRef(e_col_uri)))
 
         # if graph_supports_quads:
@@ -1469,21 +1533,6 @@ class ArangoRDF(Abstract_ArangoRDF):
             "_label": _label,
             "_sub_graph_uri": _sg_uri,
         }
-
-    def __build_domain_and_range_map(self) -> None:
-        blacklist = [str(RDFS.Literal), str(RDFS.Resource)]
-
-        for p in ["domain", "range"]:
-            t = (None, RDFS[p], None)
-
-            for s, _, o, *_ in self.__rdf_statements(t):  # type: ignore
-                o_str = str(o)
-
-                if o_str not in blacklist:
-                    self.__domain_range_map[s][p] = {
-                        "key": self.rdf_id_to_adb_key(o_str),
-                        "str": o_str,
-                    }
 
     def __fetch_adb_docs(self, adb_col: str) -> Result[Cursor]:
         """Fetches ArangoDB documents within a collection.

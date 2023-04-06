@@ -6,7 +6,6 @@ from typing import Any, Optional, Set
 
 from arango.graph import Graph as ADBGraph
 from rdflib import Graph as RDFGraph
-from rdflib import URIRef
 
 from .typings import ADBMetagraph
 
@@ -30,9 +29,9 @@ class Abstract_ArangoRDF(ABC):
         self,
         name: str,
         rdf_graph: RDFGraph,
+        adb_mapping: Optional[RDFGraph],
         overwrite_graph: bool,
         contextualize_graph: bool,
-        adb_collection_uri: URIRef,
         batch_size: Optional[int],
         **import_options: Any,
     ) -> ADBGraph:
