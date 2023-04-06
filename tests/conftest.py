@@ -6,7 +6,7 @@ from typing import Any, Dict, Tuple
 
 from arango import ArangoClient, DefaultHTTPClient
 from arango.database import StandardDatabase
-from rdflib import Dataset
+from rdflib import ConjunctiveGraph, Dataset
 from rdflib import Graph as RDFGraph
 
 from arango_rdf import ArangoRDF
@@ -115,9 +115,20 @@ def pytest_exception_interact(node: Any, call: Any, report: Any) -> None:
         print("Could not delete graph")
 
 
-def get_rdf_graph(path: str) -> RDFGraph:
-    g = Dataset() if path.endswith(".trig") else RDFGraph()
+def get_rdf_graph(path: str, use_dataset_class: bool = True) -> RDFGraph:
+    g = RDFGraph()
+    if path.endswith(".trig"):
+        g = Dataset() if use_dataset_class else ConjunctiveGraph()
+
     g.parse(f"{PROJECT_DIR}/tests/data/rdf/{path}")
+    return g
+
+
+def get_meta_graph() -> ConjunctiveGraph:
+    g = ConjunctiveGraph()
+    for ns in os.listdir(f"{PROJECT_DIR}/arango_rdf/meta"):
+        g.parse(f"{PROJECT_DIR}/arango_rdf/meta/{ns}", format="trig")
+
     return g
 
 
@@ -137,16 +148,20 @@ def get_adb_graph_count(name: str) -> Tuple[int, int]:
 
 def compare_graphs(rdf_graph_1: RDFGraph, rdf_graph_2: RDFGraph):
     for s, p, o, *_ in rdf_graph_1:
-        assert (s, p, o) in rdf_graph_2
+        if isinstance(rdf_graph_2, Dataset):
+            # TODO - REVISIT
+            # Dataset objects seemed to be bugged..
+            # Even `(None, None, None) in rdf_graph_2` returns `False`..
+            assert len(list(rdf_graph_2.quads((s, p, o)))) == 1
 
-    # for s,p,o in rdf_graph_2:
-    #     assert (s,p,o) in rdf_graph_1
+        else:
+            assert (s, p, o) in rdf_graph_2
 
 
 def contrast_graphs(rdf_graph_1: RDFGraph, rdf_graph_2: RDFGraph):
     outersection = set()
-    for s, p, o in rdf_graph_2:
-        if (s, p, o) not in rdf_graph_1:
+    for s, p, o in rdf_graph_1:
+        if (s, p, o) not in rdf_graph_2:
             outersection.add((s, p, o))
 
     return outersection
