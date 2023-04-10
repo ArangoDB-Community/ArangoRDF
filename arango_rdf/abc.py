@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from abc import ABC
-from typing import Any, Optional, Set
+from typing import Any, Optional, Set, Tuple
 
 from arango.graph import Graph as ADBGraph
 from rdflib import Graph as RDFGraph
@@ -43,10 +43,8 @@ class Abstract_ArangoRDF(ABC):
         rdf_graph: RDFGraph,
         metagraph: ADBMetagraph,
         list_conversion_mode: str,
-        adb_graph_namespace: str,
-        reify_triples: bool,
         **export_options: Any,
-    ) -> RDFGraph:
+    ) -> Tuple[RDFGraph, RDFGraph]:
         raise NotImplementedError  # pragma: no cover
 
     def arangodb_collections_to_rdf(
@@ -56,10 +54,8 @@ class Abstract_ArangoRDF(ABC):
         v_cols: Set[str],
         e_cols: Set[str],
         list_conversion_mode: str,
-        adb_graph_namespace: str,
-        reify_triples: bool,
         **export_options: Any,
-    ) -> RDFGraph:
+    ) -> Tuple[RDFGraph, RDFGraph]:
         raise NotImplementedError  # pragma: no cover
 
     def arangodb_graph_to_rdf(
@@ -67,10 +63,8 @@ class Abstract_ArangoRDF(ABC):
         name: str,
         rdf_graph: RDFGraph,
         list_conversion_mode: str,
-        adb_graph_namespace: str,
-        reify_triples: bool,
         **export_options: Any,
-    ) -> RDFGraph:
+    ) -> Tuple[RDFGraph, RDFGraph]:
         raise NotImplementedError  # pragma: no cover
 
     def __fetch_adb_docs(self) -> None:
@@ -78,24 +72,3 @@ class Abstract_ArangoRDF(ABC):
 
     def __insert_adb_docs(self) -> None:
         raise NotImplementedError  # pragma: no cover
-
-    @property
-    def VALID_ADB_KEY_CHARS(self) -> Set[str]:
-        return {
-            "_",
-            "-",
-            ":",
-            ".",
-            "@",
-            "(",
-            ")",
-            "+",
-            ",",
-            "=",
-            ";",
-            "$",
-            "!",
-            "*",
-            "'",
-            "%",
-        }

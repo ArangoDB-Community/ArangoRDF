@@ -22,7 +22,7 @@ ADBDocs = DefaultDict[str, DefaultDict[str, Json]]
 RDFObject = Union[URIRef, BNode, Literal]
 RDFSubject = Union[URIRef, BNode]
 
-RDFLists = DefaultDict[str, DefaultDict[str, Json]]
+RDFLists = DefaultDict[str, DefaultDict[RDFSubject, Json]]
 TermMetadata = Tuple[str, str, str, str]
 
 PredicateScope = DefaultDict[URIRef, DefaultDict[str, Json]]
