@@ -15,7 +15,7 @@ ex:Graph1 {
 ex:Graph2 {
     ex:Programming a ex:Skill .
     <http://www.Monicahompage.org> a ex:Website .
-    ex:Monica rdf:type ex:Person .
+    ex:Monica a ex:Person .
     ex:Person rdfs:subClassOf ex:Entity .
     ex:Monica ex:hasSkill ex:Programming .
 }

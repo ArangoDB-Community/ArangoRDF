@@ -15,6 +15,14 @@ db: StandardDatabase
 PROJECT_DIR = Path(__file__).parent.parent
 adbrdf: ArangoRDF
 
+META_GRAPH_SIZE = 663
+META_GRAPH_NON_LITERAL_STATEMENTS = 450
+META_GRAPH_CONTEXTUALIZE_STATEMENTS = 22
+META_GRAPH_POST_CONTEXTUALIZE_SIZE = 685
+META_GRAPH_ALL_RESOURCES = 132
+META_GRAPH_UNKNOWN_RESOURCES = 11
+META_GRAPH_IDENTIFIED_RESOURCES = 121
+
 
 def pytest_addoption(parser: Any) -> None:
     parser.addoption("--url", action="store", default="http://localhost:8529")
@@ -115,11 +123,10 @@ def pytest_exception_interact(node: Any, call: Any, report: Any) -> None:
         print("Could not delete graph")
 
 
-def get_rdf_graph(path: str, use_dataset_class: bool = True) -> RDFGraph:
-    g = RDFGraph()
-    if path.endswith(".trig"):
-        g = Dataset() if use_dataset_class else ConjunctiveGraph()
-
+def get_rdf_graph(path: str, use_dataset_class: bool = False) -> RDFGraph:
+    # g = RDFGraph()
+    # if path.endswith(".trig"):
+    g = Dataset() if use_dataset_class else ConjunctiveGraph()
     g.parse(f"{PROJECT_DIR}/tests/data/rdf/{path}")
     return g
 
@@ -146,22 +153,11 @@ def get_adb_graph_count(name: str) -> Tuple[int, int]:
     return (v_count, e_count)
 
 
-def compare_graphs(rdf_graph_1: RDFGraph, rdf_graph_2: RDFGraph):
-    for s, p, o, *_ in rdf_graph_1:
-        if isinstance(rdf_graph_2, Dataset):
-            # TODO - REVISIT
-            # Dataset objects seemed to be bugged..
-            # Even `(None, None, None) in rdf_graph_2` returns `False`..
-            assert len(list(rdf_graph_2.quads((s, p, o)))) == 1
-
-        else:
-            assert (s, p, o) in rdf_graph_2
+def compare_graphs(rdf_graph_a: RDFGraph, rdf_graph_b: RDFGraph):
+    assert len(rdf_graph_a) and len(rdf_graph_b)
+    assert len(rdf_graph_a - rdf_graph_b) == 0
 
 
-def contrast_graphs(rdf_graph_1: RDFGraph, rdf_graph_2: RDFGraph):
-    outersection = set()
-    for s, p, o in rdf_graph_1:
-        if (s, p, o) not in rdf_graph_2:
-            outersection.add((s, p, o))
-
-    return outersection
+def contrast_graphs(rdf_graph_a: RDFGraph, rdf_graph_b: RDFGraph):
+    assert len(rdf_graph_a) and len(rdf_graph_b)
+    return rdf_graph_a - rdf_graph_b

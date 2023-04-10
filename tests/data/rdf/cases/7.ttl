@@ -15,7 +15,6 @@
 :LivingThing rdfs:subClassOf :Thing .
 :Thing rdfs:subClassOf :Object .
 :Object rdfs:subClassOf rdfs:Class .
-owl:Class rdfs:subClassOf rdfs:Class .
 
 :charlie a :LivingThing .
 :charlie a :Animal .
