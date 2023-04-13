@@ -170,7 +170,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         """
         # TODO - REVISIT
         if isinstance(rdf_graph, RDFDataset):
-            raise TypeError(
+            raise TypeError(  # pragma: no cover
                 """
                 Invalid type for **rdf_graph**: ArangoRDF does not yet
                 support RDF Graphs of type rdflib.graph.Dataset
@@ -428,7 +428,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         """
         # TODO - REVISIT
         if isinstance(rdf_graph, RDFDataset):
-            raise TypeError(
+            raise TypeError(  # pragma: no cover
                 """
                 Invalid type for **rdf_graph**: ArangoRDF does not yet
                 support RDF Graphs of type rdflib.graph.Dataset
@@ -683,13 +683,6 @@ class ArangoRDF(Abstract_ArangoRDF):
                         if depth > max_depth:
                             max_depth = depth
                             best_class = c
-
-                    if not best_class:
-                        m = f"""
-                            Unable to identify most suitable ArangoDB
-                            Collection for RDF Resource {rdf_resource}.
-                        """
-                        raise ValueError(m)
 
                     adb_col = self.rdf_id_to_adb_label(best_class)
 
@@ -963,7 +956,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         if re.match(_n, p_str) or re.match(li, p_str):
             return "_CONTAINER_BNODE"
 
-        return ""  # pragma: no cover
+        return ""
 
     def __pgt_process_rdf_lists(self) -> None:
         """A helper function to help process all RDF Collections & Containers

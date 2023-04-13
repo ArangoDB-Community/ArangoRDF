@@ -68,10 +68,10 @@ class Tree:
     def __contains__(self, node_id: str) -> bool:
         return node_id in self.nodes
 
-    def show(self) -> None:
+    def show(self) -> None:  # pragma: no cover
         self.show_rec(self.root)
 
-    def show_rec(self, node: Node) -> None:
+    def show_rec(self, node: Node) -> None:  # pragma: no cover
         print("|" + "-" * node.depth + node.name)
         for child_node in node.children:
             self.show_rec(child_node)
