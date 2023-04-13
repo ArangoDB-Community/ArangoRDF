@@ -43,6 +43,7 @@ def test_constructor() -> None:
         num_literals, contextualize_graph",
     [
         ("Case_1_RPT", get_rdf_graph("cases/1.ttl"), 3, 3, 0, 0, False),
+        ("Case_1_RPT", get_rdf_graph("cases/1.ttl"), 12, 9, 0, 0, True),
         ("Case_2_1_RPT", get_rdf_graph("cases/2_1.ttl"), 5, 4, 0, 2, False),
         ("Case_2_2_RPT", get_rdf_graph("cases/2_2.ttl"), 2, 4, 0, 0, False),
         ("Case_2_3_RPT", get_rdf_graph("cases/2_3.ttl"), 4, 5, 0, 0, False),
@@ -821,20 +822,31 @@ def test_pgt_case_5(name: str, rdf_graph: RDFGraph) -> None:
         name, rdf_graph, overwrite_graph=True, contextualize_graph=False
     )
 
-    assert adb_graph.vertex_collection(f"{name}_UnknownResource").count() == 2
     assert adb_graph.edge_collection("nationality").count() == 1
+    assert adb_graph.vertex_collection(f"{name}_UnknownResource").count() == 2
+    for doc in adb_graph.vertex_collection(f"{name}_UnknownResource"):
+        if doc["_rdftype"] == "URIRef":
+            assert doc["_label"] == "bob"
+        elif doc["_rdftype"] == "BNode":
+            assert doc["country"] == "Canada"
+        else:
+            assert False  # Should not be here
 
     print("\n")
 
     # ArangoDB to RDF
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
+    adb_graph_namepspace = f"{db._conn._url_prefixes[0]}/{name}#"
     bob = URIRef("http://example.com/bob")
     nationality = URIRef("http://example.com/nationality")
+    country = URIRef(f"{adb_graph_namepspace}country")
 
     # Original Statement assertions
     assert (bob, nationality, None) in rdf_graph_2
-    assert len(rdf_graph_2) == 1
+    bnode = rdf_graph_2.value(bob, nationality)
+    assert (bnode, country, Literal("Canada")) in rdf_graph_2
+    assert len(rdf_graph_2) == 2
 
     db.delete_graph(name, drop_collections=True)
 
