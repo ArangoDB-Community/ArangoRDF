@@ -6,7 +6,7 @@ from typing import Any, Dict, Tuple
 
 from arango import ArangoClient, DefaultHTTPClient
 from arango.database import StandardDatabase
-from rdflib import ConjunctiveGraph, Dataset
+from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
 from rdflib import Graph as RDFGraph
 
 from arango_rdf import ArangoRDF
@@ -124,15 +124,13 @@ def pytest_exception_interact(node: Any, call: Any, report: Any) -> None:
 
 
 def get_rdf_graph(path: str, use_dataset_class: bool = False) -> RDFGraph:
-    # g = RDFGraph()
-    # if path.endswith(".trig"):
-    g = Dataset() if use_dataset_class else ConjunctiveGraph()
+    g = RDFConjunctiveGraph() if path.endswith(".trig") else RDFGraph()
     g.parse(f"{PROJECT_DIR}/tests/data/rdf/{path}")
     return g
 
 
-def get_meta_graph() -> ConjunctiveGraph:
-    g = ConjunctiveGraph()
+def get_meta_graph() -> RDFConjunctiveGraph:
+    g = RDFConjunctiveGraph()
     for ns in os.listdir(f"{PROJECT_DIR}/arango_rdf/meta"):
         g.parse(f"{PROJECT_DIR}/arango_rdf/meta/{ns}", format="trig")
 
@@ -153,11 +151,6 @@ def get_adb_graph_count(name: str) -> Tuple[int, int]:
     return (v_count, e_count)
 
 
-def compare_graphs(rdf_graph_a: RDFGraph, rdf_graph_b: RDFGraph):
-    assert len(rdf_graph_a) and len(rdf_graph_b)
-    assert len(rdf_graph_a - rdf_graph_b) == 0
-
-
-def contrast_graphs(rdf_graph_a: RDFGraph, rdf_graph_b: RDFGraph):
-    assert len(rdf_graph_a) and len(rdf_graph_b)
+def outersect_graphs(rdf_graph_a: RDFGraph, rdf_graph_b: RDFGraph):
+    assert rdf_graph_a and rdf_graph_b
     return rdf_graph_a - rdf_graph_b

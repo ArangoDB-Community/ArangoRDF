@@ -19,12 +19,11 @@ from .conftest import (
     META_GRAPH_SIZE,
     META_GRAPH_UNKNOWN_RESOURCES,
     adbrdf,
-    compare_graphs,
-    contrast_graphs,
     db,
     get_adb_graph_count,
     get_meta_graph,
     get_rdf_graph,
+    outersect_graphs,
 )
 
 
@@ -53,14 +52,13 @@ def test_constructor() -> None:
         ("Case_4_RPT", get_rdf_graph("cases/4.ttl"), 7, 2, 3, 3, False),
         ("Case_5_RPT", get_rdf_graph("cases/5.ttl"), 1, 1, 1, 0, False),
         ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 11, 9, 0, 1, False),
-        ("Case_6_RPT", get_rdf_graph("cases/6.trig", True), 11, 9, 0, 1, False),
-        ("Case_7_RPT", get_rdf_graph("cases/7.ttl"), 21, 18, 0, 1, False),
+        ("Case_7_RPT", get_rdf_graph("cases/7.ttl"), 20, 17, 0, 1, False),
         ("Meta_RPT", get_meta_graph(), META_GRAPH_SIZE, 129, 0, 234, False),
         (
             "Meta_RPT",
             get_meta_graph(),
             META_GRAPH_POST_CONTEXTUALIZE_SIZE,
-            132,
+            META_GRAPH_ALL_RESOURCES,
             0,
             234,
             True,
@@ -104,12 +102,12 @@ def test_rpt_cases(
     if not isinstance(rdf_graph_2, Dataset):
         assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
 
-    compare_graphs(rdf_graph, rdf_graph_2)
+    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     if not contextualize_graph:
-        compare_graphs(rdf_graph_2, rdf_graph)
+        assert len(outersect_graphs(rdf_graph_2, rdf_graph)) == 0
     else:
-        for _, p, _, *_ in contrast_graphs(rdf_graph_2, rdf_graph):
-            assert p == RDF.type
+        for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
+            assert p in {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -139,11 +137,11 @@ def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "List", "Ontology"}
 
-    compare_graphs(rdf_graph, rdf_graph_2)
-    diff = contrast_graphs(rdf_graph_2, rdf_graph)
+    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+    diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS
     for _, p, _, *_ in diff:
-        assert p == RDF.type
+        assert p in {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -157,9 +155,10 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     unique_nodes = 4
     identified_unique_nodes = 4
     non_literal_statements = 3
-    contextualize_statements = 2
+    contextualize_statements = 4
 
     # RDF to ArangoDB
+    rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name, rdf_graph, overwrite_graph=True, contextualize_graph=True
     )
@@ -227,11 +226,11 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "List", "Ontology", "Person"}
 
-    compare_graphs(rdf_graph, rdf_graph_2)
-    diff = contrast_graphs(rdf_graph_2, rdf_graph)
+    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+    diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in contrast_graphs(rdf_graph_2, rdf_graph):
-        assert p == RDF.type
+    for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
+        assert p in {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -245,9 +244,10 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     unique_nodes = 5
     identified_unique_nodes = 5
     non_literal_statements = 3
-    contextualize_statements = 3
+    contextualize_statements = 6
 
     # RDF to ArangoDB
+    rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name, rdf_graph, overwrite_graph=True, contextualize_graph=True
     )
@@ -328,11 +328,11 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "List", "Ontology", "Person"}
 
-    compare_graphs(rdf_graph, rdf_graph_2)
-    diff = contrast_graphs(rdf_graph_2, rdf_graph)
+    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+    diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
     for _, p, _, *_ in diff:
-        assert p == RDF.type
+        assert p in {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -346,9 +346,10 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     unique_nodes = 5
     identified_unique_nodes = 2
     non_literal_statements = 2
-    contextualize_statements = 2
+    contextualize_statements = 3
 
     # RDF to ArangoDB
+    rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name, rdf_graph, overwrite_graph=True, contextualize_graph=True
     )
@@ -419,11 +420,11 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "List", "Ontology"}
 
-    compare_graphs(rdf_graph, rdf_graph_2)
-    diff = contrast_graphs(rdf_graph_2, rdf_graph)
+    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+    diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
     for _, p, _, *_ in diff:
-        assert p == RDF.type
+        assert p in {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -437,9 +438,10 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     unique_nodes = 5
     identified_unique_nodes = 5
     non_literal_statements = 4
-    contextualize_statements = 3
+    contextualize_statements = 5
 
     # RDF to ArangoDB
+    rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name, rdf_graph, overwrite_graph=True, contextualize_graph=True
     )
@@ -514,11 +516,11 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "List", "Ontology", "Person"}
 
-    compare_graphs(rdf_graph, rdf_graph_2)
-    diff = contrast_graphs(rdf_graph_2, rdf_graph)
+    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+    diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in contrast_graphs(rdf_graph_2, rdf_graph):
-        assert p == RDF.type
+    for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
+        assert p in {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -535,6 +537,7 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     contextualize_statements = 2
 
     # RDF to ArangoDB
+    rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name, rdf_graph, overwrite_graph=True, contextualize_graph=True
     )
@@ -563,6 +566,9 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
 
     assert adb_graph.has_edge_collection("friend")
     assert adb_graph.edge_collection("friend").has(f"{_tom}-{_friend}-{_chris}")
+
+    assert not adb_graph.has_vertex_collection("relation")
+    assert adb_graph.vertex_collection("Property").has(_friend)
 
     print("\n")
 
@@ -594,11 +600,11 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "List", "Ontology"}
 
-    compare_graphs(rdf_graph, rdf_graph_2)
-    diff = contrast_graphs(rdf_graph_2, rdf_graph)
+    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+    diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in contrast_graphs(rdf_graph_2, rdf_graph):
-        assert p == RDF.type
+    for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
+        assert p in {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -615,6 +621,7 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     contextualize_statements = 4
 
     # RDF to ArangoDB
+    rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name, rdf_graph, overwrite_graph=True, contextualize_graph=True
     )
@@ -683,11 +690,11 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "List", "Ontology"}
 
-    compare_graphs(rdf_graph, rdf_graph_2)
-    diff = contrast_graphs(rdf_graph_2, rdf_graph)
+    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+    diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in contrast_graphs(rdf_graph_2, rdf_graph):
-        assert p == RDF.type
+    for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
+        assert p in {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -841,8 +848,9 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     unique_nodes = 13
     identified_unique_nodes = 12
     non_literal_statements = 10
-    contextualize_statements = 8
+    contextualize_statements = 18
 
+    rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name, rdf_graph, overwrite_graph=True, contextualize_graph=True
     )
@@ -941,11 +949,11 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Skill", "Person", "Website", "List", "Ontology", "Property", "Class"}
 
-    compare_graphs(rdf_graph, rdf_graph_2)
-    diff = contrast_graphs(rdf_graph_2, rdf_graph)
+    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+    diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in contrast_graphs(rdf_graph_2, rdf_graph):
-        assert p == RDF.type
+    for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
+        assert p in {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -959,10 +967,11 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
     size = len(rdf_graph)
     unique_nodes = 17
     identified_unique_nodes = 17
-    non_literal_statements = 20
+    non_literal_statements = size - 1
     contextualize_statements = 13
     adb_col_uri_statements = 1
 
+    rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name, rdf_graph, overwrite_graph=True, contextualize_graph=True
     )
@@ -1044,7 +1053,6 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
     assert (alice, RDF.type, arson) in rdf_graph_2
     assert (alice, RDF.type, author) in rdf_graph_2
 
-    assert (object, RDFS.subClassOf, RDFS.Class) in rdf_graph_2
     assert (thing, RDFS.subClassOf, object) in rdf_graph_2
     assert (living_thing, RDFS.subClassOf, thing) in rdf_graph_2
     assert (animal, RDFS.subClassOf, living_thing) in rdf_graph_2
@@ -1076,14 +1084,14 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Zenkey", "Arson", "Class", "Ontology", "Artist", "Property", "List", "Human"}
 
-    diff_1 = contrast_graphs(rdf_graph, rdf_graph_2)
+    diff_1 = outersect_graphs(rdf_graph, rdf_graph_2)
     assert len(diff_1) == 1
     assert (john, adbrdf.adb_col_uri, Literal("Artist")) in diff_1
 
-    diff_2 = contrast_graphs(rdf_graph_2, rdf_graph)
+    diff_2 = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff_2) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in contrast_graphs(rdf_graph_2, rdf_graph):
-        assert p == RDF.type
+    for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
+        assert p in {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
