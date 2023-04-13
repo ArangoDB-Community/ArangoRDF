@@ -51,7 +51,7 @@ def test_constructor() -> None:
         ("Case_3_1_RPT", get_rdf_graph("cases/3_1.ttl"), 4, 1, 0, 4, False),
         ("Case_3_2_RPT", get_rdf_graph("cases/3_2.ttl"), 2, 1, 0, 2, False),
         ("Case_4_RPT", get_rdf_graph("cases/4.ttl"), 7, 2, 3, 3, False),
-        ("Case_5_RPT", get_rdf_graph("cases/5.ttl"), 1, 1, 1, 0, False),
+        ("Case_5_RPT", get_rdf_graph("cases/5.ttl"), 2, 1, 1, 1, False),
         ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 11, 9, 0, 1, False),
         ("Case_7_RPT", get_rdf_graph("cases/7.ttl"), 20, 17, 0, 1, False),
         ("Meta_RPT", get_meta_graph(), META_GRAPH_SIZE, 129, 0, 234, False),
