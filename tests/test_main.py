@@ -1,4 +1,3 @@
-import hashlib
 from typing import Any, Dict
 
 import pytest
@@ -26,9 +25,9 @@ from .conftest import (
     outersect_graphs,
 )
 
-
-def rdf_id_to_adb_key(rdf_id: str):
-    return hashlib.md5(rdf_id.encode()).hexdigest()
+# def adbrdf.rdf_id_to_adb_key(rdf_id: str):
+#     # return hashlib.md5(rdf_id.encode()).hexdigest()
+#     return xxhash.xxh64(rdf_id.encode()).hexdigest()
 
 
 def test_constructor() -> None:
@@ -82,7 +81,10 @@ def test_rpt_cases(
 
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
-        name, rdf_graph, True, contextualize_graph
+        name,
+        rdf_graph,
+        contextualize_graph,
+        overwrite_graph=True,
     )
 
     assert adb_graph.edge_collection(STATEMENT_COL).count() == num_triples
@@ -119,7 +121,10 @@ def test_rpt_cases(
 )
 def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
     adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=True
+        name,
+        rdf_graph,
+        contextualize_graph=True,
+        overwrite_graph=True,
     )
 
     v_count, e_count = get_adb_graph_count(name)
@@ -173,12 +178,12 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
         + contextualize_statements
     )
 
-    _class = rdf_id_to_adb_key(str(RDFS.Class))
-    _type = rdf_id_to_adb_key(str(RDF.type))
-    _person = rdf_id_to_adb_key("http://example.com/Person")
-    _meets = rdf_id_to_adb_key("http://example.com/meets")
-    _alice = rdf_id_to_adb_key("http://example.com/alice")
-    _bob = rdf_id_to_adb_key("http://example.com/bob")
+    _class = adbrdf.rdf_id_to_adb_key(str(RDFS.Class))
+    _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
+    _person = adbrdf.rdf_id_to_adb_key("http://example.com/Person")
+    _meets = adbrdf.rdf_id_to_adb_key("http://example.com/meets")
+    _alice = adbrdf.rdf_id_to_adb_key("http://example.com/alice")
+    _bob = adbrdf.rdf_id_to_adb_key("http://example.com/bob")
 
     assert adb_graph.has_vertex_collection("Class")
     assert adb_graph.vertex_collection("Class").has(_class)
@@ -262,14 +267,14 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
         + contextualize_statements
     )
 
-    _class = rdf_id_to_adb_key(str(RDFS.Class))
-    _type = rdf_id_to_adb_key(str(RDF.type))
-    _label = rdf_id_to_adb_key(str(RDFS.label))
-    _person = rdf_id_to_adb_key("http://example.com/Person")
-    _name = rdf_id_to_adb_key("http://example.com/name")
-    _mentor = rdf_id_to_adb_key("http://example.com/mentor")
-    _sam = rdf_id_to_adb_key("http://example.com/Sam")
-    _lee = rdf_id_to_adb_key("http://example.com/Lee")
+    _class = adbrdf.rdf_id_to_adb_key(str(RDFS.Class))
+    _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
+    _label = adbrdf.rdf_id_to_adb_key(str(RDFS.label))
+    _person = adbrdf.rdf_id_to_adb_key("http://example.com/Person")
+    _name = adbrdf.rdf_id_to_adb_key("http://example.com/name")
+    _mentor = adbrdf.rdf_id_to_adb_key("http://example.com/mentor")
+    _sam = adbrdf.rdf_id_to_adb_key("http://example.com/Sam")
+    _lee = adbrdf.rdf_id_to_adb_key("http://example.com/Lee")
 
     assert adb_graph.has_vertex_collection("Class")
     assert adb_graph.vertex_collection("Class").has(_class)
@@ -364,14 +369,14 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
         + contextualize_statements
     )
 
-    _class = rdf_id_to_adb_key(str(RDFS.Class))
-    _property = rdf_id_to_adb_key(str(RDF.Property))
-    _type = rdf_id_to_adb_key(str(RDF.type))
-    _alias = rdf_id_to_adb_key("http://example.com/alias")
-    _mentorJoe = rdf_id_to_adb_key("http://example.com/mentorJoe")
-    _teacher = rdf_id_to_adb_key("http://example.com/teacher")
-    _joe = rdf_id_to_adb_key("http://example.com/Joe")
-    _martin = rdf_id_to_adb_key("http://example.com/Martin")
+    _class = adbrdf.rdf_id_to_adb_key(str(RDFS.Class))
+    _property = adbrdf.rdf_id_to_adb_key(str(RDF.Property))
+    _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
+    _alias = adbrdf.rdf_id_to_adb_key("http://example.com/alias")
+    _mentorJoe = adbrdf.rdf_id_to_adb_key("http://example.com/mentorJoe")
+    _teacher = adbrdf.rdf_id_to_adb_key("http://example.com/teacher")
+    _joe = adbrdf.rdf_id_to_adb_key("http://example.com/Joe")
+    _martin = adbrdf.rdf_id_to_adb_key("http://example.com/Martin")
 
     assert adb_graph.has_vertex_collection("Class")
     assert adb_graph.vertex_collection("Class").has(_class)
@@ -456,15 +461,15 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
         + contextualize_statements
     )
 
-    _class = rdf_id_to_adb_key(str(RDFS.Class))
-    _property = rdf_id_to_adb_key(str(RDF.Property))
-    _type = rdf_id_to_adb_key(str(RDF.type))
-    _subPropertyOf = rdf_id_to_adb_key(str(RDFS.subPropertyOf))
-    _person = rdf_id_to_adb_key("http://example.com/Person")
-    _supervise = rdf_id_to_adb_key("http://example.com/supervise")
-    _administer = rdf_id_to_adb_key("http://example.com/administer")
-    _jan = rdf_id_to_adb_key("http://example.com/Jan")
-    _leo = rdf_id_to_adb_key("http://example.com/Leo")
+    _class = adbrdf.rdf_id_to_adb_key(str(RDFS.Class))
+    _property = adbrdf.rdf_id_to_adb_key(str(RDF.Property))
+    _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
+    _subPropertyOf = adbrdf.rdf_id_to_adb_key(str(RDFS.subPropertyOf))
+    _person = adbrdf.rdf_id_to_adb_key("http://example.com/Person")
+    _supervise = adbrdf.rdf_id_to_adb_key("http://example.com/supervise")
+    _administer = adbrdf.rdf_id_to_adb_key("http://example.com/administer")
+    _jan = adbrdf.rdf_id_to_adb_key("http://example.com/Jan")
+    _leo = adbrdf.rdf_id_to_adb_key("http://example.com/Leo")
 
     assert adb_graph.has_vertex_collection("Class")
     assert adb_graph.vertex_collection("Class").has(_class)
@@ -552,13 +557,13 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
         + contextualize_statements
     )
 
-    _class = rdf_id_to_adb_key(str(RDFS.Class))
-    _property = rdf_id_to_adb_key(str(RDF.Property))
-    _type = rdf_id_to_adb_key(str(RDF.type))
-    _relation = rdf_id_to_adb_key("http://example.com/relation")
-    _friend = rdf_id_to_adb_key("http://example.com/friend")
-    _tom = rdf_id_to_adb_key("http://example.com/Tom")
-    _chris = rdf_id_to_adb_key("http://example.com/Chris")
+    _class = adbrdf.rdf_id_to_adb_key(str(RDFS.Class))
+    _property = adbrdf.rdf_id_to_adb_key(str(RDF.Property))
+    _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
+    _relation = adbrdf.rdf_id_to_adb_key("http://example.com/relation")
+    _friend = adbrdf.rdf_id_to_adb_key("http://example.com/friend")
+    _tom = adbrdf.rdf_id_to_adb_key("http://example.com/Tom")
+    _chris = adbrdf.rdf_id_to_adb_key("http://example.com/Chris")
 
     assert adb_graph.has_edge_collection("type")
     assert adb_graph.edge_collection("type").has(f"{_friend}-{_type}-{_relation}")
@@ -636,11 +641,11 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
         + contextualize_statements
     )
 
-    _property = rdf_id_to_adb_key(str(RDF.Property))
-    _type = rdf_id_to_adb_key(str(RDF.type))
-    _book = rdf_id_to_adb_key("http://example.com/book")
-    _index = rdf_id_to_adb_key("http://example.com/index")
-    _pages = rdf_id_to_adb_key("http://example.com/pages")
+    _property = adbrdf.rdf_id_to_adb_key(str(RDF.Property))
+    _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
+    _book = adbrdf.rdf_id_to_adb_key("http://example.com/book")
+    _index = adbrdf.rdf_id_to_adb_key("http://example.com/index")
+    _pages = adbrdf.rdf_id_to_adb_key("http://example.com/pages")
 
     assert adb_graph.has_vertex_collection(f"{name}_UnknownResource")
     assert adb_graph.vertex_collection(f"{name}_UnknownResource").has(_book)
@@ -720,7 +725,7 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     assert v_count == unique_nodes
     assert e_count == non_literal_statements
 
-    _book = rdf_id_to_adb_key("http://example.com/book")
+    _book = adbrdf.rdf_id_to_adb_key("http://example.com/book")
 
     assert adb_graph.has_vertex_collection(f"{name}_UnknownResource")
     doc = adb_graph.vertex_collection(f"{name}_UnknownResource").get(_book)
@@ -783,7 +788,7 @@ def test_pgt_case_4(name: str, rdf_graph: RDFGraph) -> None:
         name, rdf_graph, overwrite_graph=True, contextualize_graph=False
     )
 
-    _list1 = rdf_id_to_adb_key("http://example.com/List1")
+    _list1 = adbrdf.rdf_id_to_adb_key("http://example.com/List1")
 
     assert adb_graph.has_vertex_collection(f"{name}_UnknownResource")
     assert adb_graph.vertex_collection(f"{name}_UnknownResource").has(_list1)
@@ -876,14 +881,14 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
         + contextualize_statements
     )
 
-    _type = rdf_id_to_adb_key(str(RDF.type))
-    _subClassOf = rdf_id_to_adb_key(str(RDFS.subClassOf))
-    _monica = rdf_id_to_adb_key("http://example.com/Monica")
-    _person = rdf_id_to_adb_key("http://example.com/Person")
-    _monica = rdf_id_to_adb_key("http://example.com/Monica")
-    _hasSkill = rdf_id_to_adb_key("http://example.com/hasSkill")
-    _management = rdf_id_to_adb_key("http://example.com/Management")
-    _entity = rdf_id_to_adb_key("http://example.com/Entity")
+    _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
+    _subClassOf = adbrdf.rdf_id_to_adb_key(str(RDFS.subClassOf))
+    _monica = adbrdf.rdf_id_to_adb_key("http://example.com/Monica")
+    _person = adbrdf.rdf_id_to_adb_key("http://example.com/Person")
+    _monica = adbrdf.rdf_id_to_adb_key("http://example.com/Monica")
+    _hasSkill = adbrdf.rdf_id_to_adb_key("http://example.com/hasSkill")
+    _management = adbrdf.rdf_id_to_adb_key("http://example.com/Management")
+    _entity = adbrdf.rdf_id_to_adb_key("http://example.com/Entity")
 
     assert adb_graph.has_vertex_collection("Person")
     doc = adb_graph.vertex_collection("Person").get(_monica)
@@ -997,21 +1002,21 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
         + contextualize_statements
     )
 
-    _type = rdf_id_to_adb_key(str(RDF.type))
-    _alice = rdf_id_to_adb_key("http://example.com/alice")
-    _author = rdf_id_to_adb_key("http://example.com/Author")
-    _arson = rdf_id_to_adb_key("http://example.com/Arson")
-    _charlie = rdf_id_to_adb_key("http://example.com/charlie")
-    _marty = rdf_id_to_adb_key("http://example.com/marty")
-    _livingthing = rdf_id_to_adb_key("http://example.com/LivingThing")
-    _animal = rdf_id_to_adb_key("http://example.com/Animal")
-    _zenkey = rdf_id_to_adb_key("http://example.com/Zenkey")
-    _human = rdf_id_to_adb_key("http://example.com/Human")
-    _john = rdf_id_to_adb_key("http://example.com/john")
-    _singer = rdf_id_to_adb_key("http://example.com/Singer")
-    _writer = rdf_id_to_adb_key("http://example.com/Writer")
-    _artist = rdf_id_to_adb_key("http://example.com/Artist")
-    _guitarist = rdf_id_to_adb_key("http://example.com/Guitarist")
+    _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
+    _alice = adbrdf.rdf_id_to_adb_key("http://example.com/alice")
+    _author = adbrdf.rdf_id_to_adb_key("http://example.com/Author")
+    _arson = adbrdf.rdf_id_to_adb_key("http://example.com/Arson")
+    _charlie = adbrdf.rdf_id_to_adb_key("http://example.com/charlie")
+    _marty = adbrdf.rdf_id_to_adb_key("http://example.com/marty")
+    _livingthing = adbrdf.rdf_id_to_adb_key("http://example.com/LivingThing")
+    _animal = adbrdf.rdf_id_to_adb_key("http://example.com/Animal")
+    _zenkey = adbrdf.rdf_id_to_adb_key("http://example.com/Zenkey")
+    _human = adbrdf.rdf_id_to_adb_key("http://example.com/Human")
+    _john = adbrdf.rdf_id_to_adb_key("http://example.com/john")
+    _singer = adbrdf.rdf_id_to_adb_key("http://example.com/Singer")
+    _writer = adbrdf.rdf_id_to_adb_key("http://example.com/Writer")
+    _artist = adbrdf.rdf_id_to_adb_key("http://example.com/Artist")
+    _guitarist = adbrdf.rdf_id_to_adb_key("http://example.com/Guitarist")
 
     assert adb_graph.has_vertex_collection("Arson")
     assert not adb_graph.has_vertex_collection("Author")
@@ -1117,9 +1122,9 @@ def test_pgt_collection(name: str, rdf_graph: RDFGraph) -> None:
         name, rdf_graph, overwrite_graph=True, contextualize_graph=False
     )
 
-    _doc = rdf_id_to_adb_key("http://example.com/Doc")
-    _random = rdf_id_to_adb_key("http://example.com/random")
-    _mars = rdf_id_to_adb_key("http://example.com/Mars")
+    _doc = adbrdf.rdf_id_to_adb_key("http://example.com/Doc")
+    _random = adbrdf.rdf_id_to_adb_key("http://example.com/random")
+    _mars = adbrdf.rdf_id_to_adb_key("http://example.com/Mars")
 
     doc = adb_graph.vertex_collection("TestDoc").get(_doc)
     assert "numbers" in doc
@@ -1184,7 +1189,7 @@ def test_pgt_container(name: str, rdf_graph: RDFGraph) -> None:
         name, rdf_graph, overwrite_graph=True, contextualize_graph=False
     )
 
-    _doc = rdf_id_to_adb_key("http://example.com/Doc")
+    _doc = adbrdf.rdf_id_to_adb_key("http://example.com/Doc")
 
     doc = adb_graph.vertex_collection("TestDoc").get(_doc)
     assert "numbers" in doc
