@@ -19,6 +19,7 @@ setup(
     install_requires=[
         "rdflib>=6.0.0",
         "python-arango>=7.4.1",
+        "cityhash>=0.4.6",
         "requests>=2.27.1",
         "rich>=12.5.1",
         "setuptools>=45",
