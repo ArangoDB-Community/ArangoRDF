@@ -7,6 +7,7 @@ __all__ = [
     "RDFSubject",
     "TermMetadata",
     "PredicateScope",
+    "TypeMap",
 ]
 
 from typing import Any, DefaultDict, Dict, Set, Tuple, Union
@@ -25,4 +26,5 @@ RDFSubject = Union[URIRef, BNode]
 RDFLists = DefaultDict[str, DefaultDict[RDFSubject, Json]]
 TermMetadata = Tuple[str, str, str, str]
 
-PredicateScope = DefaultDict[URIRef, DefaultDict[str, Json]]
+PredicateScope = DefaultDict[URIRef, DefaultDict[str, Set[Tuple[str, str]]]]
+TypeMap = DefaultDict[RDFSubject, Set[str]]

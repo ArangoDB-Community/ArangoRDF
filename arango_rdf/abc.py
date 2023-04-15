@@ -18,8 +18,8 @@ class Abstract_ArangoRDF(ABC):
         self,
         name: str,
         rdf_graph: RDFGraph,
-        overwrite_graph: bool,
         contextualize_graph: bool,
+        overwrite_graph: bool,
         batch_size: Optional[int],
         **import_options: Any,
     ) -> ADBGraph:
@@ -29,10 +29,10 @@ class Abstract_ArangoRDF(ABC):
         self,
         name: str,
         rdf_graph: RDFGraph,
-        adb_mapping: Optional[RDFGraph],
-        overwrite_graph: bool,
-        contextualize_graph: bool,
-        batch_size: Optional[int],
+        contextualize_graph: bool = False,
+        overwrite_graph: bool = False,
+        batch_size: Optional[int] = None,
+        adb_mapping: Optional[RDFGraph] = None,
         **import_options: Any,
     ) -> ADBGraph:
         raise NotImplementedError  # pragma: no cover
