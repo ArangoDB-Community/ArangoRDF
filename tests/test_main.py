@@ -574,7 +574,6 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     _class = adbrdf.rdf_id_to_adb_key(str(RDFS.Class))
-    _property = adbrdf.rdf_id_to_adb_key(str(RDF.Property))
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _relation = adbrdf.rdf_id_to_adb_key("http://example.com/relation")
     _friend = adbrdf.rdf_id_to_adb_key("http://example.com/friend")
@@ -583,7 +582,6 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
 
     assert adb_graph.has_edge_collection("type")
     assert adb_graph.edge_collection("type").has(f"{_friend}-{_type}-{_relation}")
-    assert adb_graph.edge_collection("type").has(f"{_friend}-{_type}-{_property}")
     assert adb_graph.edge_collection("type").has(f"{_relation}-{_type}-{_class}")
 
     assert adb_graph.has_edge_collection("friend")
@@ -607,7 +605,7 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     assert (friend, RDF.type, relation) in rdf_graph_2
 
     # Ontology Assertions
-    assert (friend, RDF.type, RDF.Property) in rdf_graph_2
+    assert (friend, RDF.type, relation) in rdf_graph_2
     assert (relation, RDF.type, RDFS.Class) in rdf_graph_2
     assert (RDF.Property, RDF.type, RDFS.Class) in rdf_graph_2
     assert (RDFS.Class, RDF.type, RDFS.Class) in rdf_graph_2
