@@ -358,15 +358,19 @@ class ArangoRDF(Abstract_ArangoRDF):
                     self.__rpt_process_term(p)
 
                     # Create the <Predicate> <RDF.type> <RDF.Property> ArangoDB Edge
-                    self.__add_adb_edge(
-                        col=self.__STATEMENT_COL,
-                        key=f"{p_key}-{self.__rdf_type_key}-{self.__rdf_property_key}",
-                        _from=f"{self.__URIREF_COL}/{p_key}",
-                        _to=f"{self.__URIREF_COL}/{self.__rdf_property_key}",
-                        _uri=self.__rdf_type_str,
-                        _label="type",
-                        _sg="",
-                    )
+                    # p_has_no_type_statement = len(type_map[p]) == 0
+                    p_has_no_type_statement = (p, RDF.type, None) not in self.rdf_graph
+                    if p_has_no_type_statement:
+                        key = f"{p_key}-{self.__rdf_type_key}-{self.__rdf_property_key}"
+                        self.__add_adb_edge(
+                            col=self.__STATEMENT_COL,
+                            key=key,
+                            _from=f"{self.__URIREF_COL}/{p_key}",
+                            _to=f"{self.__URIREF_COL}/{self.__rdf_property_key}",
+                            _uri=self.__rdf_type_str,
+                            _label="type",
+                            _sg="",
+                        )
 
                     # Run RDFS Domain/Range Inference & Introspection
                     dr_meta = [
@@ -784,20 +788,24 @@ class ArangoRDF(Abstract_ArangoRDF):
                 self.__pgt_process_predicate(s_meta, p_meta, o, o_meta, sg_str)
 
                 if contextualize_graph:
+                    p_key = p_meta[1]
+
                     # Load the RDF Predicate as an ArangoDB Document
                     self.__pgt_process_rdf_term(p, p_meta)
 
                     # Create the <Predicate> <RDF.type> <RDF.Property> ArangoDB Edge
-                    p_key = p_meta[1]
-                    self.__add_adb_edge(
-                        "type",
-                        f"{p_key}-{self.__rdf_type_key}-{self.__rdf_property_key}",
-                        f"Property/{p_key}",
-                        f"Class/{self.__rdf_property_key}",
-                        self.__rdf_type_str,
-                        "type",
-                        "",
-                    )
+                    # p_has_no_type_statement = len(type_map[p]) == 0
+                    p_has_no_type_statement = (p, RDF.type, None) not in self.rdf_graph
+                    if p_has_no_type_statement:
+                        self.__add_adb_edge(
+                            "type",
+                            f"{p_key}-{self.__rdf_type_key}-{self.__rdf_property_key}",
+                            f"Property/{p_key}",
+                            f"Class/{self.__rdf_property_key}",
+                            self.__rdf_type_str,
+                            "type",
+                            "",
+                        )
 
                     # Run RDFS Domain/Range Inference & Introspection
                     dr_meta = [
@@ -965,8 +973,8 @@ class ArangoRDF(Abstract_ArangoRDF):
         # 3) RDFS.subPropertyOf statements
         ############################################################
         for s, o, *_ in self.rdf_graph[: RDFS.subPropertyOf :]:  # type: ignore[misc]
-            adb_mapping.add((s, self.adb_col_uri, Literal("Property")))
-            adb_mapping.add((o, self.adb_col_uri, Literal("Property")))
+            self.__pgt_add_to_adb_mapping(adb_mapping, s, "Property", True)
+            self.__pgt_add_to_adb_mapping(adb_mapping, o, "Property", True)
 
         ############################################################
         # 4) Domain & Range Statements
@@ -993,7 +1001,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                     """
                 )
 
-            adb_mapping.add((s, self.adb_col_uri, o))
+            self.__pgt_add_to_adb_mapping(adb_mapping, s, str(o))
 
         ############################################################
         # 6) Finalize **adb_mapping**
@@ -1006,9 +1014,36 @@ class ArangoRDF(Abstract_ArangoRDF):
                 class_str = self.__identify_best_class(class_set, subclass_tree)
                 adb_col = self.rdf_id_to_adb_label(class_str)
 
-                adb_mapping.add((rdf_resource, self.adb_col_uri, Literal(adb_col)))
+                self.__pgt_add_to_adb_mapping(adb_mapping, rdf_resource, adb_col)
 
         return adb_mapping
+
+    def __pgt_add_to_adb_mapping(
+        self,
+        adb_mapping: RDFGraph,
+        s: RDFSubject,
+        adb_col: str,
+        overwrite: bool = False,
+    ) -> None:
+        """Add to **adb_mapping** a statement of the form
+        (s, URIRef("http://www.arangodb.com/collection"), Literal(adb_col)) .
+
+        :param adb_mapping: The RDF Graph representing the
+            ArangoDB Collection Mapping statements.
+        :type adb_mapping: rdflib.graph.Graph
+        :param s: The RDF Subject.
+        :type s: URIRef | BNode
+        :param adb_col: The ArangoDB Collection name.
+        :type adb_col: str
+        :param overwrite: If True, delete any existing statements of
+            the form (s, URIRef("http://www.arangodb.com/collection"), None).
+            Defaults to False.
+        :type overwrite: bool
+        """
+        if overwrite:
+            adb_mapping.remove((s, self.adb_col_uri, None))
+
+        adb_mapping.add((s, self.adb_col_uri, Literal(adb_col)))
 
     def __pgt_get_term_metadata(
         self, term: Union[URIRef, BNode, Literal]
@@ -1698,6 +1733,7 @@ class ArangoRDF(Abstract_ArangoRDF):
 
             # Domain/Range Inference
             # TODO: REVISIT CONDITIONS FOR INFERENCE
+            # t_has_no_type_statement = len(type_map[t]) == 0
             t_has_no_type_statement = (t, RDF.type, None) not in self.rdf_graph
             if t_has_no_type_statement:
                 for _, class_key in predicate_scope[p][dr_label]:
@@ -1717,15 +1753,11 @@ class ArangoRDF(Abstract_ArangoRDF):
 
             # Domain/Range Introspection
             # TODO: REVISIT CONDITIONS FOR INTROSPECTION
-            p_dr_not_in_graph = (p, RDFS[dr_label], None) not in self.rdf_graph
-            p_dr_not_in_meta_graph = (p, RDFS[dr_label], None) not in self.meta_graph
-            p_not_used_in_meta_graph = (None, p, None) not in self.meta_graph
-            if (
-                type_map[t]
-                and p_dr_not_in_graph
-                and p_dr_not_in_meta_graph
-                and p_not_used_in_meta_graph
-            ):
+            # p_dr_not_in_graph = (p, RDFS[dr_label], None) not in self.rdf_graph
+            # p_dr_not_in_meta_graph = (p, RDFS[dr_label], None) not in self.meta_graph
+            p_already_has_dr = p in predicate_scope and dr_label in predicate_scope[p]
+            p_used_in_meta_graph = (None, p, None) in self.meta_graph
+            if type_map[t] and not p_already_has_dr and not p_used_in_meta_graph:
                 dr_str, dr_key = dr_map[dr_label]
 
                 if dr_label == "domain":
@@ -1798,13 +1830,14 @@ class ArangoRDF(Abstract_ArangoRDF):
             explicit_type_map[s].add(str(o))
 
             if adb_mapping is not None:
-                adb_mapping.add((o, self.adb_col_uri, Literal("Class")))
+                self.__pgt_add_to_adb_mapping(adb_mapping, o, "Class", True)
 
         for p in self.rdf_graph.predicates(subject=None, object=None, unique=True):
-            explicit_type_map[p].add(self.__rdf_property_str)  # type: ignore[index]
+            assert type(p) is URIRef
+            explicit_type_map[p].add(self.__rdf_property_str)
 
             if adb_mapping is not None:
-                adb_mapping.add((p, self.adb_col_uri, Literal("Property")))
+                self.__pgt_add_to_adb_mapping(adb_mapping, p, "Property", True)
 
         return explicit_type_map
 
@@ -1860,8 +1893,8 @@ class ArangoRDF(Abstract_ArangoRDF):
             subclass_map[str(o)].add(str(s))
 
             if adb_mapping is not None:
-                adb_mapping.add((s, self.adb_col_uri, Literal("Class")))
-                adb_mapping.add((o, self.adb_col_uri, Literal("Class")))
+                self.__pgt_add_to_adb_mapping(adb_mapping, s, "Class", True)
+                self.__pgt_add_to_adb_mapping(adb_mapping, o, "Class", True)
 
         for key in set(subclass_map) ^ {self.__rdfs_resource_str}:
             if (URIRef(key), RDFS.subClassOf, None) not in subclass_graph:
@@ -1923,8 +1956,8 @@ class ArangoRDF(Abstract_ArangoRDF):
                     predicate_scope[p][label].add((class_str, class_key))
 
                 if adb_mapping is not None:
-                    adb_mapping.add((p, self.adb_col_uri, Literal("Property")))
-                    adb_mapping.add((c, self.adb_col_uri, Literal("Class")))
+                    self.__pgt_add_to_adb_mapping(adb_mapping, p, "Property", True)
+                    self.__pgt_add_to_adb_mapping(adb_mapping, c, "Class", True)
 
         return predicate_scope
 
