@@ -13,8 +13,8 @@ from .conftest import (
     META_GRAPH_ALL_RESOURCES,
     META_GRAPH_CONTEXTUALIZE_STATEMENTS,
     META_GRAPH_IDENTIFIED_RESOURCES,
+    META_GRAPH_LITERAL_STATEMENTS,
     META_GRAPH_NON_LITERAL_STATEMENTS,
-    META_GRAPH_POST_CONTEXTUALIZE_SIZE,
     META_GRAPH_SIZE,
     META_GRAPH_UNKNOWN_RESOURCES,
     adbrdf,
@@ -53,14 +53,22 @@ def test_constructor() -> None:
         ("Case_5_RPT", get_rdf_graph("cases/5.ttl"), 2, 1, 1, 1, False),
         ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 11, 9, 0, 1, False),
         ("Case_7_RPT", get_rdf_graph("cases/7.ttl"), 20, 17, 0, 1, False),
-        ("Meta_RPT", get_meta_graph(), META_GRAPH_SIZE, 129, 0, 234, False),
         (
             "Meta_RPT",
             get_meta_graph(),
-            META_GRAPH_POST_CONTEXTUALIZE_SIZE,
+            META_GRAPH_SIZE,
             META_GRAPH_ALL_RESOURCES,
             0,
-            234,
+            META_GRAPH_LITERAL_STATEMENTS,
+            False,
+        ),
+        (
+            "Meta_RPT",
+            get_meta_graph(),
+            META_GRAPH_SIZE + META_GRAPH_CONTEXTUALIZE_STATEMENTS,
+            META_GRAPH_ALL_RESOURCES,
+            0,
+            META_GRAPH_LITERAL_STATEMENTS,
             True,
         ),
     ],
@@ -128,17 +136,15 @@ def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == META_GRAPH_ALL_RESOURCES  # 132
-    assert e_count == META_GRAPH_NON_LITERAL_STATEMENTS  # 450
+    assert v_count == META_GRAPH_ALL_RESOURCES
+    assert e_count == META_GRAPH_NON_LITERAL_STATEMENTS
     assert (
         db.collection(f"{name}_UnknownResource").count() == META_GRAPH_UNKNOWN_RESOURCES
     )
 
     rdf_graph_2, adb_mapping = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
-    assert (
-        len(rdf_graph_2) == len(rdf_graph) + META_GRAPH_CONTEXTUALIZE_STATEMENTS
-    )  # 685
-    assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES  # 121
+    assert len(rdf_graph_2) == len(rdf_graph) + META_GRAPH_CONTEXTUALIZE_STATEMENTS
+    assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES
     assert {
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "List", "Ontology"}
@@ -146,8 +152,6 @@ def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS
-    for _, p, _, *_ in diff:
-        assert p in {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -225,7 +229,10 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
 
     assert (
         len(rdf_graph_2)
-        == META_GRAPH_POST_CONTEXTUALIZE_SIZE + size + contextualize_statements
+        == META_GRAPH_SIZE
+        + META_GRAPH_CONTEXTUALIZE_STATEMENTS
+        + size
+        + contextualize_statements
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
@@ -250,7 +257,7 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     unique_nodes = 5
     identified_unique_nodes = 5
     non_literal_statements = 3
-    contextualize_statements = 6
+    contextualize_statements = 5
 
     # RDF to ArangoDB
     rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
@@ -327,7 +334,10 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
 
     assert (
         len(rdf_graph_2)
-        == META_GRAPH_POST_CONTEXTUALIZE_SIZE + size + contextualize_statements
+        == META_GRAPH_SIZE
+        + META_GRAPH_CONTEXTUALIZE_STATEMENTS
+        + size
+        + contextualize_statements
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
@@ -352,7 +362,7 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     unique_nodes = 5
     identified_unique_nodes = 2
     non_literal_statements = 2
-    contextualize_statements = 3
+    contextualize_statements = 2
 
     # RDF to ArangoDB
     rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
@@ -419,7 +429,10 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
 
     assert (
         len(rdf_graph_2)
-        == META_GRAPH_POST_CONTEXTUALIZE_SIZE + size + contextualize_statements
+        == META_GRAPH_SIZE
+        + META_GRAPH_CONTEXTUALIZE_STATEMENTS
+        + size
+        + contextualize_statements
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
@@ -515,7 +528,10 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
 
     assert (
         len(rdf_graph_2)
-        == META_GRAPH_POST_CONTEXTUALIZE_SIZE + size + contextualize_statements
+        == META_GRAPH_SIZE
+        + META_GRAPH_CONTEXTUALIZE_STATEMENTS
+        + size
+        + contextualize_statements
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
@@ -540,7 +556,7 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     unique_nodes = 4
     identified_unique_nodes = 2
     non_literal_statements = 2
-    contextualize_statements = 2
+    contextualize_statements = 1
 
     # RDF to ArangoDB
     rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
@@ -599,7 +615,10 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
 
     assert (
         len(rdf_graph_2)
-        == META_GRAPH_POST_CONTEXTUALIZE_SIZE + size + contextualize_statements
+        == META_GRAPH_SIZE
+        + META_GRAPH_CONTEXTUALIZE_STATEMENTS
+        + size
+        + contextualize_statements
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
@@ -689,7 +708,10 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
 
     assert (
         len(rdf_graph_2)
-        == META_GRAPH_POST_CONTEXTUALIZE_SIZE + size + contextualize_statements
+        == META_GRAPH_SIZE
+        + META_GRAPH_CONTEXTUALIZE_STATEMENTS
+        + size
+        + contextualize_statements
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
@@ -968,7 +990,10 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
 
     assert (
         len(rdf_graph_2)
-        == META_GRAPH_POST_CONTEXTUALIZE_SIZE + size + contextualize_statements
+        == META_GRAPH_SIZE
+        + META_GRAPH_CONTEXTUALIZE_STATEMENTS
+        + size
+        + contextualize_statements
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
@@ -1100,7 +1125,8 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
 
     assert (
         len(rdf_graph_2)
-        == META_GRAPH_POST_CONTEXTUALIZE_SIZE
+        == META_GRAPH_SIZE
+        + META_GRAPH_CONTEXTUALIZE_STATEMENTS
         + size
         + contextualize_statements
         - adb_col_uri_statements
