@@ -3,6 +3,7 @@ import gc
 import logging
 import os
 import re
+import sys
 from ast import literal_eval
 from collections import defaultdict
 from datetime import date
@@ -295,10 +296,12 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         if contextualize_graph:
             self.rdf_graph = self.load_base_ontology(rdf_graph)
+            explicit_type_map = self.__build_explicit_type_map()
+            subclass_tree = self.__build_subclass_tree()
             predicate_scope = self.__build_predicate_scope()
+            domain_range_map = self.__build_domain_range_map(predicate_scope)
             type_map = self.__combine_type_map_and_dr_map(
-                self.__build_explicit_type_map(),
-                self.__build_domain_range_map(predicate_scope),
+                explicit_type_map, domain_range_map
             )
 
         size = len(self.rdf_graph)
@@ -375,8 +378,9 @@ class ArangoRDF(Abstract_ArangoRDF):
                         p,
                         p_key,
                         dr_meta,
-                        predicate_scope,
                         type_map,
+                        subclass_tree,
+                        predicate_scope,
                         is_rpt=True,
                     )
 
@@ -693,8 +697,9 @@ class ArangoRDF(Abstract_ArangoRDF):
         else:
             adb_mapping = adb_mapping or RDFGraph()
             self.rdf_graph = self.load_base_ontology(rdf_graph)
-            predicate_scope = self.__build_predicate_scope(adb_mapping)
             explicit_type_map = self.__build_explicit_type_map(adb_mapping)
+            subclass_tree = self.__build_subclass_tree(adb_mapping)
+            predicate_scope = self.__build_predicate_scope(adb_mapping)
             domain_range_map = self.__build_domain_range_map(predicate_scope)
             type_map = self.__combine_type_map_and_dr_map(
                 explicit_type_map, domain_range_map
@@ -703,8 +708,9 @@ class ArangoRDF(Abstract_ArangoRDF):
             self.adb_mapping = self.pgt_build_adb_mapping(
                 self.rdf_graph,
                 adb_mapping,
-                predicate_scope,
                 explicit_type_map,
+                subclass_tree,
+                predicate_scope,
                 domain_range_map,
             )
 
@@ -799,8 +805,9 @@ class ArangoRDF(Abstract_ArangoRDF):
                         p,
                         p_key,
                         dr_meta,
-                        predicate_scope,
                         type_map,
+                        subclass_tree,
+                        predicate_scope,
                         is_rpt=False,
                     )
 
@@ -841,8 +848,9 @@ class ArangoRDF(Abstract_ArangoRDF):
         self,
         rdf_graph: RDFGraph,
         adb_mapping: Optional[RDFGraph] = None,
-        predicate_scope: Optional[PredicateScope] = None,
         explicit_type_map: Optional[TypeMap] = None,
+        subclass_tree: Optional[Tree] = None,
+        predicate_scope: Optional[PredicateScope] = None,
         domain_range_map: Optional[TypeMap] = None,
     ) -> RDFGraph:
         """The PGT Algorithm relies on the ArangoDB Collection Mapping Process to
@@ -884,16 +892,21 @@ class ArangoRDF(Abstract_ArangoRDF):
             see any previous `adb:collection` statements being overwritten by
             the standard ArangoDB Collection Mapping Process.
         :type adb_mapping: rdflib.graph.Graph
+        :param explicit_type_map: A dictionary mapping the "natural"
+            `RDF.Type` statements of every RDF Resource.
+            See `ArangoRDF.__build_explicit_type_map()` for more info.
+            NOTE: Users should not use this parameter (internal use only).
+        :type explicit_type_map: DefaultDict[URIRef | BNode, Set[str]]
+        :param subclass_tree: The RDFS SubClassOf Taxonomy represented
+            as a Tree Data Structure. See
+            `ArangoRDF.__build_subclass_tree()` for more info.
+            NOTE: Users should not use this parameter (internal use only).
+        :type subclass_tree: arango_rdf.utils.Tree
         :param predicate_scope: A dictionary mapping the Domain & Range values
             of RDF Predicates. See `ArangoRDF.__build_predicate_scope()` for more info.
             NOTE: Users should not use this parameter (internal use only).
         :type predicate_scope:
             DefaultDict[URIRef, DefaultDict[str, Set[Tuple[str, str]]]]
-        :param type_map: A dictionary mapping the "natural" & "synthetic"
-            `RDF.Type` statements of every RDF Resource.
-            See `ArangoRDF.__combine_type_map_and_dr_map()` for more info.
-            NOTE: Users should not use this parameter (internal use only).
-        :type type_map: DefaultDict[URIRef | BNode, Set[str]]
         :param domain_range_map: The Domain and Range Map produced by the
             `ArangoRDF.__build_domain_range_map()` method.
             NOTE: Users should not use this parameter (internal use only).
@@ -920,25 +933,13 @@ class ArangoRDF(Abstract_ArangoRDF):
         ############################################################
         # 2) RDF.subClassOf Statements
         ############################################################
-        subclass_map: DefaultDict[str, Set[str]] = defaultdict(set)
-
-        subclass_graph = self.meta_graph + rdf_graph
-        for s, o, *_ in subclass_graph[: RDFS.subClassOf :]:  # type: ignore[misc]
-            subclass_map[str(o)].add(str(s))
-            adb_mapping.add((s, self.adb_col_uri, Literal("Class")))
-            adb_mapping.add((o, self.adb_col_uri, Literal("Class")))
-
-        for key in set(subclass_map) ^ {self.__rdfs_resource_str}:
-            if (URIRef(key), RDFS.subClassOf, None) not in subclass_graph:
-                subclass_map[self.__rdfs_class_str].add(key)
-
-        root = Node(self.__rdfs_resource_str)
-        subclass_tree = Tree(root, subclass_map)
+        if subclass_tree is None:
+            subclass_tree = self.__build_subclass_tree(adb_mapping)
 
         ############################################################
         # 3) RDFS.subPropertyOf statements
         ############################################################
-        for s, o, *_ in rdf_graph[: RDFS.subPropertyOf :]:  # type: ignore[misc]
+        for s, o, *_ in self.rdf_graph[: RDFS.subPropertyOf :]:  # type: ignore[misc]
             adb_mapping.add((s, self.adb_col_uri, Literal("Property")))
             adb_mapping.add((o, self.adb_col_uri, Literal("Property")))
 
@@ -954,7 +955,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         ############################################################
         # 5) ADB.Collection Statements
         ############################################################
-        for s, o, *_ in rdf_graph[: self.adb_col_uri :]:  # type: ignore[misc]
+        for s, o, *_ in self.rdf_graph[: self.adb_col_uri :]:  # type: ignore[misc]
             if type(o) is not Literal:
                 raise ValueError(f"Object {o} must be Literal")  # pragma: no cover
 
@@ -977,22 +978,8 @@ class ArangoRDF(Abstract_ArangoRDF):
                 if (rdf_resource, None, None) in adb_mapping:
                     continue
 
-                elif len(class_set) == 1:
-                    adb_col = self.rdf_id_to_adb_label(class_set.pop())
-
-                elif any([c in subclass_tree for c in class_set]):
-                    max_depth = -1
-                    best_class = ""
-                    for c in sorted(class_set):
-                        depth = subclass_tree.get_node_depth(c)
-                        if depth > max_depth:
-                            max_depth = depth
-                            best_class = c
-
-                    adb_col = self.rdf_id_to_adb_label(best_class)
-
-                else:
-                    adb_col = self.rdf_id_to_adb_label(sorted(class_set)[0])
+                class_str = self.__identify_best_class(class_set, subclass_tree)
+                adb_col = self.rdf_id_to_adb_label(class_str)
 
                 adb_mapping.add((rdf_resource, self.adb_col_uri, Literal(adb_col)))
 
@@ -1490,12 +1477,14 @@ class ArangoRDF(Abstract_ArangoRDF):
     # 1) rdf_id_to_adb_key
     # 2) rdf_id_to_adb_label
     # 3) __add_adb_edge:
-    # 4) __infer_and_introspect_dr:
-    # 5) __build_predicate_scope
+    # 4) __identify_best_class:
+    # 5) __infer_and_introspect_dr:
     # 6) __build_explicit_type_map:
-    # 7) __build_domain_range_map:
-    # 8) __combine_type_map_and_dr_map:
-    # 9) __insert_adb_docs:
+    # 7) __build_subclass_tree:
+    # 8) __build_predicate_scope
+    # 9) __build_domain_range_map:
+    # 10) __combine_type_map_and_dr_map:
+    # 11) __insert_adb_docs:
     ###################################################################################
 
     def rdf_id_to_adb_key(self, rdf_id: str) -> str:
@@ -1503,6 +1492,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         some hashing function.
 
         Current hashing function used: FarmHash
+
         List of hashing functions tested & benchmarked:
         - Built-in hash() function
         - Hashlib MD5
@@ -1579,13 +1569,52 @@ class ArangoRDF(Abstract_ArangoRDF):
         if _sg:
             self.adb_docs[col][key]["_sub_graph_uri"] = _sg
 
+    def __identify_best_class(
+        self, class_set: Set[str], subclass_tree: Tree, is_max: bool = True
+    ) -> str:
+        """Find the ideal RDFS Class among a selection of RDFS Classes.
+        This system is a Work in Progress.
+
+        :param class_set: The set of RDFS Class URIs to choose from.
+        :type class_set: Set[str]
+        :param subclass_tree: The Tree data structure representing
+            the RDFS Taxonomy. See `ArangoRDF.__build_subclass_tree()`
+            for more info.
+        :type subclass_tree: arango_rdf.utils.Tree
+        :param is_max: A flag to identify how node depths within the
+            **subclass_tree* should be considered. Defaults to True.
+        :type is_max: bool
+        :return: The most suitable RDFS Class URI among the set of classes.
+        :rtype: str
+        """
+        if len(class_set) == 1:
+            return list(class_set)[0]
+
+        elif any([c in subclass_tree for c in class_set]):
+            best_class = ""
+            best_depth = -1 if is_max else sys.maxsize
+
+            for c in sorted(class_set):
+                depth = subclass_tree.get_node_depth(c)
+                condition = depth > best_depth if is_max else depth < best_depth
+
+                if condition:
+                    best_depth = depth
+                    best_class = c
+
+            return best_class
+
+        else:
+            return sorted(class_set)[0]
+
     def __infer_and_introspect_dr(
         self,
         p: URIRef,
         p_key: str,
         dr_meta: List[Tuple[RDFObject, str, str, str]],
-        predicate_scope: PredicateScope,
         type_map: TypeMap,
+        subclass_tree: Tree,
+        predicate_scope: PredicateScope,
         is_rpt: bool,
     ) -> None:
         """A helper method shared accross RDF to ArangoDB RPT & PGT to provide
@@ -1605,15 +1634,19 @@ class ArangoRDF(Abstract_ArangoRDF):
             current (s,p,o) statement.
             i.e [(s, s_key, s_col, "domain"), (o, o_key, o_col, "range")].
         :type dr_meta: List[Tuple[URIRef | BNode | Literal, str, str, str]]
+        :param type_map: A dictionary mapping the "natural" & "synthetic"
+            `RDF.Type` statements of every RDF Resource.
+            See `ArangoRDF.__combine_type_map_and_dr_map()` for more info.
+        :type type_map: DefaultDict[URIRef | BNode, Set[str]]
+        :param subclass_tree: The RDFS SubClassOf Taxonomy represented
+            as a Tree Data Structure. See
+            `ArangoRDF.__build_subclass_tree()` for more info.
+        :type subclass_tree: arango_rdf.utils.Tree
         :param predicate_scope: A dictionary mapping the Domain & Range
             values of RDF Predicates. See `ArangoRDF.__build_predicate_scope()`
             for more info.
         :type predicate_scope:
             DefaultDict[URIRef, DefaultDict[str, Set[Tuple[str, str]]]]
-        :param type_map: A dictionary mapping the "natural" & "synthetic"
-            `RDF.Type` statements of every RDF Resource.
-            See `ArangoRDF.__combine_type_map_and_dr_map()` for more info.
-        :type type_map: DefaultDict[URIRef | BNode, Set[str]]
         :param is_rpt: A flag to identify if this method call originates
             from an RPT process or not.
         :type is_rpt: bool
@@ -1658,23 +1691,46 @@ class ArangoRDF(Abstract_ArangoRDF):
 
             # Domain/Range Introspection
             # TODO: REVISIT CONDITIONS FOR INTROSPECTION
-            p_dr_in_graph = (p, RDFS[dr_label], None) in self.rdf_graph
-            p_dr_in_meta_graph = (p, RDFS[dr_label], None) in self.meta_graph
-            p_used_in_meta_graph = (None, p, None) in self.meta_graph
-            if not (p_dr_in_graph or p_dr_in_meta_graph or p_used_in_meta_graph):
+            p_dr_not_in_graph = (p, RDFS[dr_label], None) not in self.rdf_graph
+            p_dr_not_in_meta_graph = (p, RDFS[dr_label], None) not in self.meta_graph
+            p_not_used_in_meta_graph = (None, p, None) not in self.meta_graph
+            if (
+                type_map[t]
+                and p_dr_not_in_graph
+                and p_dr_not_in_meta_graph
+                and p_not_used_in_meta_graph
+            ):
                 dr_str, dr_key = dr_map[dr_label]
 
-                for class_str in type_map[t]:
-                    class_key = self.rdf_id_to_adb_key(class_str)  # TODO: optimize?
+                if dr_label == "domain":
+                    class_str = self.__identify_best_class(
+                        type_map[t], subclass_tree, is_max=False
+                    )
+
+                    class_key = self.rdf_id_to_adb_key(class_str)
                     self.__add_adb_edge(
                         DR_COL,
                         f"{p_key}-{dr_key}-{class_key}",
                         f"{P_COL}/{p_key}",
                         f"{CLASS_COL}/{class_key}",
                         dr_str,
-                        dr_label,
+                        "domain",
                         "",
                     )
+
+                else:
+                    for class_str in type_map[t]:
+                        # TODO: optimize class_key
+                        class_key = self.rdf_id_to_adb_key(class_str)
+                        self.__add_adb_edge(
+                            DR_COL,
+                            f"{p_key}-{dr_key}-{class_key}",
+                            f"{P_COL}/{p_key}",
+                            f"{CLASS_COL}/{class_key}",
+                            dr_str,
+                            "range",
+                            "",
+                        )
 
     def __build_explicit_type_map(
         self, adb_mapping: Optional[RDFGraph] = None
@@ -1725,6 +1781,69 @@ class ArangoRDF(Abstract_ArangoRDF):
                 adb_mapping.add((p, self.adb_col_uri, Literal("Property")))
 
         return explicit_type_map
+
+    def __build_subclass_tree(self, adb_mapping: Optional[RDFGraph] = None) -> Tree:
+        """An RPT/PGT helper method used to build a Tree Data Structure
+        representing the `rdfs:subClassOf` Taxonomy of the RDF Graph.
+
+        Essential for providing Domain & Range Introspection, and essential for
+        completing the ArangoDB Collection Mapping Process.
+
+        For example, given the following snippet:
+        -----------------------------
+        @prefix ex: <http://example.com/> .
+
+        ex:Zenkey rdfs:subClassOf :Zebra .
+        ex:Zenkey rdfs:subClassOf :Donkey .
+        ex:Donkey rdfs:subClassOf :Animal .
+        ex:Zebra rdfs:subClassOf :Animal .
+        ex:Human rdfs:subClassOf :Animal .
+        ex:Animal rdfs:subClassOf :LivingThing .
+        ex:LivingThing rdfs:subClassOf :Thing .
+        -----------------------------
+        The `subclass_tree` would look like:
+        ```
+        ==================
+        |http://www.w3.org/2000/01/rdf-schema#Resource
+        |-...
+        |-http://www.w3.org/2000/01/rdf-schema#Class
+        |-...
+        |--...
+        |--http://example.com/Thing
+        |---http://example.com/LivingThing
+        |----http://example.com/Animal
+        |-----http://example.com/Donkey
+        |------http://example.com/Zenkey
+        |-----http://example.com/Human
+        |-----http://example.com/Zebra
+        |------http://example.com/Zenkey
+        ==================
+        ```
+
+        :param adb_mapping: The ADB Mapping of the current (RDF to
+            ArangoDB) PGT Process. If not specified, then it is implied that
+            this method was called from an RPT context.
+        :type adb_mapping: rdflib.graph.Graph | None
+        :return: The subclass_tree containing the RDFS SubClassOf Taxonomy.
+        :rtype: arango_rdf.utils.Tree
+        """
+        subclass_map: DefaultDict[str, Set[str]] = defaultdict(set)
+
+        subclass_graph = self.meta_graph + self.rdf_graph
+        for s, o, *_ in subclass_graph[: RDFS.subClassOf :]:  # type: ignore[misc]
+            subclass_map[str(o)].add(str(s))
+
+            if adb_mapping is not None:
+                adb_mapping.add((s, self.adb_col_uri, Literal("Class")))
+                adb_mapping.add((o, self.adb_col_uri, Literal("Class")))
+
+        for key in set(subclass_map) ^ {self.__rdfs_resource_str}:
+            if (URIRef(key), RDFS.subClassOf, None) not in subclass_graph:
+                subclass_map[self.__rdfs_class_str].add(key)
+
+        root = Node(self.__rdfs_resource_str)
+
+        return Tree(root, subclass_map)
 
     def __build_predicate_scope(
         self, adb_mapping: Optional[RDFGraph] = None
@@ -1800,7 +1919,7 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         ex:address rdfs:domain ex:Entity .
         ex:son rdfs:domain ex:Parent .
-        ex:son rdfs:range ex:Person
+        ex:son rdfs:range ex:Person .
         ----------------------------------
         The `domain_range_map` would look like:
         ```
