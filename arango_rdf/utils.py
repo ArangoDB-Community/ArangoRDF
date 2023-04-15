@@ -69,7 +69,9 @@ class Tree:
         return node_id in self.nodes
 
     def show(self) -> None:  # pragma: no cover
+        print("\n==================")
         self.show_rec(self.root)
+        print("==================\n")
 
     def show_rec(self, node: Node) -> None:  # pragma: no cover
         print("|" + "-" * node.depth + node.name)
