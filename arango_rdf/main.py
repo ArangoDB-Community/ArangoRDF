@@ -269,7 +269,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         :return: The ArangoDB Graph API wrapper.
         :rtype: arango.graph.Graph
         """
-        # TODO - REVISIT
+        # TODO: REVISIT
         if isinstance(rdf_graph, RDFDataset):
             raise TypeError(  # pragma: no cover
                 """
@@ -422,7 +422,11 @@ class ArangoRDF(Abstract_ArangoRDF):
             t_col = self.__BNODE_COL
             t_key = t_str
 
-            self.adb_docs[t_col][t_key] = {"_key": t_key, "_rdftype": "BNode"}
+            self.adb_docs[t_col][t_key] = {
+                "_key": t_key,
+                "_label": t_key,  # TODO: REVISIT
+                "_rdftype": "BNode",
+            }
 
         elif type(t) is Literal:
             t_col = self.__LITERAL_COL
@@ -658,7 +662,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         :return: The ArangoDB Graph API wrapper.
         :rtype: arango.graph.Graph
         """
-        # TODO - REVISIT
+        # TODO: REVISIT
         if isinstance(rdf_graph, RDFDataset):
             raise TypeError(  # pragma: no cover
                 """
@@ -868,7 +872,28 @@ class ArangoRDF(Abstract_ArangoRDF):
         `ArangoRDF.rdf_to_arangodb_by_pgt()` method to make sure the RDF Resources
         of their RDF Graph are placed in the desired ArangoDB Collections.
 
-        NOTE: Running this method prior to running `ArangoRDF.rdf_to_arangodb_by_pgt()`
+        A common use case would look like this:
+        ```
+        from arango_rdf import ArangoRDF
+        from arango import ArangoClient
+        from rdflib import Graph
+
+        db = ArangoClient(...)
+        adbrdf = ArangoRDF(db)
+
+        g = Graph()
+        g.parse('...')
+
+        adb_mapping = adbrdf.pgt_build_adb_mapping(g)
+        adb_mapping.remove(...)
+        adb_mapping.add(...)
+
+        adbrdf.rdf_to_arangodb_by_pgt(
+            'PGTGraph', g, contextualize_graph=True, adb_mapping=adb_mapping
+        )
+        ```
+
+        NOTE: Running this method prior to `ArangoRDF.rdf_to_arangodb_by_pgt()`
         is unnecessary if the user is not interested in
         viewing/modifying the ADB Mapping.
 
@@ -975,7 +1000,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         ############################################################
         for rdf_map in [explicit_type_map, domain_range_map]:
             for rdf_resource, class_set in rdf_map.items():
-                if (rdf_resource, None, None) in adb_mapping:
+                if (rdf_resource, None, None) in adb_mapping or not class_set:
                     continue
 
                 class_str = self.__identify_best_class(class_set, subclass_tree)
@@ -1054,6 +1079,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             self.adb_docs[t_col][t_key] = {
                 **self.adb_docs[t_col][t_key],
                 "_key": t_key,
+                "_label": t_key,  # TODO: REVISIT
                 "_rdftype": "BNode",
             }
 
@@ -2066,7 +2092,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         # Maps ArangoDB Document IDs to RDFLib Terms (i.e URIRef, Literal, BNode)
         term_map: Dict[str, Union[RDFSubject, RDFObject]] = {}
 
-        # TODO - REVISIT
+        # TODO: REVISIT
         self.rdf_graph.bind("adb", "http://www.arangodb.com/")
         self.__adb_graph_ns = f"{self.db._conn._url_prefixes[0]}/{name}#"
         self.rdf_graph.bind(name, self.__adb_graph_ns)
@@ -2178,7 +2204,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                         if e_col not in adb_v_col_blacklist:
                             adb_mapping.add((edge, self.adb_col_uri, Literal(e_col)))
 
-        # TODO - REVISIT
+        # TODO: REVISIT
         # Not a fan of this at all...
         if graph_supports_quads:
             for v_col, _ in metagraph["vertexCollections"].items():
