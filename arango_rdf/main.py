@@ -179,8 +179,9 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         :param rdf_graph: The RDF Graph, soon to be converted into an ArangoDB Graph.
         :type rdf_graph: rdflib.graph.Graph
-        :return: The same **rdf_graph** with an addition of 5 statements (at maximum) that
-            make up the "base" t-box required for contextualizing an RDF graph into ArangoDB.
+        :return: The same **rdf_graph** with an addition of 5 statements
+            (at maximum) that make up the "base" t-box required for contextualizing
+            an RDF graph into ArangoDB.
         :rtype: rdflib.graph.Graph
         """
 
@@ -219,39 +220,49 @@ class ArangoRDF(Abstract_ArangoRDF):
         the RDF-topology-preserving transformation (RPT) Algorithm.
 
         RPT tries is to preserve the RDF Graph structure by transforming
-        each RDF statement into an edge in the Property Graph. More info on RPT can be found
-        in the package's README file, or in the following paper: https://arxiv.org/pdf/2210.05781.pdf.
+        each RDF statement into an edge in the Property Graph. More info on
+        RPT can be foundin the package's README file, or in the following
+        paper: https://arxiv.org/pdf/2210.05781.pdf.
 
-        The `rdf_to_arangodb_by_rpt` method will store the RDF Resources of **rdf_graph**
-        under the following ArangoDB Collections:
-        - {name}_URIRef: The Document collection for all RDF Resources of type `rdflib.term.URIRef`
-        - {name}_BNode: The Document collection for all RDF Resources of type `rdflib.term.BNode`
-        - {name}_Literal: The Document collection for all RDF Resources of type `rdflib.term.Literal`
-        - {name}_Statement: The Edge collection for all RDF triples/quads within **rdf_graph**.
+        The `rdf_to_arangodb_by_rpt` method will store the RDF Resources of
+        **rdf_graph** under the following ArangoDB Collections:
+        - {name}_URIRef: The Document collection for `rdflib.term.URIRef` resources.
+        - {name}_BNode: The Document collection for`rdflib.term.BNode` resources.
+        - {name}_Literal: The Document collection for `rdflib.term.Literal` resources.
+        - {name}_Statement: The Edge collection for all triples/quads.
 
         :param name: The name of the RDF Graph
         :type name: str
-        :param rdf_graph: The RDF Graph object. NOTE: This method does not currently support
-            RDF graphs of type `rdflib.graph.Dataset`. Apologies for the inconvenience.
+        :param rdf_graph: The RDF Graph object. NOTE: This method does not
+            currently support RDF graphs of type `rdflib.graph.Dataset`.
+            Apologies for the inconvenience.
         :type: rdf_graph: rdflib.graph.Graph
-        :param contextualize_graph: A work-in-progress flag that seeks to enhance the Terminology Box
-            of **rdf_graph** by providing the following features:
-                1) Process RDF Predicates within **rdf_graph** as their own ArangoDB Document, and cast a
-                    (predicate RDF.type RDF.Property) edge relationship into the ArangoDB graph for every
-                    RDF predicate used in the form (subject predicate object) within **rdf_graph**.
-                2) Provide RDFS.Domain & RDFS.Range Inference on all RDF Resources within the **rdf_graph**
-                3) Provide RDFS.Domain & RDFS.Range Introspection on all RDF Predicates with the **rdf_graph**,
-                    so long that no RDFS.Domain or RDFS.Range statement already exists for the given predicate.
+        :param contextualize_graph: A work-in-progress flag that seeks
+            to enhance the Terminology Box of **rdf_graph** by providing
+            the following features:
+                1) Process RDF Predicates within **rdf_graph** as their own ArangoDB
+                    Document, and cast a (predicate RDF.type RDF.Property) edge
+                    relationship into the ArangoDB graph for every RDF predicate
+                    used in the form (subject predicate object) within **rdf_graph**.
+                2) Provide RDFS.Domain & RDFS.Range Inference on all
+                    RDF Resources within the **rdf_graph**.
+                3) Provide RDFS.Domain & RDFS.Range Introspection on all
+                    RDF Predicates with the **rdf_graph**, so long that
+                    no RDFS.Domain or RDFS.Range statement already exists
+                    for the given predicate.
                 4) TODO - What's next?
         :type contextualize_graph: bool
-        :param overwrite_graph: Overwrites the ArangoDB graph identified by **name** if it already exists,
-            and drops its associated collections. Defaults to False.
+        :param overwrite_graph: Overwrites the ArangoDB graph identified
+            by **name** if it already exists, and drops its associated collections.
+            Defaults to False.
         :type overwrite_graph: bool
-        :param batch_size: If specified, runs the ArangoDB Data Ingestion process for every
-            **batch_size** RDF triples/quads within **rdf_graph**. Defaults to `len(rdf_graph)`.
+        :param batch_size: If specified, runs the ArangoDB Data Ingestion
+            process for every **batch_size** RDF triples/quads within **rdf_graph**.
+            Defaults to `len(rdf_graph)`.
         :type batch_size: int | None
         :param import_options: Keyword arguments to specify additional
-            parameters for the ArangoDB Data Ingestion process. The full parameter list is here:
+            parameters for the ArangoDB Data Ingestion process.
+            The full parameter list is here:
             https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.import_bulk
         :type import_options: Any
         :return: The ArangoDB Graph API wrapper.
@@ -496,50 +507,63 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         In contrast to RPT, PGT ensures that datatype property statements are
         mapped to node properties in the PG. More info on PGT can be found
-        in the package's README file, or in the following paper: https://arxiv.org/pdf/2210.05781.pdf.
+        in the package's README file, or in the following
+        paper: https://arxiv.org/pdf/2210.05781.pdf.
 
-        In contrast to RPT, the `rdf_to_arangodb_by_pgt` method will rely on the nature of the
-        RDF Resource/Statement to determine which ArangoDB Collection it belongs to. The ArangoDB
-        Collection mapping process relies on two fundamental URIs:
+        In contrast to RPT, the `rdf_to_arangodb_by_pgt` method will rely on
+        the nature of the RDF Resource/Statement to determine which ArangoDB
+        Collection it belongs to. The ArangoDB Collection mapping process relies
+        on two fundamental URIs:
 
             1) <http://www.arangodb.com/collection> (adb:collection)
-                - Any RDF Statement of the form <http://example.com/Bob> <adb:collection> "Person"
-                    will map the Subject to the ArangoDB "Person" document collection.
+                - Any RDF Statement of the form
+                    <http://example.com/Bob> <adb:collection> "Person"
+                    will map the Subject to the ArangoDB
+                    "Person" document collection.
 
             2) <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> (rdf:type)
                 - This strategy is divided into 3 cases:
-                    2.1) An RDF Resource only has one `rdf:type` statement. In this case, the local
-                        name of the RDF Object is used as the ArangoDB Document Collection name.
-                        For example, <http://example.com/Bob> <rdf:type> <http://example.com/Person>
-                        would create an JSON Document for <http://example.com/Bob>, and place it
-                        under the "Person" Document Collection. NOTE: The RDF Object
-                        will also have its own JSON Document created, and will be placed under the
-                        "Class" Document Collection.
+                    2.1) An RDF Resource only has one `rdf:type` statement.
+                        In this case, the local name of the RDF Object is used as
+                        the ArangoDB Document Collection name. For example,
+                        <http://example.com/Bob> <rdf:type> <http://example.com/Person>
+                        would create an JSON Document for <http://example.com/Bob>,
+                        and place it under the "Person" Document Collection.
+                        NOTE: The RDF Object will also have its own JSON Document
+                        created, and will be placed under the "Class"
+                        Document Collection.
 
-                    2.2) An RDF Resource has multiple `rdf:type` statements, with some (or all)
-                        of the RDF Objects of those statements belonging in an `rdfs:subClassOf` Taxonomy.
-                        In this case, the local name of the "most specific" Class within the Taxonomy
-                        is used (i.e the Class with the biggest depth). If there is a tie between 2+
-                        Classes, then the URIs are alphabetically sorted & the first one is picked.
+                    2.2) An RDF Resource has multiple `rdf:type` statements,
+                        with some (or all) of the RDF Objects of those statements
+                        belonging in an `rdfs:subClassOf` Taxonomy. In this case, the
+                        local name of the "most specific" Class within the Taxonomy is
+                        used (i.e the Class with the biggest depth). If there is a
+                        tie between 2+ Classes, then the URIs are alphabetically
+                        sorted & the first one is picked.
 
-                    2.3) An RDF Resource has multiple `rdf:type` statements, with none of the RDF Objects
-                        of those statements belonging in an `rdfs:subClassOf` Taxonomy. In this case,
-                        the URIs are alphabetically sorted & the first one is picked. The local name of
-                        the selected URI will be designated as the Document collection for that Resource.
+                    2.3) An RDF Resource has multiple `rdf:type` statements, with none
+                        of the RDF Objects of those statements belonging in an
+                        `rdfs:subClassOf` Taxonomy. In this case, the URIs are
+                        alphabetically sorted & the first one is picked. The local
+                        name of the selected URI will be designated as the Document
+                        collection for that Resource.
 
-            NOTE 1: If `contextualize_graph` is set to True, then additional `rdf:type` statements may
-                be generated via ArangoRDF's Domain & Range Inference feature. These "synthetic" statements
-                will be considered when mapping RDF Resources to the correct ArangoDB Collections, but ONLY
-                if there were no "original" rdf:type statements to consider for the given RDF Resource.
+            NOTE 1: If `contextualize_graph` is set to True, then additional `rdf:type`
+                statements may be generated via ArangoRDF's Domain & Range Inference
+                feature. These "synthetic" statements will be considered when mapping
+                RDF Resources to the correct ArangoDB Collections, but ONLY if there
+                were no "original" rdf:type statements to consider for
+                the given RDF Resource.
 
-            NOTE 2: The ArangoDB Collection Mapping algorithm is a Work in Progress, and will most likely
-                be subject to constant change for the time being.
+            NOTE 2: The ArangoDB Collection Mapping algorithm is a Work in Progress,
+                and will most likely be subject to change for the time being.
 
-        In contrast to RPT, regardless of whether `contextualize_graph` is set to True or not, all
-        RDF Predicates within every RDF Statement in **rdf_graph** will be processed as their own
-        ArangoDB Document, and will be stored under the "Property" Document Collection.
+        In contrast to RPT, regardless of whether `contextualize_graph` is set to
+        True or not, all RDF Predicates within every RDF Statement in **rdf_graph**
+        will be processed as their own ArangoDB Document, and will be stored under
+        the "Property" Document Collection.
 
-        ==================================================================================
+        ===============================================================================
         To demo the ArangoDB Collection Mapping process,
         let us consider the following RDF Graph
         --------------------------------------------------------------------
@@ -564,7 +588,8 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         ex:bob ex:name "Bob" .
         --------------------------------------------------------------------
-        Given the RDF TTL Snippet above, we can derive the following ArangoDB Collection mappings:
+        Given the RDF TTL Snippet above, we can derive the following
+        ArangoDB Collection mappings:
 
         ex:alex --> "A"
             - This RDF Resource only has one associated `rdf:type` statement.
@@ -574,47 +599,58 @@ class ArangoRDF(Abstract_ArangoRDF):
             than `ex:B` when considering the `rdfs:subClassOf` Taxonomy.
 
         ex:mike --> "E"
-            - This RDF Resource has multiple `rdf:type` statements, with none belonging to the
-            `rdfs:subClassOf` Taxonomy. Therefore, Alphabetical Sorting is used.
+            - This RDF Resource has multiple `rdf:type` statements, with
+            none belonging to the `rdfs:subClassOf` Taxonomy.
+            Therefore, Alphabetical Sorting is used.
 
         ex:frank --> "Z"
-            - This RDF Resource has an `adb:collection` statement associated to it, which is
-            prioritized over any other `rdf:type` statement it may have.
+            - This RDF Resource has an `adb:collection` statement associated
+            to it, which is prioritized over any other `rdf:type`
+            statement it may have.
 
         ex:bob --> "UnknownResource"
-            - This RDF Resource has neither an `rdf:type` statement nor an `adb:collection`
-            statement associated to it. It is therefore placed under the "UnknownResource"
+            - This RDF Resource has neither an `rdf:type` statement
+            nor an `adb:collection` statement associated to it. It
+            is therefore placed under the "UnknownResource"
             Document Collection.
-        ==================================================================================
+        ===============================================================================
 
         :param name: The name of the RDF Graph
         :type name: str
-        :param rdf_graph: The RDF Graph object. NOTE: This method does not currently support
-            RDF graphs of type `rdflib.graph.Dataset`. Apologies for the inconvenience.
+        :param rdf_graph: The RDF Graph object. NOTE: This method does not
+            currently support RDF graphs of type `rdflib.graph.Dataset`.
+            Apologies for the inconvenience.
         :type: rdf_graph: rdflib.graph.Graph
-        :param contextualize_graph: A work-in-progress flag that seeks to enhance the Terminology Box
-            of **rdf_graph** by providing the following features:
-                1) Cast a (predicate RDF.type RDF.Property) edge relationship into the ArangoDB graph
-                    for every RDF predicate used in the form (subject predicate object) within **rdf_graph**.
-                2) Provide RDFS.Domain & RDFS.Range Inference on all RDF Resources within the **rdf_graph**
-                3) Provide RDFS.Domain & RDFS.Range Introspection on all RDF Predicates with the **rdf_graph**,
-                    so long that no RDFS.Domain or RDFS.Range statement already exists for the given predicate.
+        :param contextualize_graph: A work-in-progress flag that seeks
+            to enhance the Terminology Box of **rdf_graph** by providing
+            the following features:
+                1) Cast a (predicate RDF.type RDF.Property) edge
+                    relationship into the ArangoDB graph for every RDF predicate
+                    used in the form (subject predicate object) within **rdf_graph**.
+                2) Provide RDFS.Domain & RDFS.Range Inference on all
+                    RDF Resources within the **rdf_graph**.
+                3) Provide RDFS.Domain & RDFS.Range Introspection on all
+                    RDF Predicates with the **rdf_graph**, so long that
+                    no RDFS.Domain or RDFS.Range statement already exists
+                    for the given predicate.
                 4) TODO - What's next?
         :type contextualize_graph: bool
-        :param overwrite_graph: Overwrites the ArangoDB graph identified by **name** if it already exists,
-            and drops its associated collections. Defaults to False.
+        :param overwrite_graph: Overwrites the ArangoDB graph identified
+            by **name** if it already exists, and drops its associated collections.
+            Defaults to False.
         :type overwrite_graph: bool
-        :param batch_size: If specified, runs the ArangoDB Data Ingestion process for every
-            **batch_size** RDF triples/quads within **rdf_graph**. Defaults to `len(rdf_graph)`.
+        :param batch_size: If specified, runs the ArangoDB Data Ingestion
+            process for every **batch_size** RDF triples/quads within **rdf_graph**.
+            Defaults to `len(rdf_graph)`.
         :type batch_size: int | None
-        :param adb_mapping: An (optional) RDF Graph containing the ArangoDB Collection Mapping
-            statements of all identifiable Resources. See `ArangoRDF.pgt_build_adb_mapping()`
-            for more info.
+        :param adb_mapping: An (optional) RDF Graph containing the ArangoDB
+            Collection Mapping statements of all identifiable Resources.
+            See `ArangoRDF.pgt_build_adb_mapping()` for more info.
         :type adb_mapping: rdflib.graph.Graph | None
         :param import_options: Keyword arguments to specify additional
-            parameters for the ArangoDB Data Ingestion process. The full parameter list is here:
+            parameters for the ArangoDB Data Ingestion process.
+            The full parameter list is here:
             https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.import_bulk
-        :type import_options: Any
         :return: The ArangoDB Graph API wrapper.
         :rtype: arango.graph.Graph
         """
@@ -778,8 +814,10 @@ class ArangoRDF(Abstract_ArangoRDF):
         ############## Post Processing ##############
         self.__set_iterators("RDF → ADB (PGT Post-Process)", "#EF7D00", "    ")
         with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
-            self.__pgt_process_rdf_lists()  # Process `self.__rdf_lists` data into `self.adb_docs`
-            self.__insert_adb_docs()  # Insert the remaining `self.adb_docs` into ArangoDB
+            # Process `self.__rdf_lists` data into `self.adb_docs`
+            self.__pgt_process_rdf_lists()
+            # Insert the remaining `self.adb_docs` into ArangoDB
+            self.__insert_adb_docs()
 
         gc.collect()
         ############## ############### ##############
@@ -823,7 +861,8 @@ class ArangoRDF(Abstract_ArangoRDF):
         of their RDF Graph are placed in the desired ArangoDB Collections.
 
         NOTE: Running this method prior to running `ArangoRDF.rdf_to_arangodb_by_pgt()`
-        is unnecessary if the user is not interested in viewing/modifying the ADB Mapping.
+        is unnecessary if the user is not interested in
+        viewing/modifying the ADB Mapping.
 
         For example, the `adb_mapping` may look like this:
         -----------------------------------------
@@ -845,21 +884,24 @@ class ArangoRDF(Abstract_ArangoRDF):
             see any previous `adb:collection` statements being overwritten by
             the standard ArangoDB Collection Mapping Process.
         :type adb_mapping: rdflib.graph.Graph
-        :param predicate_scope: A dictionary mapping the Domain & Range values of RDF Predicates.
-            See `ArangoRDF.__build_predicate_scope()` for more info. NOTE: Users should not
-            use this parameter (internal use only).
-        :type predicate_scope: DefaultDict[URIRef, DefaultDict[str, Set[Tuple[str, str]]]]
-        :param type_map: A dictionary mapping the "natural" & "synthetic" `RDF.Type` statements
-            of every RDF Resource. See `ArangoRDF.__combine_type_map_and_dr_map()` for more info.
+        :param predicate_scope: A dictionary mapping the Domain & Range values
+            of RDF Predicates. See `ArangoRDF.__build_predicate_scope()` for more info.
+            NOTE: Users should not use this parameter (internal use only).
+        :type predicate_scope:
+            DefaultDict[URIRef, DefaultDict[str, Set[Tuple[str, str]]]]
+        :param type_map: A dictionary mapping the "natural" & "synthetic"
+            `RDF.Type` statements of every RDF Resource.
+            See `ArangoRDF.__combine_type_map_and_dr_map()` for more info.
             NOTE: Users should not use this parameter (internal use only).
         :type type_map: DefaultDict[URIRef | BNode, Set[str]]
         :param domain_range_map: The Domain and Range Map produced by the
-            `ArangoRDF.__build_domain_range_map()` method. NOTE: Users should not
-            use this parameter (internal use only).
+            `ArangoRDF.__build_domain_range_map()` method.
+            NOTE: Users should not use this parameter (internal use only).
         :type domain_range_map: DefaultDict[URIRef | BNode, Set[str]]
-        :return: An RDF Graph containing the ArangoDB Collection Mapping statements of
-            all identifiable Resources. See the `ArangoRDF.rdf_to_arangodb_by_pgt()` docstring
-            for an explanation on the ArangoDB Collection Mapping Process.
+        :return: An RDF Graph containing the ArangoDB Collection Mapping
+            statements of all identifiable Resources. See the
+            `ArangoRDF.rdf_to_arangodb_by_pgt()` docstring for an explanation
+            on the ArangoDB Collection Mapping Process.
         :rtype: rdflib.graph.Graph
         """
         self.rdf_graph = rdf_graph
@@ -1559,16 +1601,21 @@ class ArangoRDF(Abstract_ArangoRDF):
         :type p: URIRef
         :param p_key: The ArangoDB Key of the RDF Predicate Object.
         :type p_key: str
-        :param dr_meta: The Domain & Range Metadata associated to the current (s,p,o) statement,
+        :param dr_meta: The Domain & Range Metadata associated to the
+            current (s,p,o) statement.
             i.e [(s, s_key, s_col, "domain"), (o, o_key, o_col, "range")].
         :type dr_meta: List[Tuple[URIRef | BNode | Literal, str, str, str]]
-        :param predicate_scope: A dictionary mapping the Domain & Range values of RDF Predicates.
-            See `ArangoRDF.__build_predicate_scope()` for more info.
-        :type predicate_scope: DefaultDict[URIRef, DefaultDict[str, Set[Tuple[str, str]]]]
-        :param type_map: A dictionary mapping the "natural" & "synthetic" `RDF.Type` statements
-            of every RDF Resource. See `ArangoRDF.__combine_type_map_and_dr_map()` for more info.
+        :param predicate_scope: A dictionary mapping the Domain & Range
+            values of RDF Predicates. See `ArangoRDF.__build_predicate_scope()`
+            for more info.
+        :type predicate_scope:
+            DefaultDict[URIRef, DefaultDict[str, Set[Tuple[str, str]]]]
+        :param type_map: A dictionary mapping the "natural" & "synthetic"
+            `RDF.Type` statements of every RDF Resource.
+            See `ArangoRDF.__combine_type_map_and_dr_map()` for more info.
         :type type_map: DefaultDict[URIRef | BNode, Set[str]]
-        :param is_rpt: A flag to identify if this method call originates from an RPT process or not.
+        :param is_rpt: A flag to identify if this method call originates
+            from an RPT process or not.
         :type is_rpt: bool
         """
         if is_rpt:
@@ -1765,7 +1812,8 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         :param predicate_scope: The mapping of RDF Predicates to their
             respective domain/range values.
-        :type predicate_scope: DefaultDict[URIRef, DefaultDict[str, Set[Tuple[str, str]]]]
+        :type predicate_scope:
+            DefaultDict[URIRef, DefaultDict[str, Set[Tuple[str, str]]]]
         :return: The Domain and Range Mapping
         :rtype: DefaultDict[URIRef | BNode, Set[str]]
         """
