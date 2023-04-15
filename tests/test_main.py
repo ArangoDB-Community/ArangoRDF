@@ -865,7 +865,7 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     unique_nodes = 13
     identified_unique_nodes = 12
     non_literal_statements = 10
-    contextualize_statements = 18
+    contextualize_statements = 14
 
     rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
@@ -882,6 +882,7 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
+    _domain = adbrdf.rdf_id_to_adb_key(str(RDFS.domain))
     _subClassOf = adbrdf.rdf_id_to_adb_key(str(RDFS.subClassOf))
     _monica = adbrdf.rdf_id_to_adb_key("http://example.com/Monica")
     _person = adbrdf.rdf_id_to_adb_key("http://example.com/Person")
@@ -889,6 +890,9 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     _hasSkill = adbrdf.rdf_id_to_adb_key("http://example.com/hasSkill")
     _management = adbrdf.rdf_id_to_adb_key("http://example.com/Management")
     _entity = adbrdf.rdf_id_to_adb_key("http://example.com/Entity")
+    _homepage = adbrdf.rdf_id_to_adb_key("http://example.com/homepage")
+    _employer = adbrdf.rdf_id_to_adb_key("http://example.com/employer")
+    _name = adbrdf.rdf_id_to_adb_key("http://example.com/name")
 
     assert adb_graph.has_vertex_collection("Person")
     doc = adb_graph.vertex_collection("Person").get(_monica)
@@ -908,10 +912,15 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     edge = adb_graph.edge_collection("type").get(f"{_monica}-{_type}-{_entity}")
     assert edge["_sub_graph_uri"] == "http://example.com/Graph1"
 
-    edge = adb_graph.edge_collection("subClassOf").get(
+    assert adb_graph.edge_collection("subClassOf").has(
         f"{_person}-{_subClassOf}-{_entity}"
     )
-    assert edge
+
+    for _from in [_hasSkill, _homepage, _name, _employer]:
+        assert adb_graph.edge_collection("domain").has(f"{_from}-{_domain}-{_entity}")
+        assert not adb_graph.edge_collection("domain").has(
+            f"{_from}-{_domain}-{_person}"
+        )
 
     print("\n")
 
