@@ -130,12 +130,12 @@ RPT preserves the RDF Graph structure by transforming each RDF Statement into an
 PGT on the other hand ensures that Datatype Property Statements are mapped as ArangoDB Document Properties.
 
 ```ttl
-@prefix ex: < http :// example . org /> .
-@prefix xsd: < http :// www . w3 . org /2001/ XMLSchema #> .
-ex: book ex: publish_date " 1963 -03 -22 " ^^ xsd: date .
-ex: book ex: pages " 100 " ^^ xsd: integer .
+@prefix ex: <http://example.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+ex: book ex: publish_date "1963-03-22"^^xsd:date .
+ex: book ex: pages "100"^^xsd:integer .
 ex: book ex: cover 20 .
-ex: book ex: index " 55 " .
+ex: book ex: index "55" .
 ```
 
 | RPT | PGT |
