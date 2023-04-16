@@ -146,7 +146,8 @@ ex:book ex:index 55 .
 ### RPT
 
 
-The `ArangoRDF.rdf_to_arangodb_by_rpt` method will store the RDF Resources of **rdf_graph** under the following ArangoDB Collections:
+The `ArangoRDF.rdf_to_arangodb_by_rpt` method will store the RDF Resources of your RDF Graph under the following ArangoDB Collections:
+    
     - {graph_name}_URIRef: The Document collection for `rdflib.term.URIRef` resources.
     - {graph_name}_BNode: The Document collection for`rdflib.term.BNode` resources.
     - {graph_name}_Literal: The Document collection for `rdflib.term.Literal` resources.
