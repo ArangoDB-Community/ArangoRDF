@@ -58,7 +58,7 @@ g.parse("https://raw.githubusercontent.com/stardog-union/stardog-tutorials/maste
 # RDF to ArangoDB
 ###################################################################################
 
-# 1.1: RDF-Topology Presevering Transformation (RPT)
+# 1.1: RDF-Topology Preserving Transformation (RPT)
 adbrdf.rdf_to_arangodb_by_rpt("Beatles", g, overwrite_graph=True)
 
 # 1.2: Property Graph Transformation (PGT) 
