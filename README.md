@@ -132,10 +132,10 @@ PGT on the other hand ensures that Datatype Property Statements are mapped as Ar
 ```ttl
 @prefix ex: <http://example.org/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-ex: book ex: publish_date "1963-03-22"^^xsd:date .
-ex: book ex: pages "100"^^xsd:integer .
-ex: book ex: cover 20 .
-ex: book ex: index "55" .
+ex:book ex:publish_date "1963-03-22"^^xsd:date .
+ex:book ex:pages "100"^^xsd:integer .
+ex:book ex:cover 20 .
+ex:book ex:index 55 .
 ```
 
 | RPT | PGT |
