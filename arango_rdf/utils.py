@@ -1,8 +1,9 @@
 import logging
 import os
+import sys
 from typing import DefaultDict, Dict, List, Set
 
-from rich.progress import (  # TimeRemainingColumn,
+from rich.progress import (
     BarColumn,
     Progress,
     SpinnerColumn,
@@ -28,7 +29,6 @@ def rdf_track(text: str, color: str) -> Progress:
         TaskProgressColumn(),
         TextColumn("({task.completed}/{task.total})"),
         TimeElapsedColumn(),
-        # TimeRemainingColumn()
     )
 
 
@@ -62,8 +62,11 @@ class Tree:
             current.children.append(child_node)
             self.build_tree(child_node, child_node.name, depth + 1)
 
-    def get_node_depth(self, node_id: str) -> int:
-        return self.nodes[node_id].depth if node_id in self.nodes else -1
+    def get_node_depth(self, node_id: str, is_max: bool) -> int:
+        if node_id in self.nodes:
+            return self.nodes[node_id].depth
+
+        return -1 if is_max else sys.maxsize
 
     def __contains__(self, node_id: str) -> bool:
         return node_id in self.nodes

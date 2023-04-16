@@ -43,6 +43,7 @@ class Abstract_ArangoRDF(ABC):
         rdf_graph: RDFGraph,
         metagraph: ADBMetagraph,
         list_conversion_mode: str,
+        infer_type_from_adb_col: bool = False,
         **export_options: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
         raise NotImplementedError  # pragma: no cover
@@ -54,6 +55,7 @@ class Abstract_ArangoRDF(ABC):
         v_cols: Set[str],
         e_cols: Set[str],
         list_conversion_mode: str,
+        infer_type_from_adb_col: bool = False,
         **export_options: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
         raise NotImplementedError  # pragma: no cover
@@ -63,6 +65,7 @@ class Abstract_ArangoRDF(ABC):
         name: str,
         rdf_graph: RDFGraph,
         list_conversion_mode: str,
+        infer_type_from_adb_col: bool = False,
         **export_options: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
         raise NotImplementedError  # pragma: no cover
