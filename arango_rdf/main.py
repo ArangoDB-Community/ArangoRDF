@@ -156,7 +156,9 @@ class ArangoRDF(Abstract_ArangoRDF):
                     relationship into the ArangoDB graph for every RDF predicate
                     used in the form (subject predicate object) within **rdf_graph**.
                 2) Provide RDFS.Domain & RDFS.Range Inference on all
-                    RDF Resources within the **rdf_graph**.
+                    RDF Resources within the **rdf_graph**, so long that no
+                    RDF.Type statement already exists in **rdf_graph**
+                    for the given resource.
                 3) Provide RDFS.Domain & RDFS.Range Introspection on all
                     RDF Predicates with the **rdf_graph**, so long that
                     no RDFS.Domain or RDFS.Range statement already exists
@@ -445,9 +447,9 @@ class ArangoRDF(Abstract_ArangoRDF):
 
             2) <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> (rdf:type)
                 - This strategy is divided into 3 cases:
-                    2.1) An RDF Resource only has one `rdf:type` statement.
-                        In this case, the local name of the RDF Object is used as
-                        the ArangoDB Document Collection name. For example,
+                    2.1) If an RDF Resource only has one `rdf:type` statement,
+                        then the local name of the RDF Object is used as the ArangoDB
+                        Document Collection name. For example,
                         <http://example.com/Bob> <rdf:type> <http://example.com/Person>
                         would create an JSON Document for <http://example.com/Bob>,
                         and place it under the "Person" Document Collection.
@@ -455,17 +457,17 @@ class ArangoRDF(Abstract_ArangoRDF):
                         created, and will be placed under the "Class"
                         Document Collection.
 
-                    2.2) An RDF Resource has multiple `rdf:type` statements,
+                    2.2) If an RDF Resource has multiple `rdf:type` statements,
                         with some (or all) of the RDF Objects of those statements
-                        belonging in an `rdfs:subClassOf` Taxonomy. In this case, the
+                        belonging in an `rdfs:subClassOf` Taxonomy, then the
                         local name of the "most specific" Class within the Taxonomy is
                         used (i.e the Class with the biggest depth). If there is a
                         tie between 2+ Classes, then the URIs are alphabetically
                         sorted & the first one is picked.
 
-                    2.3) An RDF Resource has multiple `rdf:type` statements, with none
+                    2.3) If an RDF Resource has multiple `rdf:type` statements, with none
                         of the RDF Objects of those statements belonging in an
-                        `rdfs:subClassOf` Taxonomy. In this case, the URIs are
+                        `rdfs:subClassOf` Taxonomy, then the URIs are
                         alphabetically sorted & the first one is picked. The local
                         name of the selected URI will be designated as the Document
                         collection for that Resource.
@@ -550,7 +552,9 @@ class ArangoRDF(Abstract_ArangoRDF):
                     relationship into the ArangoDB graph for every RDF predicate
                     used in the form (subject predicate object) within **rdf_graph**.
                 2) Provide RDFS.Domain & RDFS.Range Inference on all
-                    RDF Resources within the **rdf_graph**.
+                    RDF Resources within the **rdf_graph**, so long that no
+                    RDF.Type statement already exists in **rdf_graph**
+                    for the given resource.
                 3) Provide RDFS.Domain & RDFS.Range Introspection on all
                     RDF Predicates with the **rdf_graph**, so long that
                     no RDFS.Domain or RDFS.Range statement already exists
