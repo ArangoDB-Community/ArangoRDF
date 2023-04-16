@@ -733,7 +733,7 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_3_2_PGT", get_rdf_graph("cases/3_2.ttl"))],
 )
 def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
-    unique_nodes = 1
+    unique_nodes = 2
     non_literal_statements = 0
 
     # RDF to ArangoDB
@@ -759,11 +759,7 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), "collection")
 
     book = URIRef("http://example.com/book")
-
-    # TODO REVIST
-    # title = URIRef("http://example.com/title")
-    adb_graph_namepspace = f"{db._conn._url_prefixes[0]}/{name}#"
-    title = URIRef(f"{adb_graph_namepspace}title")
+    title = URIRef("http://example.com/title")
 
     assert (book, title, None) in rdf_graph_2
     assert (None, RDF.first, Literal("Bog")) in rdf_graph_2
@@ -824,10 +820,7 @@ def test_pgt_case_4(name: str, rdf_graph: RDFGraph) -> None:
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
     list1 = URIRef("http://example.com/List1")
-    # TODO - REVISIT
-    # contents = URIRef("http://example.com/contents")
-    adb_graph_namepspace = f"{db._conn._url_prefixes[0]}/{name}#"
-    contents = URIRef(f"{adb_graph_namepspace}contents")
+    contents = URIRef("http://example.com/contents")
 
     assert (list1, contents, Literal("one")) in rdf_graph_2
     assert (list1, contents, Literal("two")) in rdf_graph_2
@@ -862,10 +855,9 @@ def test_pgt_case_5(name: str, rdf_graph: RDFGraph) -> None:
     # ArangoDB to RDF
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
-    adb_graph_namepspace = f"{db._conn._url_prefixes[0]}/{name}#"
     bob = URIRef("http://example.com/bob")
     nationality = URIRef("http://example.com/nationality")
-    country = URIRef(f"{adb_graph_namepspace}country")
+    country = URIRef("http://example.com/country")
 
     # Original Statement assertions
     assert (bob, nationality, None) in rdf_graph_2
@@ -1189,18 +1181,14 @@ def test_pgt_collection(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     assert len(rdf_graph_2) == 123
-    assert len(adb_mapping) == 7
+    assert len(adb_mapping) == 12
+
     doc = URIRef("http://example.com/Doc")
     planets = URIRef("http://example.com/planets")
 
-    # TODO - REVISIT
-    # numbers = URIRef("http://example.com/numbers")
-    # random = URIRef("http://example.com/random")
-    # nested_container = URIRef("http://example.com/nested_container")
-    adb_graph_namepspace = f"{db._conn._url_prefixes[0]}/{name}#"
-    numbers = URIRef(f"{adb_graph_namepspace}numbers")
-    random = URIRef(f"{adb_graph_namepspace}random")
-    nested_container = URIRef(f"{adb_graph_namepspace}nested_container")
+    numbers = URIRef("http://example.com/numbers")
+    random = URIRef("http://example.com/random")
+    nested_container = URIRef("http://example.com/nested_container")
 
     assert (doc, numbers, None) in rdf_graph_2
     assert (doc, planets, None) in rdf_graph_2
@@ -1248,15 +1236,12 @@ def test_pgt_container(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     assert len(rdf_graph_2) == 42
-    assert len(adb_mapping) == 7
+    assert len(adb_mapping) == 10
+
     doc = URIRef("http://example.com/Doc")
     planets = URIRef("http://example.com/planets")
+    numbers = URIRef("http://example.com/numbers")
 
-    # TODO - REVISIT
-    adb_graph_namepspace = f"{db._conn._url_prefixes[0]}/{name}#"
-    numbers = URIRef(f"{adb_graph_namepspace}numbers")
-
-    # TODO - REVISIT
     assert (doc, numbers, None) in rdf_graph_2
     assert (doc, planets, None) in rdf_graph_2
 

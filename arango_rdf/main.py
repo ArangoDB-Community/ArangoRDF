@@ -699,11 +699,11 @@ class ArangoRDF(Abstract_ArangoRDF):
                 # Load the RDF triple/quad as an ArangoDB Edge
                 self.__pgt_process_predicate(s_meta, p_meta, o, o_meta, sg_str)
 
+                # Load the RDF Predicate as an ArangoDB Document
+                self.__pgt_process_rdf_term(p, p_meta)
+
                 if contextualize_graph:
                     p_key = p_meta[1]
-
-                    # Load the RDF Predicate as an ArangoDB Document
-                    self.__pgt_process_rdf_term(p, p_meta)
 
                     # Create the <Predicate> <RDF.type> <RDF.Property> ArangoDB Edge
                     # p_has_no_type_statement = len(type_map[p]) == 0
@@ -2091,19 +2091,24 @@ class ArangoRDF(Abstract_ArangoRDF):
         self.rdf_graph = rdf_graph
         graph_supports_quads = isinstance(self.rdf_graph, RDFConjunctiveGraph)
 
-        # Maps ArangoDB Document IDs to URI strings
-        self.__uri_map: Dict[str, str] = {}
-        self.__list_conversion = list_conversion_mode
         self.__export_options = export_options
+        self.__list_conversion = list_conversion_mode
+        self.__adb_graph_ns = f"{self.db._conn._url_prefixes[0]}/{name}#"
 
+        # Maps the (soon-to-be) RDF Resources to their ArangoDB Collection
         adb_mapping: RDFGraph = RDFGraph()
+        adb_mapping.bind("adb", "http://www.arangodb.com/")
+
+        # Maps RDF Resources to the last Sub Graph that they been seen in (if any)
         subgraph_map: Dict[str, URIRef] = {}
+
         # Maps ArangoDB Document IDs to RDFLib Terms (i.e URIRef, Literal, BNode)
         term_map: Dict[str, Union[RDFSubject, RDFObject]] = {}
 
+        # Maps ArangoDB Document IDs to URI strings
+        self.__uri_map: Dict[str, str] = {}
+
         # TODO: REVISIT
-        self.rdf_graph.bind("adb", "http://www.arangodb.com/")
-        self.__adb_graph_ns = f"{self.db._conn._url_prefixes[0]}/{name}#"
         self.rdf_graph.bind(name, self.__adb_graph_ns)
         self.rdf_graph.bind("owl", "http://www.w3.org/2002/07/owl#")
         self.rdf_graph.bind("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
