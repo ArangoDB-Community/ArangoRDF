@@ -918,7 +918,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         ############################################################
         for rdf_map in [explicit_type_map, domain_range_map]:
             for rdf_resource, class_set in rdf_map.items():
-                if (rdf_resource, None, None) in adb_mapping or not class_set:
+                if (rdf_resource, None, None) in adb_mapping or len(class_set) == 0:
                     continue
 
                 class_str = self.__identify_best_class(class_set, subclass_tree)
