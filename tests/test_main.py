@@ -1297,13 +1297,24 @@ def test_adb_doc_with_dict_property_to_rdf(name: str) -> None:
 @pytest.mark.parametrize("name", [("fraud-detection"), ("imdb")])
 def test_adb_native_graph_to_rdf(name: str) -> None:
     adb_graph = db.graph(name)
-    rdf_graph, _ = adbrdf.arangodb_graph_to_rdf(name, RDFGraph())
+    rdf_graph, _ = adbrdf.arangodb_graph_to_rdf(
+        name, RDFGraph(), infer_type_from_adb_col=True
+    )
 
+    doc_map: Dict[str, str] = {}
     adb_graph_namespace = f"{db._conn._url_prefixes[0]}/{name}#"
 
+    doc: dict
+    edge: dict
     for v_col in adb_graph.vertex_collections():
+        v_col_uri = URIRef(f"{adb_graph_namespace}{v_col}")
+
         for doc in db.collection(v_col):
+            doc_map[doc["_id"]] = doc["_key"]
+
             term = URIRef(f"{adb_graph_namespace}{doc['_key']}")
+            assert (term, RDF.type, v_col_uri) in rdf_graph
+
             for k, v in doc.items():
                 if k not in ["_key", "_id", "_rev"]:
                     property = URIRef(f"{adb_graph_namespace}{k}")
@@ -1313,14 +1324,18 @@ def test_adb_native_graph_to_rdf(name: str) -> None:
         e_col = e_d["edge_collection"]
         e_col_uri = URIRef(f"{adb_graph_namespace}{e_col}")
 
-        for edge in db.collection(e_col):
-            term = URIRef(f"{adb_graph_namespace}{edge['_key']}")
-            subject = URIRef(f"{adb_graph_namespace}{edge['_from'].split('/')[-1]}")
-            object = URIRef(f"{adb_graph_namespace}{edge['_to'].split('/')[-1]}")
-
+        for doc in db.collection(e_col):
+            subject = URIRef(f"{adb_graph_namespace}{doc_map[doc['_from']]}")
+            object = URIRef(f"{adb_graph_namespace}{doc_map[doc['_to']]}")
             assert (subject, e_col_uri, object) in rdf_graph
 
-            for k, v in edge.items():
+            edge_has_metadata = False
+            edge = URIRef(f"{adb_graph_namespace}{doc['_key']}")
+            for k, v in doc.items():
                 if k not in ["_key", "_id", "_rev", "_from", "_to"]:
+                    edge_has_metadata = True
                     property = URIRef(f"{adb_graph_namespace}{k}")
-                    assert (term, property, Literal(v)) in rdf_graph
+                    assert (edge, property, Literal(v)) in rdf_graph
+
+            if edge_has_metadata:
+                assert (edge, RDF.type, e_col_uri) in rdf_graph
