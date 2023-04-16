@@ -465,8 +465,8 @@ class ArangoRDF(Abstract_ArangoRDF):
                         tie between 2+ Classes, then the URIs are alphabetically
                         sorted & the first one is picked.
 
-                    2.3) If an RDF Resource has multiple `rdf:type` statements, with none
-                        of the RDF Objects of those statements belonging in an
+                    2.3) If an RDF Resource has multiple `rdf:type` statements, with
+                        none of the RDF Objects of those statements belonging in an
                         `rdfs:subClassOf` Taxonomy, then the URIs are
                         alphabetically sorted & the first one is picked. The local
                         name of the selected URI will be designated as the Document
