@@ -86,17 +86,24 @@ g.parse("https://raw.githubusercontent.com/stardog-union/stardog-tutorials/maste
 adbrdf.rdf_to_arangodb_by_pgt("Beatles", g, overwrite_graph=True)
 
 # 2.1: Via Graph Name
-g2 = Graph()
-adbrdf.arangodb_graph_to_rdf("Beatles", g2)
+g2, adb_mapping_2 = adbrdf.arangodb_graph_to_rdf("Beatles", Graph())
 
 # 2.2: Via Collection Names
-g3 = Graph()
-adbrdf.arangodb_collections_to_rdf(
+g3, adb_mapping_3 = adbrdf.arangodb_collections_to_rdf(
     "Beatles",
-    g3,
+    Graph(),
     v_cols={"Album", "Band", "Class", "Property", "SoloArtist", "Song"},
     e_cols={"artist", "member", "track", "type", "writer"},
 )
+
+print(len(g2), len(adb_mapping_2))
+print(len(g3), len(adb_mapping_3))
+
+print('--------------------')
+print(g2.serialize())
+print('--------------------')
+print(adb_mapping_2.serialize())
+print('--------------------')
 ```
 
 ##  Development & Testing
