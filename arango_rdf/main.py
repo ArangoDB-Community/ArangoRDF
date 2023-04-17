@@ -599,7 +599,6 @@ class ArangoRDF(Abstract_ArangoRDF):
         # A unique set of instance variable for the PGT Process to
         # convert RDF Lists into JSON Lists
         self.__rdf_lists: RDFLists = defaultdict(lambda: defaultdict(dict))
-        self.__process_rdf_val_as_string = False
 
         # A set of ArangoDB Collections that will NOT imported via
         # batch processing, as they contain documents whose properties
@@ -968,6 +967,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         s_key: str = "",
         s_col: str = "",
         p_label: str = "",
+        process_val_as_string: bool = False,
     ) -> None:
         """Process an RDF Term as an ArangoDB document by PGT.
 
@@ -1008,20 +1008,20 @@ class ArangoRDF(Abstract_ArangoRDF):
         elif type(t) is Literal and all([s_col, s_key, p_label]):
             doc = self.adb_docs[s_col][s_key]
             t_value = t_str if isinstance(t.value, date) else t.value or t_str
-            self.__pgt_rdf_val_to_adb_property(doc, p_label, t_value)
+            self.__pgt_rdf_val_to_adb_property(
+                doc, p_label, t_value, process_val_as_string
+            )
 
             self.__adb_col_blacklist.add(s_col)  # TODO: REVISIT
 
         else:
             raise ValueError()  # pragma: no cover
 
-    def __pgt_rdf_val_to_adb_property(self, doc: Json, key: str, val: Any) -> None:
+    def __pgt_rdf_val_to_adb_property(
+        self, doc: Json, key: str, val: Any, process_val_as_string: bool = False
+    ) -> None:
         """A helper function used to insert an arbitrary value
         into an arbitrary document.
-
-        If `self.__process_rdf_val_as_string` is enabled, **val**
-        is appended to a string representation of the
-        current value of the document property.
 
         :param doc: An arbitrary document
         :type doc: Dict[str, Any]
@@ -1029,10 +1029,14 @@ class ArangoRDF(Abstract_ArangoRDF):
         :type key: str
         :param val: The value associated to the document property **key**.
         :type val: Any
+        :param process_val_as_string: If enabled, **val** is appended to
+            a string representation of the current value of the document
+            property. Defaults to False.
+        :type process_val_as_string: bool
         """
 
         # This flag is only active in ArangoRDF.__pgt_process_rdf_lists()
-        if self.__process_rdf_val_as_string:
+        if process_val_as_string:
             doc[key] += f"'{val}'," if type(val) is str else f"{val},"
             return
 
@@ -1217,7 +1221,6 @@ class ArangoRDF(Abstract_ArangoRDF):
         constructed via a string-based solution:
         "[" → "[1" → "[1, [" → "[1, [2," → "[1, [2, 3" → "[1, [2, 3]" → "[1, [2, 3]]"
         """
-        self.__process_rdf_val_as_string = True
         list_heads = self.__rdf_lists["_LIST_HEAD"].items()
 
         self.__rdf_task = self.__rdf_iterator.add_task("", total=len(list_heads))
@@ -1306,7 +1309,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             _, s_key, s_col, _ = s_meta
             o_meta = self.__pgt_get_term_metadata(o)
 
-            self.__pgt_process_rdf_term(o, o_meta, s_key, s_col, p_label)
+            self.__pgt_process_rdf_term(o, o_meta, s_key, s_col, p_label, True)
             self.__pgt_process_predicate(s_meta, p_meta, o, o_meta, sg)
 
     def __pgt_unpack_rdf_collection(
