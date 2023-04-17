@@ -25,10 +25,6 @@ from .conftest import (
     outersect_graphs,
 )
 
-# def adbrdf.rdf_id_to_adb_key(rdf_id: str):
-#     # return hashlib.md5(rdf_id.encode()).hexdigest()
-#     return xxhash.xxh64(rdf_id.encode()).hexdigest()
-
 
 def test_constructor() -> None:
     bad_db: Dict[str, Any] = dict()
