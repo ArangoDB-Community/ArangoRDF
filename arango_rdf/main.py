@@ -984,6 +984,10 @@ class ArangoRDF(Abstract_ArangoRDF):
         :param p_label: The RDF Predicate Label key of the Predicate associated
             to the RDF Term **t**. Only required if the RDF Term is of type Literal.
         :type p_label: str
+        :param process_val_as_string: If enabled, the value of **t** is appended to
+            a string representation of the current value of the document
+            property. Only considered if **t** is a Literal. Defaults to False.
+        :type process_val_as_string: bool
         """
 
         t_str, t_key, t_col, t_label = t_meta
@@ -1729,7 +1733,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             # TODO: REVISIT CONDITIONS FOR INTROSPECTION
             # p_dr_not_in_graph = (p, RDFS[dr_label], None) not in self.rdf_graph
             # p_dr_not_in_meta_graph = (p, RDFS[dr_label], None) not in self.meta_graph
-            p_already_has_dr = p in predicate_scope and dr_label in predicate_scope[p]
+            p_already_has_dr = dr_label in predicate_scope[p]
             p_used_in_meta_graph = (None, p, None) in self.meta_graph
             if type_map[t] and not p_already_has_dr and not p_used_in_meta_graph:
                 dr_str, dr_key = dr_map[dr_label]
