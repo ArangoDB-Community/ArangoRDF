@@ -6,7 +6,7 @@ import re
 import sys
 from ast import literal_eval
 from collections import defaultdict
-from datetime import date
+from datetime import date, time
 from pathlib import Path
 from typing import Any, DefaultDict, Dict, List, Optional, Set, Tuple, Union
 
@@ -15,7 +15,8 @@ from arango.database import Database
 from arango.graph import Graph as ADBGraph
 from arango.result import Result
 from farmhash import Fingerprint64
-from rdflib import RDF, RDFS, BNode
+from isodate import Duration
+from rdflib import RDF, RDFS, XSD, BNode
 from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
 from rdflib import Dataset as RDFDataset
 from rdflib import Graph as RDFGraph
@@ -347,7 +348,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         elif type(t) is Literal:
             t_col = self.__LITERAL_COL
             t_key = self.rdf_id_to_adb_key(t_str)
-            t_value = t_str if isinstance(t.value, date) else t.value or t_str
+            t_value = self.__get_literal_val(t)
 
             self.adb_docs[t_col][t_key] = {
                 "_key": t_key,
@@ -1011,7 +1012,7 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         elif type(t) is Literal and all([s_col, s_key, p_label]):
             doc = self.adb_docs[s_col][s_key]
-            t_value = t_str if isinstance(t.value, date) else t.value or t_str
+            t_value = self.__get_literal_val(t)
             self.__pgt_rdf_val_to_adb_property(
                 doc, p_label, t_value, process_val_as_string
             )
@@ -1440,7 +1441,8 @@ class ArangoRDF(Abstract_ArangoRDF):
     # 10) __build_predicate_scope
     # 11) __build_domain_range_map:
     # 12) __combine_type_map_and_dr_map:
-    # 13) __insert_adb_docs:
+    # 13) __get_literal_val:
+    # 14) __insert_adb_docs:
     ###################################################################################
 
     def load_meta_ontology(self, rdf_graph: RDFGraph) -> RDFConjunctiveGraph:
@@ -2012,6 +2014,23 @@ class ArangoRDF(Abstract_ArangoRDF):
             type_map[key] = explicit_type_map[key] | domain_range_map[key]
 
         return type_map
+
+    def __get_literal_val(self, t: Literal) -> Any:
+        """Extracts a JSON-serializable representation
+        of a Literal's value  based on its datatype.
+
+        :param t: The RDF Literal object.
+        :type t: Literal
+        :return: A JSON-serializable value representing the Literal
+        :rtype: Any
+        """
+        if isinstance(t.value, (date, time, Duration)):
+            return str(t)
+
+        if t.datatype == XSD.decimal:
+            return float(t.value)
+
+        return t.value if t.value else str(t)
 
     def __insert_adb_docs(self, adb_col_blacklist: Set[str] = set()) -> None:
         """Insert ArangoDB documents into their ArangoDB collection.
