@@ -348,7 +348,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         elif type(t) is Literal:
             t_col = self.__LITERAL_COL
             t_key = self.rdf_id_to_adb_key(t_str)
-            t_value = self.__get_literal_val(t)
+            t_value = self.__get_literal_val(t, t_str)
 
             self.adb_docs[t_col][t_key] = {
                 "_key": t_key,
@@ -1012,7 +1012,7 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         elif type(t) is Literal and all([s_col, s_key, p_label]):
             doc = self.adb_docs[s_col][s_key]
-            t_value = self.__get_literal_val(t)
+            t_value = self.__get_literal_val(t, t_str)
             self.__pgt_rdf_val_to_adb_property(
                 doc, p_label, t_value, process_val_as_string
             )
@@ -2015,22 +2015,24 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         return type_map
 
-    def __get_literal_val(self, t: Literal) -> Any:
+    def __get_literal_val(self, t: Literal, t_str: str) -> Any:
         """Extracts a JSON-serializable representation
         of a Literal's value  based on its datatype.
 
         :param t: The RDF Literal object.
         :type t: Literal
+        :param t_str: The string representation of the RDF Literal
+        :type t_str: str
         :return: A JSON-serializable value representing the Literal
         :rtype: Any
         """
         if isinstance(t.value, (date, time, Duration)):
-            return str(t)
+            return t_str
 
         if t.datatype == XSD.decimal:
             return float(t.value)
 
-        return t.value if t.value else str(t)
+        return t.value if t.value else t_str
 
     def __insert_adb_docs(self, adb_col_blacklist: Set[str] = set()) -> None:
         """Insert ArangoDB documents into their ArangoDB collection.
@@ -2140,6 +2142,7 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         # TODO: REVISIT
         self.rdf_graph.bind(name, self.__adb_graph_ns)
+        self.rdf_graph.bind("adb", "http://www.arangodb.com/")
         self.rdf_graph.bind("owl", "http://www.w3.org/2002/07/owl#")
         self.rdf_graph.bind("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
         self.rdf_graph.bind("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
