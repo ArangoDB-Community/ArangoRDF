@@ -5,9 +5,8 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-@prefix adb: <http://www.arangodb.com/> .
 
-adb:OWL {
+owl: {
      <http://www.w3.org/2002/07/owl#> a owl:Ontology ; 
           dc:title "The OWL 2 Schema vocabulary (OWL 2)" ;
           rdfs:comment """
