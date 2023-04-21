@@ -215,7 +215,6 @@ class ArangoRDF(Abstract_ArangoRDF):
         if contextualize_graph:
             self.rdf_graph = self.load_base_ontology(rdf_graph)
             explicit_type_map = self.__build_explicit_type_map()
-            subclass_tree = self.__build_subclass_tree()
             predicate_scope = self.__build_predicate_scope()
             domain_range_map = self.__build_domain_range_map(predicate_scope)
             type_map = self.__combine_type_map_and_dr_map(
@@ -266,13 +265,13 @@ class ArangoRDF(Abstract_ArangoRDF):
 
                 # Load the RDF triple/quad statement as an ArangoDB Edge
                 self.__add_adb_edge(
-                    col=self.__STATEMENT_COL,
-                    key=f"{s_key}-{p_key}-{o_key}",
-                    _from=f"{s_col}/{s_key}",
-                    _to=f"{o_col}/{o_key}",
-                    _uri=p_str,
-                    _label=p_label,
-                    _sg=sg_str,
+                    self.__STATEMENT_COL,
+                    f"{s_key}-{p_key}-{o_key}",
+                    f"{s_col}/{s_key}",
+                    f"{o_col}/{o_key}",
+                    p_str,
+                    p_label,
+                    sg_str,
                 )
 
                 if contextualize_graph:
@@ -285,13 +284,13 @@ class ArangoRDF(Abstract_ArangoRDF):
                     if p_has_no_type_statement:
                         key = f"{p_key}-{self.__rdf_type_key}-{self.__rdf_property_key}"
                         self.__add_adb_edge(
-                            col=self.__STATEMENT_COL,
-                            key=key,
-                            _from=f"{self.__URIREF_COL}/{p_key}",
-                            _to=f"{self.__URIREF_COL}/{self.__rdf_property_key}",
-                            _uri=self.__rdf_type_str,
-                            _label="type",
-                            _sg="",
+                            self.__STATEMENT_COL,
+                            key,
+                            f"{self.__URIREF_COL}/{p_key}",
+                            f"{self.__URIREF_COL}/{self.__rdf_property_key}",
+                            self.__rdf_type_str,
+                            "type",
+                            sg_str,
                         )
 
                     # Run RDFS Domain/Range Inference & Introspection
@@ -305,8 +304,8 @@ class ArangoRDF(Abstract_ArangoRDF):
                         p_key,
                         dr_meta,
                         type_map,
-                        subclass_tree,
                         predicate_scope,
+                        sg_str,
                         is_rpt=True,
                     )
 
@@ -727,7 +726,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                             f"Class/{self.__rdf_property_key}",
                             self.__rdf_type_str,
                             "type",
-                            "",
+                            sg_str,
                         )
 
                     # Run RDFS Domain/Range Inference & Introspection
@@ -741,8 +740,8 @@ class ArangoRDF(Abstract_ArangoRDF):
                         p_key,
                         dr_meta,
                         type_map,
-                        subclass_tree,
                         predicate_scope,
+                        sg_str,
                         is_rpt=False,
                     )
 
@@ -1564,16 +1563,15 @@ class ArangoRDF(Abstract_ArangoRDF):
         :return: The ArangoDB _key equivalent of **rdf_id**
         :rtype: str
         """
-        # return hash(rdf_id) # NOTE: not platform/session independent!
-        # return hashlib.md5(rdf_id.encode()).hexdigest()
-        # return xxhash.xxh64(rdf_id.encode()).hexdigest()
-        # return mmh3.hash64(rdf_id, signed=False)[0]
-        # return str(cityhash.CityHash64(item))
-        if rdf_term is not None:
-            val = self.rdf_graph.value(rdf_term, self.adb_key_uri)
-            return str(val) if val else str(Fingerprint64(rdf_id))
+        # hash(rdf_id) # NOTE: not platform/session independent!
+        # hashlib.md5(rdf_id.encode()).hexdigest()
+        # xxhash.xxh64(rdf_id.encode()).hexdigest()
+        # mmh3.hash64(rdf_id, signed=False)[0]
+        # str(cityhash.CityHash64(item))
+        # str(Fingerprint64(rdf_id))
 
-        return str(Fingerprint64(rdf_id))
+        adb_key = self.rdf_graph.value(rdf_term, self.adb_key_uri)
+        return str(adb_key) if adb_key else str(Fingerprint64(rdf_id))
 
     def rdf_id_to_adb_label(self, rdf_id: str) -> str:
         """Return the suffix of an RDF URI. The suffix can (1)
@@ -1675,8 +1673,8 @@ class ArangoRDF(Abstract_ArangoRDF):
         p_key: str,
         dr_meta: List[Tuple[RDFObject, str, str, str]],
         type_map: TypeMap,
-        subclass_tree: Tree,
         predicate_scope: PredicateScope,
+        sg_str: str,
         is_rpt: bool,
     ) -> None:
         """A helper method shared accross RDF to ArangoDB RPT & PGT to provide
@@ -1700,14 +1698,13 @@ class ArangoRDF(Abstract_ArangoRDF):
             `RDF.Type` statements of every RDF Resource.
             See `ArangoRDF.__combine_type_map_and_dr_map()` for more info.
         :type type_map: arango_rdf.typings.TypeMap
-        :param subclass_tree: The RDFS SubClassOf Taxonomy represented
-            as a Tree Data Structure. See
-            `ArangoRDF.__build_subclass_tree()` for more info.
-        :type subclass_tree: arango_rdf.utils.Tree
         :param predicate_scope: A dictionary mapping the Domain & Range
             values of RDF Predicates. See `ArangoRDF.__build_predicate_scope()`
             for more info.
         :type predicate_scope: arango_rdf.typings.PredicateScope
+        :param sg_str: The string representation of the Sub Graph URI
+            of the statement associated to the current predicate **p**.
+        :type sg_str: str
         :param is_rpt: A flag to identify if this method call originates
             from an RPT process or not.
         :type is_rpt: bool
@@ -1744,7 +1741,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                         f"{CLASS_COL}/{class_key}",
                         self.__rdf_type_str,
                         "type",
-                        "",
+                        sg_str,
                     )
 
                 if not is_rpt:
@@ -1760,11 +1757,8 @@ class ArangoRDF(Abstract_ArangoRDF):
             if type_map[t] and not p_already_has_dr and not p_used_in_meta_graph:
                 dr_str, dr_key = dr_map[dr_label]
 
-                if dr_label == "domain":
-                    class_str = self.__identify_best_class(
-                        type_map[t], subclass_tree, is_max=False
-                    )
-
+                for class_str in type_map[t]:
+                    # TODO: optimize class_key
                     class_key = self.rdf_id_to_adb_key(class_str)
                     self.__add_adb_edge(
                         DR_COL,
@@ -1772,23 +1766,9 @@ class ArangoRDF(Abstract_ArangoRDF):
                         f"{P_COL}/{p_key}",
                         f"{CLASS_COL}/{class_key}",
                         dr_str,
-                        "domain",
-                        "",
+                        dr_label,
+                        sg_str,
                     )
-
-                else:
-                    for class_str in type_map[t]:
-                        # TODO: optimize class_key
-                        class_key = self.rdf_id_to_adb_key(class_str)
-                        self.__add_adb_edge(
-                            DR_COL,
-                            f"{p_key}-{dr_key}-{class_key}",
-                            f"{P_COL}/{p_key}",
-                            f"{CLASS_COL}/{class_key}",
-                            dr_str,
-                            "range",
-                            "",
-                        )
 
     def __build_explicit_type_map(
         self, adb_mapping: Optional[RDFGraph] = None
@@ -2105,7 +2085,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         metagraph: ADBMetagraph,
         list_conversion_mode: str = "static",
         infer_type_from_adb_col: bool = False,
-        include_adb_key_statements: bool = True,
+        include_adb_key_statements: bool = False,
         **export_options: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
         """Create an RDF Graph from an ArangoDB Graph via its Metagraph.
@@ -2134,6 +2114,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             of the form (resource adb:key adb_doc_key) should be generated upon
             transferring ArangoDB Documents into RDF. This can be used to
             maintain document keys when a user is interested in round-tripping.
+            NOTE: Currently only applies to ArangoDB Vertices (not edges).
             NOTE: Enabling this flag is only recommended if your ArangoDB graph
             is "native" to ArangoDB. That is, the ArangoDB graph does not
             originate from an RDF context.
@@ -2251,7 +2232,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                     if graph_supports_quads and "_sub_graph_uri" in doc:
                         sg_uri = URIRef(doc["_sub_graph_uri"])
                         subgraph_map[doc["_from"]] = sg_uri
-                        subgraph_map[doc["_to"]] = sg_uri
+                        # subgraph_map[doc["_to"]] = sg_uri # TODO: REVISIT
 
                     assert type(subject) is URIRef or type(subject) is BNode
                     self.__add_to_rdf_graph(subject, predicate, object, sg_uri)
@@ -2267,7 +2248,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                             p = self.__uri_map.get(k, f"{self.__adb_graph_ns}{k}")
                             self.__adb_property_to_rdf_val(edge, URIRef(p), v, sg_uri)
 
-                    if edge_has_metadata or include_adb_key_statements:
+                    if edge_has_metadata:
                         self.__add_to_rdf_graph(edge, RDF.type, RDF.Statement, sg_uri)
                         self.__add_to_rdf_graph(edge, RDF.subject, subject, sg_uri)
                         self.__add_to_rdf_graph(edge, RDF.predicate, predicate, sg_uri)
@@ -2278,10 +2259,6 @@ class ArangoRDF(Abstract_ArangoRDF):
 
                             if infer_type_from_adb_col:
                                 self.__add_to_rdf_graph(edge, RDF.type, e_col_uri)
-
-                        if include_adb_key_statements:
-                            key = Literal(doc["_key"])
-                            self.__add_to_rdf_graph(edge, self.adb_key_uri, key)
 
         # TODO: REVISIT
         # Not a fan of this at all...
@@ -2308,6 +2285,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         e_cols: Set[str],
         list_conversion_mode: str = "static",
         infer_type_from_adb_col: bool = False,
+        include_adb_key_statements: bool = False,
         **export_options: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
         """Create an RDF Graph from an ArangoDB Graph via its Collection Names.
@@ -2333,6 +2311,15 @@ class ArangoRDF(Abstract_ArangoRDF):
             is only recommended if your ArangoDB graph is "native" to ArangoDB.
             That is, the ArangoDB graph does not originate from an RDF context.
         :type infer_type_from_adb_col: bool
+        :param include_adb_key_statements: Specify whether `adb:key` relationships
+            of the form (resource adb:key adb_doc_key) should be generated upon
+            transferring ArangoDB Documents into RDF. This can be used to
+            maintain document keys when a user is interested in round-tripping.
+            NOTE: Currently only applies to ArangoDB Vertices (not edges).
+            NOTE: Enabling this flag is only recommended if your ArangoDB graph
+            is "native" to ArangoDB. That is, the ArangoDB graph does not
+            originate from an RDF context.
+        :type include_adb_key_statements: bool
         :param export_options: Keyword arguments to specify AQL query options when
             fetching documents from the ArangoDB instance. Full parameter list:
             https://docs.python-arango.com/en/main/specs.html#arango.aql.AQL.execute
@@ -2363,6 +2350,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         rdf_graph: RDFGraph,
         list_conversion_mode: str = "static",
         infer_type_from_adb_col: bool = False,
+        include_adb_key_statements: bool = False,
         **export_options: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
         """Create an RDF Graph from an ArangoDB Graph via its Graph Name.
@@ -2384,6 +2372,15 @@ class ArangoRDF(Abstract_ArangoRDF):
             is only recommended if your ArangoDB graph is "native" to ArangoDB.
             That is, the ArangoDB graph does not originate from an RDF context.
         :type infer_type_from_adb_col: bool
+        :param include_adb_key_statements: Specify whether `adb:key` relationships
+            of the form (resource adb:key adb_doc_key) should be generated upon
+            transferring ArangoDB Documents into RDF. This can be used to
+            maintain document keys when a user is interested in round-tripping.
+            NOTE: Currently only applies to ArangoDB Vertices (not edges).
+            NOTE: Enabling this flag is only recommended if your ArangoDB graph
+            is "native" to ArangoDB. That is, the ArangoDB graph does not
+            originate from an RDF context.
+        :type include_adb_key_statements: bool
         :param export_options: Keyword arguments to specify AQL query options when
             fetching documents from the ArangoDB instance. Full parameter list:
             https://docs.python-arango.com/en/main/specs.html#arango.aql.AQL.execute
