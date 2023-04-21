@@ -91,6 +91,10 @@ class ArangoRDF(Abstract_ArangoRDF):
         for ns in os.listdir(f"{PROJECT_DIR}/meta"):
             self.meta_graph.parse(f"{PROJECT_DIR}/meta/{ns}", format="trig")
 
+        # `rdf_graph`: An instance variable that serves as a shortcut of
+        # the current RDF Graph. Updated in ArangoDB-RDF & RDF-ArangoDB methods.
+        self.rdf_graph = RDFGraph()
+
         # Commonly used URIs
         self.__rdfs_resource_str = str(RDFS.Resource)
         self.__rdfs_class_str = str(RDFS.Class)
@@ -247,7 +251,7 @@ class ArangoRDF(Abstract_ArangoRDF):
                 self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
                 # Skip any ArangoDB Annotation Properties:
-                if p in [self.adb_col_uri, self.adb_key_uri]:
+                if p == self.adb_key_uri:
                     continue
 
                 # Get the Sub Graph URI (if it exists)
@@ -2341,6 +2345,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             metagraph,
             list_conversion_mode,
             infer_type_from_adb_col,
+            include_adb_key_statements,
             **export_options,
         )
 
@@ -2402,6 +2407,7 @@ class ArangoRDF(Abstract_ArangoRDF):
             e_cols,
             list_conversion_mode,
             infer_type_from_adb_col,
+            include_adb_key_statements,
             **export_options,
         )
 
