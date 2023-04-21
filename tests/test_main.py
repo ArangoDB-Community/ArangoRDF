@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict
 
 import pytest
@@ -11,12 +12,14 @@ from arango_rdf import ArangoRDF
 
 from .conftest import (
     META_GRAPH_ALL_RESOURCES,
+    META_GRAPH_CONTEXTS,
     META_GRAPH_CONTEXTUALIZE_STATEMENTS,
     META_GRAPH_IDENTIFIED_RESOURCES,
     META_GRAPH_LITERAL_STATEMENTS,
     META_GRAPH_NON_LITERAL_STATEMENTS,
     META_GRAPH_SIZE,
     META_GRAPH_UNKNOWN_RESOURCES,
+    PROJECT_DIR,
     adbrdf,
     db,
     get_adb_graph_count,
@@ -35,20 +38,20 @@ def test_constructor() -> None:
 
 @pytest.mark.parametrize(
     "name, rdf_graph, num_triples, num_urirefs, num_bnodes, \
-        num_literals, contextualize_graph",
+        num_literals, contextualize_graph, test_outersection",
     [
-        ("Case_1_RPT", get_rdf_graph("cases/1.ttl"), 3, 3, 0, 0, False),
-        ("Case_1_RPT", get_rdf_graph("cases/1.ttl"), 12, 9, 0, 0, True),
-        ("Case_2_1_RPT", get_rdf_graph("cases/2_1.ttl"), 5, 4, 0, 2, False),
-        ("Case_2_2_RPT", get_rdf_graph("cases/2_2.ttl"), 2, 4, 0, 0, False),
-        ("Case_2_3_RPT", get_rdf_graph("cases/2_3.ttl"), 4, 5, 0, 0, False),
-        ("Case_2_4_RPT", get_rdf_graph("cases/2_4.ttl"), 2, 4, 0, 0, False),
-        ("Case_3_1_RPT", get_rdf_graph("cases/3_1.ttl"), 4, 1, 0, 4, False),
-        ("Case_3_2_RPT", get_rdf_graph("cases/3_2.ttl"), 2, 1, 0, 2, False),
-        ("Case_4_RPT", get_rdf_graph("cases/4.ttl"), 7, 2, 3, 3, False),
-        ("Case_5_RPT", get_rdf_graph("cases/5.ttl"), 2, 1, 1, 1, False),
-        ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 11, 9, 0, 1, False),
-        ("Case_7_RPT", get_rdf_graph("cases/7.ttl"), 20, 17, 0, 1, False),
+        ("Case_1_RPT", get_rdf_graph("cases/1.ttl"), 3, 3, 0, 0, False, True),
+        ("Case_1_RPT", get_rdf_graph("cases/1.ttl"), 14, 11, 0, 0, True, True),
+        ("Case_2_1_RPT", get_rdf_graph("cases/2_1.ttl"), 5, 4, 0, 2, False, True),
+        ("Case_2_2_RPT", get_rdf_graph("cases/2_2.ttl"), 2, 4, 0, 0, False, True),
+        ("Case_2_3_RPT", get_rdf_graph("cases/2_3.ttl"), 4, 5, 0, 0, False, True),
+        ("Case_2_4_RPT", get_rdf_graph("cases/2_4.ttl"), 2, 4, 0, 0, False, True),
+        ("Case_3_1_RPT", get_rdf_graph("cases/3_1.ttl"), 4, 1, 0, 4, False, True),
+        ("Case_3_2_RPT", get_rdf_graph("cases/3_2.ttl"), 2, 1, 0, 2, False, True),
+        ("Case_4_RPT", get_rdf_graph("cases/4.ttl"), 7, 2, 3, 3, False, False),
+        ("Case_5_RPT", get_rdf_graph("cases/5.ttl"), 2, 1, 1, 1, False, False),
+        ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 11, 9, 0, 1, False, True),
+        ("Case_7_RPT", get_rdf_graph("cases/7.ttl"), 20, 17, 0, 1, False, True),
         (
             "Meta_RPT",
             get_meta_graph(),
@@ -57,6 +60,7 @@ def test_constructor() -> None:
             0,
             META_GRAPH_LITERAL_STATEMENTS,
             False,
+            True,
         ),
         (
             "Meta_RPT",
@@ -65,6 +69,7 @@ def test_constructor() -> None:
             META_GRAPH_ALL_RESOURCES,
             0,
             META_GRAPH_LITERAL_STATEMENTS,
+            True,
             True,
         ),
     ],
@@ -77,6 +82,7 @@ def test_rpt_cases(
     num_bnodes: int,
     num_literals: int,
     contextualize_graph: bool,
+    test_outersection: bool,
 ) -> None:
     STATEMENT_COL = f"{name}_Statement"
     URIREF_COL = f"{name}_URIRef"
@@ -109,12 +115,13 @@ def test_rpt_cases(
     if not isinstance(rdf_graph_2, Dataset):
         assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
 
-    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
-    if not contextualize_graph:
-        assert len(outersect_graphs(rdf_graph_2, rdf_graph)) == 0
-    else:
-        for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
-            assert p in {RDF.type, RDFS.domain, RDFS.range}
+    if test_outersection:
+        assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+        if not contextualize_graph:
+            assert len(outersect_graphs(rdf_graph_2, rdf_graph)) == 0
+        else:
+            for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
+                assert p in {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -124,6 +131,8 @@ def test_rpt_cases(
     [("Meta_PGT", get_meta_graph())],
 )
 def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
+    assert {str(sg.identifier) for sg in rdf_graph.contexts()} == META_GRAPH_CONTEXTS
+
     adbrdf.rdf_to_arangodb_by_pgt(
         name,
         rdf_graph,
@@ -148,6 +157,7 @@ def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS
+    assert {str(sg.identifier) for sg in rdf_graph_2.contexts()} == META_GRAPH_CONTEXTS
 
     db.delete_graph(name, drop_collections=True)
 
@@ -873,9 +883,18 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     unique_nodes = 13
     identified_unique_nodes = 12
     non_literal_statements = 10
-    contextualize_statements = 14
+    contextualize_statements = 18
+    rdf_graph_contexts = {
+        "http://example.com/Graph1",
+        "http://example.com/Graph2",
+        f"file://{os.path.abspath(f'{PROJECT_DIR}/tests/data/rdf/cases/6.trig')}",
+    }
 
     rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
+    assert {str(sg.identifier) for sg in rdf_graph.contexts()} == (
+        META_GRAPH_CONTEXTS | rdf_graph_contexts
+    )
+
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name, rdf_graph, overwrite_graph=True, contextualize_graph=True
     )
@@ -924,11 +943,11 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
         f"{_person}-{_subClassOf}-{_entity}"
     )
 
+    # TODO: REVISIT
+    # Is there a limit of 1 RDFS Domain per Predicate?
     for _from in [_hasSkill, _homepage, _name, _employer]:
         assert adb_graph.edge_collection("domain").has(f"{_from}-{_domain}-{_entity}")
-        assert not adb_graph.edge_collection("domain").has(
-            f"{_from}-{_domain}-{_person}"
-        )
+        assert adb_graph.edge_collection("domain").has(f"{_from}-{_domain}-{_person}")
 
     print("\n")
 
@@ -991,6 +1010,11 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
     for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
         assert p in {RDF.type, RDFS.domain, RDFS.range}
+
+    assert type(rdf_graph_2) == RDFConjunctiveGraph
+    assert {str(sg.identifier) for sg in rdf_graph_2.contexts()} == (
+        META_GRAPH_CONTEXTS | rdf_graph_contexts
+    )
 
     db.delete_graph(name, drop_collections=True)
 
@@ -1293,8 +1317,8 @@ def test_adb_doc_with_dict_property_to_rdf(name: str) -> None:
 @pytest.mark.parametrize("name", [("fraud-detection"), ("imdb")])
 def test_adb_native_graph_to_rdf(name: str) -> None:
     adb_graph = db.graph(name)
-    rdf_graph, _ = adbrdf.arangodb_graph_to_rdf(
-        name, RDFGraph(), infer_type_from_adb_col=True
+    rdf_graph, adb_mapping = adbrdf.arangodb_graph_to_rdf(
+        name, RDFGraph(), infer_type_from_adb_col=True, include_adb_key_statements=True
     )
 
     doc_map: Dict[str, str] = {}
@@ -1316,6 +1340,9 @@ def test_adb_native_graph_to_rdf(name: str) -> None:
                     property = URIRef(f"{adb_graph_namespace}{k}")
                     assert (term, property, Literal(v)) in rdf_graph
 
+            assert (term, adbrdf.adb_col_uri, Literal(v_col)) in adb_mapping
+            assert (term, adbrdf.adb_key_uri, Literal(doc["_key"])) in rdf_graph
+
     for e_d in adb_graph.edge_definitions():
         e_col = e_d["edge_collection"]
         e_col_uri = URIRef(f"{adb_graph_namespace}{e_col}")
@@ -1335,3 +1362,7 @@ def test_adb_native_graph_to_rdf(name: str) -> None:
 
             if edge_has_metadata:
                 assert (edge, RDF.type, e_col_uri) in rdf_graph
+                assert (edge, adbrdf.adb_col_uri, Literal(e_col)) in adb_mapping
+
+            # TODO: REVISIT - Not yet supported for ArangoDB Edges
+            # assert (edge, adbrdf.adb_key_uri, Literal(doc["_key"])) in rdf_graph

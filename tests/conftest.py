@@ -15,16 +15,24 @@ db: StandardDatabase
 PROJECT_DIR = Path(__file__).parent.parent
 adbrdf: ArangoRDF
 
-META_GRAPH_SIZE = 680
-META_GRAPH_NON_LITERAL_STATEMENTS = 437
+META_GRAPH_SIZE = 688
+META_GRAPH_NON_LITERAL_STATEMENTS = 442
 META_GRAPH_DUPLICATE_LITERALS = 1
 META_GRAPH_LITERAL_STATEMENTS = (
     META_GRAPH_SIZE - META_GRAPH_NON_LITERAL_STATEMENTS - META_GRAPH_DUPLICATE_LITERALS
 )
 META_GRAPH_CONTEXTUALIZE_STATEMENTS = 0
-META_GRAPH_ALL_RESOURCES = 133
+META_GRAPH_ALL_RESOURCES = 138
 META_GRAPH_UNKNOWN_RESOURCES = 12
-META_GRAPH_IDENTIFIED_RESOURCES = 121
+META_GRAPH_IDENTIFIED_RESOURCES = 126
+META_GRAPH_CONTEXTS = {
+    "http://www.arangodb.com/",
+    "http://www.w3.org/2002/07/owl#",
+    "http://purl.org/dc/elements/1.1/",
+    "http://www.w3.org/2001/XMLSchema#",
+    "http://www.w3.org/2000/01/rdf-schema#",
+    "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+}
 
 
 def pytest_addoption(parser: Any) -> None:
@@ -126,7 +134,7 @@ def pytest_exception_interact(node: Any, call: Any, report: Any) -> None:
         print("Could not delete graph")
 
 
-def get_rdf_graph(path: str, use_dataset_class: bool = False) -> RDFGraph:
+def get_rdf_graph(path: str) -> RDFGraph:
     g = RDFConjunctiveGraph() if path.endswith(".trig") else RDFGraph()
     g.parse(f"{PROJECT_DIR}/tests/data/rdf/{path}")
     return g
