@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 from typing import DefaultDict, Dict, List, Set
 
 from rich.progress import (
