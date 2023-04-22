@@ -2,15 +2,18 @@
 # -*- coding: utf-8 -*-
 
 from abc import ABC
-from typing import Any, Optional, Set, Tuple
+from typing import Any, Optional, Set, Tuple, Union
 
 from arango.graph import Graph as ADBGraph
+from rdflib import BNode
 from rdflib import Graph as RDFGraph
+from rdflib import URIRef
 
 from .typings import ADBMetagraph
+from .utils import Tree
 
 
-class Abstract_ArangoRDF(ABC):
+class AbstractArangoRDF(ABC):
     def __init__(self) -> None:
         raise NotImplementedError  # pragma: no cover
 
@@ -74,4 +77,14 @@ class Abstract_ArangoRDF(ABC):
         raise NotImplementedError  # pragma: no cover
 
     def __insert_adb_docs(self) -> None:
+        raise NotImplementedError  # pragma: no cover
+
+
+class AbstractArangoRDFController(ABC):
+    def identify_best_class(
+        self,
+        rdf_resource: Union[URIRef, BNode],
+        class_set: Set[str],
+        subclass_tree: Tree,
+    ) -> str:
         raise NotImplementedError  # pragma: no cover

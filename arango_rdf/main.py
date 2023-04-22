@@ -23,7 +23,8 @@ from rdflib import Literal, URIRef
 from rich.console import Group
 from rich.live import Live
 
-from .abc import Abstract_ArangoRDF
+from .abc import AbstractArangoRDF
+from .controller import ArangoRDFController
 from .typings import (
     ADBDocs,
     ADBMetagraph,
@@ -40,7 +41,7 @@ from .utils import Node, Tree, adb_track, logger, rdf_track
 PROJECT_DIR = Path(__file__).parent
 
 
-class ArangoRDF(Abstract_ArangoRDF):
+class ArangoRDF(AbstractArangoRDF):
     """ArangoRDF: Transform RDF Graphs into
     ArangoDB Graphs & vice-versa.
 
@@ -58,6 +59,7 @@ class ArangoRDF(Abstract_ArangoRDF):
     def __init__(
         self,
         db: Database,
+        controller: ArangoRDFController = ArangoRDFController(),
         logging_lvl: Union[str, int] = logging.INFO,
     ):
         self.set_logging(logging_lvl)
@@ -66,7 +68,12 @@ class ArangoRDF(Abstract_ArangoRDF):
             msg = "**db** parameter must inherit from arango.database.Database"
             raise TypeError(msg)
 
+        if not isinstance(controller, ArangoRDFController):
+            msg = "**controller** parameter must inherit from ArangoRDFController"
+            raise TypeError(msg)
+
         self.db = db
+        self.controller = controller
 
         # `adb_docs`: An RDF to ArangoDB variable used as a buffer
         # to store the to-be-inserted ArangoDB documents.
@@ -122,9 +129,9 @@ class ArangoRDF(Abstract_ArangoRDF):
 
     ###################################################################################
     # RDF to ArangoDB: RPT Methods
-    # 1) rdf_to_arangodb_by_rpt:
-    # 2) __rpt_process_term:
-    # 3) __rpt_create_adb_graph
+    # * rdf_to_arangodb_by_rpt:
+    # * __rpt_process_term:
+    # * __rpt_create_adb_graph
     ###################################################################################
 
     def rdf_to_arangodb_by_rpt(
@@ -408,22 +415,22 @@ class ArangoRDF(Abstract_ArangoRDF):
 
     ###################################################################################
     # RDF to ArangoDB: PGT Methods
-    # 1) rdf_to_arangodb_by_pgt:
-    # 2) build_adb_mapping_for_pgt:
-    # 3) __pgt_get_term_metadata:
-    # 4) __pgt_get_term_metadata:
-    # 5) __pgt_process_rdf_term:
-    # 6) __pgt_rdf_val_to_adb_property:
-    # 7) __pgt_process_subject:
-    # 8) __pgt_process_object:
-    # 9) __pgt_process_predicate:
-    # 10) __pgt_object_is_head_of_rdf_list:
-    # 11) __pgt_statement_is_part_of_rdf_list:
-    # 12) __pgt_process_rdf_lists:
-    # 13) __pgt_process_rdf_list_object:
-    # 14) __pgt_unpack_rdf_collection:
-    # 15) __pgt_unpack_rdf_container:
-    # 16) __pgt_create_adb_graph:
+    # * rdf_to_arangodb_by_pgt:
+    # * build_adb_mapping_for_pgt:
+    # * __pgt_get_term_metadata:
+    # * __pgt_get_term_metadata:
+    # * __pgt_process_rdf_term:
+    # * __pgt_rdf_val_to_adb_property:
+    # * __pgt_process_subject:
+    # * __pgt_process_object:
+    # * __pgt_process_predicate:
+    # * __pgt_object_is_head_of_rdf_list:
+    # * __pgt_statement_is_part_of_rdf_list:
+    # * __pgt_process_rdf_lists:
+    # * __pgt_process_rdf_list_object:
+    # * __pgt_unpack_rdf_collection:
+    # * __pgt_unpack_rdf_container:
+    # * __pgt_create_adb_graph:
     ###################################################################################
 
     def rdf_to_arangodb_by_pgt(
@@ -934,8 +941,11 @@ class ArangoRDF(Abstract_ArangoRDF):
                 if (rdf_resource, None, None) in adb_mapping or len(class_set) == 0:
                     continue
 
-                class_str = self.__identify_best_class(class_set, subclass_tree)
-                adb_col = self.rdf_id_to_adb_label(class_str)
+                adb_col = self.rdf_id_to_adb_label(
+                    self.controller.identify_best_class(
+                        rdf_resource, class_set, subclass_tree
+                    )
+                )
 
                 self.__add_to_adb_mapping(adb_mapping, rdf_resource, adb_col)
 
@@ -1438,20 +1448,19 @@ class ArangoRDF(Abstract_ArangoRDF):
 
     ###################################################################################
     # RDF to ArangoDB: RPT & PGT Shared Methods
-    # 1) load_meta_ontology
-    # 2) load_base_ontology
-    # 3) rdf_id_to_adb_key
-    # 4) rdf_id_to_adb_label
-    # 5) __add_adb_edge:
-    # 6) __identify_best_class:
-    # 7) __infer_and_introspect_dr:
-    # 8) __build_explicit_type_map:
-    # 9) __build_subclass_tree:
-    # 10) __build_predicate_scope
-    # 11) __build_domain_range_map:
-    # 12) __combine_type_map_and_dr_map:
-    # 13) __get_literal_val:
-    # 14) __insert_adb_docs:
+    # * load_meta_ontology
+    # * load_base_ontology
+    # * rdf_id_to_adb_key
+    # * rdf_id_to_adb_label
+    # * __add_adb_edge:
+    # * __infer_and_introspect_dr:
+    # * __build_explicit_type_map:
+    # * __build_subclass_tree:
+    # * __build_predicate_scope
+    # * __build_domain_range_map:
+    # * __combine_type_map_and_dr_map:
+    # * __get_literal_val:
+    # * __insert_adb_docs:
     ###################################################################################
 
     def load_meta_ontology(self, rdf_graph: RDFGraph) -> RDFConjunctiveGraph:
@@ -1631,38 +1640,6 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         if _sg:
             self.adb_docs[col][key]["_sub_graph_uri"] = _sg
-
-    def __identify_best_class(self, class_set: Set[str], subclass_tree: Tree) -> str:
-        """Find the ideal RDFS Class among a selection of RDFS Classes.
-        This system is a Work in Progress.
-
-        :param class_set: The set of RDFS Class URIs to choose from.
-        :type class_set: Set[str]
-        :param subclass_tree: The Tree data structure representing
-            the RDFS Taxonomy. See `ArangoRDF.__build_subclass_tree()`
-            for more info.
-        :type subclass_tree: arango_rdf.utils.Tree
-        :return: The most suitable RDFS Class URI among the set of classes.
-        :rtype: str
-        """
-        if len(class_set) == 1:
-            return list(class_set)[0]
-
-        elif any([c in subclass_tree for c in class_set]):
-            best_class = ""
-            best_depth = -1
-
-            for c in sorted(class_set):
-                depth = subclass_tree.get_node_depth(c)
-
-                if depth > best_depth:
-                    best_depth = depth
-                    best_class = c
-
-            return best_class
-
-        else:
-            return sorted(class_set)[0]
 
     def __infer_and_introspect_dr(
         self,
@@ -2066,13 +2043,13 @@ class ArangoRDF(Abstract_ArangoRDF):
 
     ###################################################################################
     # ArangoDB to RDF Methods
-    # 1) arangodb_to_rdf:
-    # 2) arangodb_collections_to_rdf:
-    # 3) arangodb_graph_to_rdf:
-    # 4) __process_adb_doc:
-    # 5) __add_to_rdf_graph:
-    # 6) __adb_property_to_rdf_val:
-    # 7) __fetch_adb_docs:
+    # * arangodb_to_rdf:
+    # * arangodb_collections_to_rdf:
+    # * arangodb_graph_to_rdf:
+    # * __process_adb_doc:
+    # * __add_to_rdf_graph:
+    # * __adb_property_to_rdf_val:
+    # * __fetch_adb_docs:
     ###################################################################################
 
     def arangodb_to_rdf(
@@ -2551,7 +2528,7 @@ class ArangoRDF(Abstract_ArangoRDF):
 
     ###################################################################################
     # RDF to ArangoDB & ArangoDB to RDF Shared Methods
-    # 1) __add_to_adb_mapping:
+    # * __add_to_adb_mapping:
     ###################################################################################
 
     def __add_to_adb_mapping(
