@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-from rdflib import BNode, URIRef
 from typing import Set, Union
+
+from rdflib import BNode, URIRef
 
 from .abc import AbstractArangoRDFController
 from .utils import Tree
