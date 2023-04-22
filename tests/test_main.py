@@ -1361,8 +1361,10 @@ def test_adb_native_graph_to_rdf(name: str) -> None:
                     assert (edge, property, Literal(v)) in rdf_graph
 
             if edge_has_metadata:
+                # TODO - REVISIT - f"{e_col}_edges" ?
+                t = (edge, adbrdf.adb_col_uri, Literal(f"{e_col}_edges"))
+                assert t in adb_mapping
                 assert (edge, RDF.type, e_col_uri) in rdf_graph
-                assert (edge, adbrdf.adb_col_uri, Literal(e_col)) in adb_mapping
 
             # TODO: REVISIT - Not yet supported for ArangoDB Edges
             # assert (edge, adbrdf.adb_key_uri, Literal(doc["_key"])) in rdf_graph

@@ -62,11 +62,11 @@ class Tree:
             current.children.append(child_node)
             self.build_tree(child_node, child_node.name, depth + 1)
 
-    def get_node_depth(self, node_id: str, is_max: bool) -> int:
+    def get_node_depth(self, node_id: str) -> int:
         if node_id in self.nodes:
             return self.nodes[node_id].depth
 
-        return -1 if is_max else sys.maxsize
+        return -1
 
     def __contains__(self, node_id: str) -> bool:
         return node_id in self.nodes

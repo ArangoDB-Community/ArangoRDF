@@ -3,7 +3,6 @@ import gc
 import logging
 import os
 import re
-import sys
 from ast import literal_eval
 from collections import defaultdict
 from datetime import date, time
@@ -1633,9 +1632,7 @@ class ArangoRDF(Abstract_ArangoRDF):
         if _sg:
             self.adb_docs[col][key]["_sub_graph_uri"] = _sg
 
-    def __identify_best_class(
-        self, class_set: Set[str], subclass_tree: Tree, is_max: bool = True
-    ) -> str:
+    def __identify_best_class(self, class_set: Set[str], subclass_tree: Tree) -> str:
         """Find the ideal RDFS Class among a selection of RDFS Classes.
         This system is a Work in Progress.
 
@@ -1645,9 +1642,6 @@ class ArangoRDF(Abstract_ArangoRDF):
             the RDFS Taxonomy. See `ArangoRDF.__build_subclass_tree()`
             for more info.
         :type subclass_tree: arango_rdf.utils.Tree
-        :param is_max: A flag to identify how node depths within the
-            **subclass_tree* should be considered. Defaults to True.
-        :type is_max: bool
         :return: The most suitable RDFS Class URI among the set of classes.
         :rtype: str
         """
@@ -1656,13 +1650,12 @@ class ArangoRDF(Abstract_ArangoRDF):
 
         elif any([c in subclass_tree for c in class_set]):
             best_class = ""
-            best_depth = -1 if is_max else sys.maxsize
+            best_depth = -1
 
             for c in sorted(class_set):
-                depth = subclass_tree.get_node_depth(c, is_max)
-                condition = depth > best_depth if is_max else depth < best_depth
+                depth = subclass_tree.get_node_depth(c)
 
-                if condition:
+                if depth > best_depth:
                     best_depth = depth
                     best_class = c
 
@@ -2259,7 +2252,8 @@ class ArangoRDF(Abstract_ArangoRDF):
                         self.__add_to_rdf_graph(edge, RDF.object, object, sg_uri)
 
                         if e_col not in adb_v_col_blacklist:
-                            self.__add_to_adb_mapping(adb_mapping, edge, e_col)
+                            e_metadata_col = f"{e_col}_edges"  # TODO - REVISIT
+                            self.__add_to_adb_mapping(adb_mapping, edge, e_metadata_col)
 
                             if infer_type_from_adb_col:
                                 self.__add_to_rdf_graph(edge, RDF.type, e_col_uri)
