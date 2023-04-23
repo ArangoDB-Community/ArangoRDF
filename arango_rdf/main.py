@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, DefaultDict, Dict, List, Optional, Set, Tuple, Union
 
 from arango.cursor import Cursor
-from arango.database import Database
+from arango.database import StandardDatabase
 from arango.graph import Graph as ADBGraph
 from arango.result import Result
 from farmhash import Fingerprint64
@@ -58,14 +58,14 @@ class ArangoRDF(AbstractArangoRDF):
 
     def __init__(
         self,
-        db: Database,
+        db: StandardDatabase,
         controller: ArangoRDFController = ArangoRDFController(),
         logging_lvl: Union[str, int] = logging.INFO,
     ):
         self.set_logging(logging_lvl)
 
-        if not isinstance(db, Database):
-            msg = "**db** parameter must inherit from arango.database.Database"
+        if not isinstance(db, StandardDatabase):
+            msg = "**db** parameter must inherit from arango.database.StandardDatabase"
             raise TypeError(msg)
 
         if not isinstance(controller, ArangoRDFController):
@@ -74,6 +74,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         self.db = db
         self.controller = controller
+        self.async_db = db.begin_async_execution(False)
 
         # `adb_docs`: An RDF to ArangoDB variable used as a buffer
         # to store the to-be-inserted ArangoDB documents.
@@ -140,6 +141,7 @@ class ArangoRDF(AbstractArangoRDF):
         rdf_graph: RDFGraph,
         contextualize_graph: bool = False,
         overwrite_graph: bool = False,
+        use_async: bool = True,
         batch_size: Optional[int] = None,
         **import_options: Any,
     ) -> ADBGraph:
@@ -185,6 +187,9 @@ class ArangoRDF(AbstractArangoRDF):
             by **name** if it already exists, and drops its associated collections.
             Defaults to False.
         :type overwrite_graph: bool
+        :param use_async: Performs asynchronous ArangoDB ingestion if enabled.
+            Defaults to True.
+        :type use_async: bool
         :param batch_size: If specified, runs the ArangoDB Data Ingestion
             process for every **batch_size** RDF triples/quads within **rdf_graph**.
             Defaults to `len(rdf_graph)`.
@@ -321,11 +326,12 @@ class ArangoRDF(AbstractArangoRDF):
 
                 # Empty `self.adb_docs` into ArangoDB once `batch_size` has been reached
                 if count % batch_size == 0:
-                    self.__insert_adb_docs()
+                    self.__insert_adb_docs(use_async)
 
             # Insert the remaining `self.adb_docs` into ArangoDB
-            self.__insert_adb_docs()
+            self.__insert_adb_docs(use_async)
 
+        assert len(self.adb_docs) == 0
         return self.__rpt_create_adb_graph(name)
 
     def __rpt_process_term(self, t: Union[RDFSubject, RDFObject]) -> Tuple[str, str]:
@@ -439,6 +445,7 @@ class ArangoRDF(AbstractArangoRDF):
         rdf_graph: RDFGraph,
         contextualize_graph: bool = False,
         overwrite_graph: bool = False,
+        use_async: bool = True,
         batch_size: Optional[int] = None,
         adb_mapping: Optional[RDFGraph] = None,
         **import_options: Any,
@@ -585,6 +592,9 @@ class ArangoRDF(AbstractArangoRDF):
         :param batch_size: If specified, runs the ArangoDB Data Ingestion
             process for every **batch_size** RDF triples/quads within **rdf_graph**.
             Defaults to `len(rdf_graph)`.
+        :param use_async: Performs asynchronous ArangoDB ingestion if enabled.
+            Defaults to True.
+        :type use_async: bool
         :type batch_size: int | None
         :param adb_mapping: An (optional) RDF Graph containing the ArangoDB
             Collection Mapping statements of all identifiable Resources.
@@ -757,7 +767,7 @@ class ArangoRDF(AbstractArangoRDF):
 
                 # Empty 'self.adb_docs' into ArangoDB once 'batch_size' has been reached
                 if count % batch_size == 0:
-                    self.__insert_adb_docs(self.__adb_col_blacklist)
+                    self.__insert_adb_docs(use_async, self.__adb_col_blacklist)
 
         gc.collect()
         ############## ############## ##############
@@ -768,7 +778,7 @@ class ArangoRDF(AbstractArangoRDF):
             # Process `self.__rdf_lists` data into `self.adb_docs`
             self.__pgt_process_rdf_lists()
             # Insert the remaining `self.adb_docs` into ArangoDB
-            self.__insert_adb_docs()
+            self.__insert_adb_docs(use_async)
 
         gc.collect()
         ############## ############### ##############
@@ -776,16 +786,17 @@ class ArangoRDF(AbstractArangoRDF):
         # Notify user of any RDF Resources that have been
         # unable to be identified during the ArangoDB Collection Mapping process.
         if self.db.has_collection(self.__UNKNOWN_RESOURCE):
-            un_count = self.db.collection(self.__UNKNOWN_RESOURCE).count()
             logger.info(
                 f"""\n
                 ----------------
                 Unknown Resource(s) found in graph '{name}'.
-                Unable to identify the nature of {un_count} URIRefs & BNodes.
+                All unidentifiable URIRefs & BNodes have been placed
+                in the '{self.__UNKNOWN_RESOURCE}' collection.
                 ----------------
                 """
             )
 
+        assert len(self.adb_docs) == 0
         return self.__pgt_create_adb_graph(name)
 
     def build_adb_mapping_for_pgt(
@@ -2008,14 +2019,20 @@ class ArangoRDF(AbstractArangoRDF):
 
         return t.value if t.value else t_str
 
-    def __insert_adb_docs(self, adb_col_blacklist: Set[str] = set()) -> None:
+    def __insert_adb_docs(
+        self, use_async: bool, adb_col_blacklist: Set[str] = set()
+    ) -> None:
         """Insert ArangoDB documents into their ArangoDB collection.
 
+        :param use_async: Performs asynchronous ingestion if enabled.
+        :type use_async: bool
         :param adb_col_blacklist: A list of ArangoDB Collections that will not be
             populated on this call of `__insert_adb_docs()`. Essential for allowing List
             construction of RDF Literals (PGT Only).
         :type adb_col_blacklist: Set[str]
         """
+
+        db = self.async_db if use_async else self.db
 
         # Little hack to avoid "RuntimeError: dictionary changed size during iteration"
         for adb_col in list(self.adb_docs.keys()):
@@ -2033,7 +2050,7 @@ class ArangoRDF(AbstractArangoRDF):
                 is_edge = {"_from", "_to"} <= docs[0].keys()
                 self.db.create_collection(adb_col, edge=is_edge)
 
-            self.db.collection(adb_col).import_bulk(docs, **self.__import_options)
+            db.collection(adb_col).import_bulk(docs, **self.__import_options)
             del self.adb_docs[adb_col]  # Clear buffer
 
             self.__adb_iterator.stop_task(adb_task)

@@ -95,6 +95,7 @@ def test_rpt_cases(
         rdf_graph,
         contextualize_graph,
         overwrite_graph=True,
+        use_async=False,
     )
 
     assert adb_graph.edge_collection(STATEMENT_COL).count() == num_triples
@@ -138,6 +139,7 @@ def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
         rdf_graph,
         contextualize_graph=True,
         overwrite_graph=True,
+        use_async=False,
     )
 
     v_count, e_count = get_adb_graph_count(name)
@@ -176,7 +178,11 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     # RDF to ArangoDB
     rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=True
+        name,
+        rdf_graph,
+        overwrite_graph=True,
+        contextualize_graph=True,
+        use_async=False,
     )
 
     v_count, e_count = get_adb_graph_count(name)
@@ -268,7 +274,7 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     # RDF to ArangoDB
     rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=True
+        name, rdf_graph, overwrite_graph=True, contextualize_graph=True, use_async=False
     )
 
     v_count, e_count = get_adb_graph_count(name)
@@ -373,7 +379,7 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     # RDF to ArangoDB
     rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=True
+        name, rdf_graph, overwrite_graph=True, contextualize_graph=True, use_async=False
     )
 
     v_count, e_count = get_adb_graph_count(name)
@@ -468,7 +474,7 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     # RDF to ArangoDB
     rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=True
+        name, rdf_graph, overwrite_graph=True, contextualize_graph=True, use_async=False
     )
 
     v_count, e_count = get_adb_graph_count(name)
@@ -567,7 +573,7 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     # RDF to ArangoDB
     rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=True
+        name, rdf_graph, overwrite_graph=True, contextualize_graph=True, use_async=False
     )
 
     v_count, e_count = get_adb_graph_count(name)
@@ -652,7 +658,7 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     # RDF to ArangoDB
     rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=True
+        name, rdf_graph, overwrite_graph=True, contextualize_graph=True, use_async=False
     )
 
     v_count, e_count = get_adb_graph_count(name)
@@ -896,7 +902,7 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=True
+        name, rdf_graph, overwrite_graph=True, contextualize_graph=True, use_async=False
     )
 
     v_count, e_count = get_adb_graph_count(name)
@@ -1034,7 +1040,7 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
 
     rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=True
+        name, rdf_graph, overwrite_graph=True, contextualize_graph=True, use_async=False
     )
 
     v_count, e_count = get_adb_graph_count(name)
