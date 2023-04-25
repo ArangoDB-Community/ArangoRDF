@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 from typing import Set, Union
 
-from rdflib import BNode, URIRef
+from arango.database import StandardDatabase
+from rdflib import BNode, Graph, URIRef
 
 from .abc import AbstractArangoRDFController
 from .utils import Tree
@@ -12,6 +13,10 @@ class ArangoRDFController(AbstractArangoRDFController):
 
     You can derive your own custom ArangoRDFController.
     """
+
+    def __init__(self) -> None:
+        self.db: StandardDatabase
+        self.rdf_graph: Graph
 
     def identify_best_class(
         self,
@@ -31,7 +36,8 @@ class ArangoRDFController(AbstractArangoRDFController):
 
         NOTE: Users are able to access the RDF Graph of the current
         RDF-to-ArangoDB transformation via the `self.rdf_graph`
-        instance variable.
+        instance variable, and the database instance via the
+        `self.db` instance variable.
 
         The current identification process goes as follows:
         1) If an RDF Resource only has one `rdf:type` statement
@@ -74,6 +80,10 @@ class ArangoRDFController(AbstractArangoRDFController):
             **rdf_resource**.
         :rtype: str
         """
+        # These are accessible!
+        # print(self.db)
+        # print(self.rdf_graph)
+
         best_class = ""
 
         if len(class_set) == 1:
