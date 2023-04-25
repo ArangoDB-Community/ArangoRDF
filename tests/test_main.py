@@ -750,7 +750,11 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
 
     # RDF to ArangoDB
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=False
+        name,
+        rdf_graph,
+        overwrite_graph=True,
+        contextualize_graph=False,
+        use_async=False,
     )
 
     v_count, e_count = get_adb_graph_count(name)
@@ -813,7 +817,11 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
 )
 def test_pgt_case_4(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=False
+        name,
+        rdf_graph,
+        overwrite_graph=True,
+        contextualize_graph=False,
+        use_async=False,
     )
 
     _list1 = adbrdf.rdf_id_to_adb_key("http://example.com/List1")
@@ -849,7 +857,11 @@ def test_pgt_case_4(name: str, rdf_graph: RDFGraph) -> None:
 )
 def test_pgt_case_5(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=False
+        name,
+        rdf_graph,
+        overwrite_graph=True,
+        contextualize_graph=False,
+        use_async=False,
     )
 
     assert adb_graph.edge_collection("nationality").count() == 1
@@ -1170,7 +1182,11 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
 )
 def test_pgt_collection(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=False
+        name,
+        rdf_graph,
+        overwrite_graph=True,
+        contextualize_graph=False,
+        use_async=False,
     )
 
     _doc = adbrdf.rdf_id_to_adb_key("http://example.com/Doc")
@@ -1233,7 +1249,11 @@ def test_pgt_collection(name: str, rdf_graph: RDFGraph) -> None:
 )
 def test_pgt_container(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True, contextualize_graph=False
+        name,
+        rdf_graph,
+        overwrite_graph=True,
+        contextualize_graph=False,
+        use_async=False,
     )
 
     _doc = adbrdf.rdf_id_to_adb_key("http://example.com/Doc")
