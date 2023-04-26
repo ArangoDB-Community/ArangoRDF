@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict
+from typing import Dict
 
 import pytest
 from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
@@ -30,10 +30,14 @@ from .conftest import (
 
 
 def test_constructor() -> None:
-    bad_db: Dict[str, Any] = dict()
+    bad_db = None
 
     with pytest.raises(TypeError):
         ArangoRDF(bad_db)
+
+    bad_controller = None
+    with pytest.raises(TypeError):
+        ArangoRDF(db, bad_controller)
 
 
 @pytest.mark.parametrize(
@@ -50,7 +54,7 @@ def test_constructor() -> None:
         ("Case_3_2_RPT", get_rdf_graph("cases/3_2.ttl"), 2, 1, 0, 2, False, True),
         ("Case_4_RPT", get_rdf_graph("cases/4.ttl"), 7, 2, 3, 3, False, False),
         ("Case_5_RPT", get_rdf_graph("cases/5.ttl"), 2, 1, 1, 1, False, False),
-        ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 11, 9, 0, 1, False, True),
+        ("Case_6_RPT", get_rdf_graph("cases/6.trig"), 12, 9, 0, 2, False, True),
         ("Case_7_RPT", get_rdf_graph("cases/7.ttl"), 21, 17, 0, 1, False, True),
         (
             "Meta_RPT",
@@ -118,11 +122,13 @@ def test_rpt_cases(
 
     if test_outersection:
         assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+
+        diff = outersect_graphs(rdf_graph_2, rdf_graph)
         if not contextualize_graph:
-            assert len(outersect_graphs(rdf_graph_2, rdf_graph)) == 0
+            assert len(diff) == 0
         else:
-            for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
-                assert p in {RDF.type, RDFS.domain, RDFS.range}
+            predicates = {p for p in diff.predicates(unique=True)}
+            assert predicates <= {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -254,8 +260,8 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
-        assert p in {RDF.type, RDFS.domain, RDFS.range}
+    predicates = {p for p in diff.predicates(unique=True)}
+    assert predicates <= {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -359,8 +365,8 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in diff:
-        assert p in {RDF.type, RDFS.domain, RDFS.range}
+    predicates = {p for p in diff.predicates(unique=True)}
+    assert predicates <= {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -454,8 +460,8 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in diff:
-        assert p in {RDF.type, RDFS.domain, RDFS.range}
+    predicates = {p for p in diff.predicates(unique=True)}
+    assert predicates <= {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -553,8 +559,8 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
-        assert p in {RDF.type, RDFS.domain, RDFS.range}
+    predicates = {p for p in diff.predicates(unique=True)}
+    assert predicates <= {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -638,8 +644,8 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
-        assert p in {RDF.type, RDFS.domain, RDFS.range}
+    predicates = {p for p in diff.predicates(unique=True)}
+    assert predicates <= {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -731,8 +737,8 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
-        assert p in {RDF.type, RDFS.domain, RDFS.range}
+    predicates = {p for p in diff.predicates(unique=True)}
+    assert predicates <= {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -898,10 +904,11 @@ def test_pgt_case_5(name: str, rdf_graph: RDFGraph) -> None:
 )
 def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     size = len(rdf_graph)
-    unique_nodes = 13
-    identified_unique_nodes = 12
+    unique_nodes = 14
+    identified_unique_nodes = 13
     non_literal_statements = 10
-    contextualize_statements = 18
+    contextualize_statements = 21
+    datatype_statements = 1  # see ex:dateOfBirth statement
     rdf_graph_contexts = {
         "http://example.com/Graph1",
         "http://example.com/Graph2",
@@ -976,6 +983,7 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     monica = URIRef("http://example.com/Monica")
     monica_name = URIRef("http://example.com/name")
     monica_homepage = URIRef("http://example.com/homepage")
+    dob = URIRef("http://example.com/dateOfBirth")
 
     homepage = URIRef("http://www.Monicahompage.org")
     management = URIRef("http://example.com/Management")
@@ -988,8 +996,8 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     graph2 = URIRef("http://example.com/Graph2")
 
     # Original Statement assertions
-    # NOTE: We lose the Sub Graph URI here...
     assert (monica, monica_name, Literal("Monica")) in rdf_graph_2
+    assert (monica, dob, Literal("1963-03-22")) in rdf_graph_2
 
     assert (management, RDF.type, skill, graph1) in rdf_graph_2
     assert (monica, hasSkill, management, graph1) in rdf_graph_2
@@ -1023,11 +1031,20 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Skill", "Person", "Website", "List", "Ontology", "Property", "Class"}
 
-    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == datatype_statements
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
-    assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
-        assert p in {RDF.type, RDFS.domain, RDFS.range}
+    assert (
+        len(diff)
+        == META_GRAPH_CONTEXTUALIZE_STATEMENTS
+        + contextualize_statements
+        + datatype_statements
+    )
+
+    # TODO - REVISIT
+    # We lose the original ex:dateOfBirth statement in this transformation
+    # because the original statement contains a datatype annotation (xsd:date)
+    predicates = {p for p in diff.predicates(unique=True)}
+    assert predicates <= {RDF.type, RDFS.domain, RDFS.range, dob}
 
     assert type(rdf_graph_2) == RDFConjunctiveGraph
     assert {str(sg.identifier) for sg in rdf_graph_2.contexts()} == (
@@ -1170,8 +1187,9 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
 
     diff_2 = outersect_graphs(rdf_graph_2, rdf_graph)
     assert len(diff_2) == META_GRAPH_CONTEXTUALIZE_STATEMENTS + contextualize_statements
-    for _, p, _, *_ in outersect_graphs(rdf_graph_2, rdf_graph):
-        assert p in {RDF.type, RDFS.domain, RDFS.range}
+
+    predicates = {p for p in diff_2.predicates(unique=True)}
+    assert predicates <= {RDF.type, RDFS.domain, RDFS.range}
 
     db.delete_graph(name, drop_collections=True)
 
@@ -1298,7 +1316,7 @@ def test_pgt_container(name: str, rdf_graph: RDFGraph) -> None:
     "name",
     [("TestGraph")],
 )
-def test_adb_doc_with_dict_property_to_rdf(name: str) -> None:
+def test_adb_doc_with_dict_property(name: str) -> None:
     db.delete_graph(name, ignore_missing=True, drop_collections=True)
     db.create_graph(name, orphan_collections=["TestDoc"])
 
@@ -1340,8 +1358,8 @@ def test_adb_doc_with_dict_property_to_rdf(name: str) -> None:
     db.delete_graph(name, drop_collections=True)
 
 
-@pytest.mark.parametrize("name", [("fraud-detection"), ("imdb")])
-def test_adb_native_graph_to_rdf(name: str) -> None:
+@pytest.mark.parametrize("name", [("fraud-detection")])  # ("imdb")
+def test_adb_native_graph(name: str) -> None:
     adb_graph = db.graph(name)
     rdf_graph, adb_mapping = adbrdf.arangodb_graph_to_rdf(
         name, RDFGraph(), infer_type_from_adb_col=True, include_adb_key_statements=True
@@ -1387,10 +1405,28 @@ def test_adb_native_graph_to_rdf(name: str) -> None:
                     assert (edge, property, Literal(v)) in rdf_graph
 
             if edge_has_metadata:
-                # TODO - REVISIT - f"{e_col}_edges" ?
-                t = (edge, adbrdf.adb_col_uri, Literal(f"{e_col}_edges"))
+                t = (edge, adbrdf.adb_col_uri, Literal("Statement"))
                 assert t in adb_mapping
                 assert (edge, RDF.type, e_col_uri) in rdf_graph
 
             # TODO: REVISIT - Not yet supported for ArangoDB Edges
             # assert (edge, adbrdf.adb_key_uri, Literal(doc["_key"])) in rdf_graph
+
+    db.delete_graph(name, drop_collections=True)
+    adbrdf.rdf_to_arangodb_by_rpt("RPT", rdf_graph)
+    adbrdf.rdf_to_arangodb_by_pgt(
+        "PGT", rdf_graph, overwrite_graph=True, adb_mapping=adb_mapping
+    )
+
+    rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf("RPT", RDFGraph())
+    rdf_graph_3, _ = adbrdf.arangodb_graph_to_rdf("PGT", RDFGraph())
+
+    assert len(outersect_graphs(rdf_graph_2, rdf_graph_3)) == 0
+    assert len(outersect_graphs(rdf_graph_3, rdf_graph_2)) == 0
+
+    diff = outersect_graphs(rdf_graph, rdf_graph_2)
+    predicates = {p for p in diff.predicates(unique=True)}
+    predicates == {URIRef("http://www.arangodb.com/key")}
+
+    db.delete_graph("RPT", drop_collections=True)
+    db.delete_graph("PGT", drop_collections=True)

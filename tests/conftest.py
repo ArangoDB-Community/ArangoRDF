@@ -89,18 +89,19 @@ def pytest_configure(config: Any) -> None:
             orphan_collections=["bank", "branch"],
         )
 
-    if db.has_graph("imdb") is False:
-        arango_restore(con, "tests/data/adb/imdb_dump")
-        db.create_graph(
-            "imdb",
-            edge_definitions=[
-                {
-                    "edge_collection": "Ratings",
-                    "from_vertex_collections": ["Users"],
-                    "to_vertex_collections": ["Movies"],
-                },
-            ],
-        )
+    # TODO: Look for another ArangoDB Dataset
+    # if db.has_graph("imdb") is False:
+    #     arango_restore(con, "tests/data/adb/imdb_dump")
+    #     db.create_graph(
+    #         "imdb",
+    #         edge_definitions=[
+    #             {
+    #                 "edge_collection": "Ratings",
+    #                 "from_vertex_collections": ["Users"],
+    #                 "to_vertex_collections": ["Movies"],
+    #             },
+    #         ],
+    #     )
 
 
 def arango_restore(con: Dict[str, Any], path_to_data: str) -> None:

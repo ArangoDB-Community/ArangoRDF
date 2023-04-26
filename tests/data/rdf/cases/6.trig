@@ -1,6 +1,7 @@
 PREFIX ex: <http://example.com/>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 ex:Monica ex:employer ex:ArangoDB .
 
@@ -10,6 +11,7 @@ ex:Graph1 {
     ex:Monica ex:name "Monica" .
     ex:Monica ex:homepage <http://www.Monicahompage.org> .
     ex:Monica ex:hasSkill ex:Management .
+    ex:Monica ex:dateOfBirth "1963-03-22"^^xsd:date .
 }
 
 ex:Graph2 {
