@@ -22,6 +22,7 @@
 :marty a :LivingThing .
 :marty a :Animal .
 :marty a :Human .
+:marty a :Author .
 
 :john a :Singer .
 :john a :Writer .
