@@ -955,7 +955,7 @@ class ArangoRDF(AbstractArangoRDF):
         for rdf_map in [explicit_type_map, domain_range_map]:
             for rdf_resource, class_set in rdf_map.items():
                 if (rdf_resource, None, None) in adb_mapping or len(class_set) == 0:
-                    continue
+                    continue  # pragma: no cover # (false negative)
 
                 adb_col = self.rdf_id_to_adb_label(
                     self.controller.identify_best_class(
@@ -1817,7 +1817,7 @@ class ArangoRDF(AbstractArangoRDF):
             if adb_mapping is not None:
                 self.__add_to_adb_mapping(adb_mapping, o, "Class", True)
 
-        for p in self.rdf_graph.predicates(subject=None, object=None, unique=True):
+        for p in self.rdf_graph.predicates(unique=True):
             assert type(p) is URIRef
             explicit_type_map[p].add(self.__rdf_property_str)
 
@@ -2274,8 +2274,8 @@ class ArangoRDF(AbstractArangoRDF):
                         self.__add_to_rdf_graph(edge, RDF.object, object, sg_uri)
 
                         if e_col not in adb_v_col_blacklist:
-                            e_metadata_col = f"{e_col}_edges"  # TODO - REVISIT
-                            self.__add_to_adb_mapping(adb_mapping, edge, e_metadata_col)
+                            # TODO - REVISIT
+                            self.__add_to_adb_mapping(adb_mapping, edge, "Statement")
 
                             if infer_type_from_adb_col:
                                 self.__add_to_rdf_graph(edge, RDF.type, e_col_uri)
