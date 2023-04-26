@@ -2066,15 +2066,12 @@ class ArangoRDF(AbstractArangoRDF):
             action = f"ArangoDB Import: {adb_col}"
             adb_task = self.__adb_iterator.add_task("", action=action)
 
-            docs = self.adb_docs[adb_col].values()
-            if len(docs) == 0:
-                continue  # pragma: no cover
-
             if not self.db.has_collection(adb_col):
                 is_edge = adb_col in self.__e_col_map
                 self.db.create_collection(adb_col, edge=is_edge)
 
             col = db.collection(adb_col)
+            docs = self.adb_docs[adb_col].values()
             col.import_bulk(docs, **self.__import_options)  # type: ignore[arg-type]
 
             del self.adb_docs[adb_col]  # Clear buffer
