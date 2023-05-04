@@ -264,7 +264,7 @@ class ArangoRDF(AbstractArangoRDF):
         with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
             self.__rdf_task = self.__rdf_iterator.add_task("", total=size)
 
-            triple = (None, None, None)  # Iterate through all statements
+            triple = (None, None, None)
             enum_statements = enumerate(statements(triple), 1)  # type: ignore[operator]
 
             for count, (s, p, o, *rest) in enum_statements:
@@ -700,6 +700,14 @@ class ArangoRDF(AbstractArangoRDF):
         o: RDFObject  # Object
         sg: Optional[RDFGraph]  # Sub Graph
 
+        rdf_predicate_blacklist = {
+            self.adb_col_uri,
+            self.adb_key_uri,
+            RDF.subject,
+            RDF.predicate,
+            RDF.object,
+        }
+
         statements = (
             self.rdf_graph.quads
             if isinstance(self.rdf_graph, RDFConjunctiveGraph)
@@ -711,14 +719,13 @@ class ArangoRDF(AbstractArangoRDF):
         with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
             self.__rdf_task = self.__rdf_iterator.add_task("", total=size)
 
-            triple = (None, None, None)  # Iterate through all statements
+            triple = (None, None, None)
             enum_statements = enumerate(statements(triple), 1)  # type: ignore[operator]
 
             for count, (s, p, o, *rest) in enum_statements:
                 self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
-                # Skip any ArangoDB Annotation Properties:
-                if p in [self.adb_col_uri, self.adb_key_uri]:
+                if p in rdf_predicate_blacklist or (p, o) == (RDF.type, RDF.Statement):
                     continue
 
                 # Address the possibility of (s, p, o) being a part of the
@@ -988,9 +995,15 @@ class ArangoRDF(AbstractArangoRDF):
 
         term_key = self.rdf_id_to_adb_key(term_str, term)
 
-        term_col = str(
-            self.adb_mapping.value(term, self.adb_col_uri) or self.__UNKNOWN_RESOURCE
-        )
+        if (term, RDF.type, RDF.Statement) in self.rdf_graph:
+            p_str = str(self.rdf_graph.value(term, RDF.predicate))
+            p_col = self.rdf_id_to_adb_label(p_str)
+
+            self.__adb_col_blacklist.add(p_col)
+            return p_str, term_key, p_col, p_col
+
+        adb_mapping_val = self.adb_mapping.value(term, self.adb_col_uri)
+        term_col = str(adb_mapping_val or self.__UNKNOWN_RESOURCE)
 
         term_label = self.rdf_id_to_adb_label(term_str)
 
@@ -1182,13 +1195,29 @@ class ArangoRDF(AbstractArangoRDF):
         if type(o) is Literal or self.__pgt_object_is_head_of_rdf_list(o):
             return
 
-        _, s_key, s_col, _ = s_meta
+        s_str, s_key, s_col, _ = s_meta
         p_str, p_key, _, p_label = p_meta
-        _, o_key, o_col, _ = o_meta
+        o_str, o_key, o_col, _ = o_meta
+
+        e_key = f"{s_key}-{p_key}-{o_key}"
+
+        res = self.rdf_graph.query(
+            f"""
+                SELECT ?s WHERE {{
+                    ?s <{RDF.subject}> <{s_str}> .
+                    ?s <{RDF.predicate}> <{p_str}> .
+                    ?s <{RDF.object}> <{o_str}> .
+                }}
+            """
+        )
+
+        if res:
+            edge: URIRef = list(res)[0][0]  # type: ignore
+            e_key = self.rdf_id_to_adb_key(str(edge), edge)
 
         self.__add_adb_edge(
             p_label,
-            f"{s_key}-{p_key}-{o_key}",
+            e_key,
             f"{s_col}/{s_key}",
             f"{o_col}/{o_key}",
             p_str,
@@ -1211,7 +1240,7 @@ class ArangoRDF(AbstractArangoRDF):
         :rtype: bool
         """
         # TODO: Discuss repurcussions of this assumption
-        if type(o) in [URIRef, Literal]:
+        if type(o) in {URIRef, Literal}:
             return False
 
         first = (o, RDF.first, None)
@@ -1247,7 +1276,7 @@ class ArangoRDF(AbstractArangoRDF):
         if type(s) is not BNode:
             return ""
 
-        if p in [RDF.first, RDF.rest]:
+        if p in {RDF.first, RDF.rest}:
             return "_COLLECTION_BNODE"
 
         p_str = str(p)
@@ -1341,24 +1370,20 @@ class ArangoRDF(AbstractArangoRDF):
         p_label = p_meta[-1]
 
         if o in self.__rdf_lists["_COLLECTION_BNODE"]:
-            assert type(o) is BNode
-
             doc[p_label] += "["
 
-            next_bnode_dict = self.__rdf_lists["_COLLECTION_BNODE"][o]
+            next_bnode_dict = self.__rdf_lists["_COLLECTION_BNODE"][o]  # type:ignore
             self.__pgt_unpack_rdf_collection(doc, s_meta, p_meta, next_bnode_dict, sg)
 
-            doc[p_label] = str(doc[p_label]).rstrip(",") + "],"
+            doc[p_label] = doc[p_label].rstrip(",") + "],"
 
         elif o in self.__rdf_lists["_CONTAINER_BNODE"]:
-            assert type(o) is BNode
-
             doc[p_label] += "["
 
-            next_bnode_dict = self.__rdf_lists["_CONTAINER_BNODE"][o]
+            next_bnode_dict = self.__rdf_lists["_CONTAINER_BNODE"][o]  # type:ignore
             self.__pgt_unpack_rdf_container(doc, s_meta, p_meta, next_bnode_dict, sg)
 
-            doc[p_label] = str(doc[p_label]).rstrip(",") + "],"
+            doc[p_label] = doc[p_label].rstrip(",") + "],"
 
         else:
             _, s_key, s_col, _ = s_meta
@@ -1397,9 +1422,8 @@ class ArangoRDF(AbstractArangoRDF):
 
         if "rest" in bnode_dict and bnode_dict["rest"] != RDF.nil:
             rest = bnode_dict["rest"]
-            assert type(rest) is BNode
 
-            next_bnode_dict = self.__rdf_lists["_COLLECTION_BNODE"][rest]
+            next_bnode_dict = self.__rdf_lists["_COLLECTION_BNODE"][rest]  # type:ignore
             self.__pgt_unpack_rdf_collection(doc, s_meta, p_meta, next_bnode_dict, sg)
 
     def __pgt_unpack_rdf_container(
@@ -1451,12 +1475,13 @@ class ArangoRDF(AbstractArangoRDF):
 
         edge_definitions: List[Dict[str, Union[str, List[str]]]] = []
 
-        all_collections: Set[str] = set()
-        orphan_collections: List[str] = []
-        non_orphan_collections: Set[str] = set()
+        all_v_cols: Set[str] = set()
+        non_orphan_v_cols: Set[str] = set()
 
         for col in self.adb_mapping.objects(None, self.adb_col_uri, True):
-            all_collections.add(str(col))
+            all_v_cols.add(str(col))
+
+        all_v_cols.discard("Statement")  # TODO: REVISIT
 
         for e_col, v_cols in self.__e_col_map.items():
             edge_definitions.append(
@@ -1467,14 +1492,14 @@ class ArangoRDF(AbstractArangoRDF):
                 }
             )
 
-            non_orphan_collections |= v_cols["from"] | v_cols["to"]
+            non_orphan_v_cols |= {
+                c for c in v_cols["from"] | v_cols["to"] if c not in self.__e_col_map
+            }
 
-        orphan_collections = list(
-            all_collections ^ non_orphan_collections ^ {self.__UNKNOWN_RESOURCE}
-        )
+        orphan_v_cols = list(all_v_cols ^ non_orphan_v_cols ^ {self.__UNKNOWN_RESOURCE})
 
         return self.db.create_graph(  # type: ignore[return-value]
-            name, edge_definitions, orphan_collections
+            name, edge_definitions, orphan_v_cols
         )
 
     ###################################################################################
@@ -1610,11 +1635,11 @@ class ArangoRDF(AbstractArangoRDF):
         # hashlib.md5(rdf_id.encode()).hexdigest()
         # xxhash.xxh64(rdf_id.encode()).hexdigest()
         # mmh3.hash64(rdf_id, signed=False)[0]
-        # str(cityhash.CityHash64(item))
-        # str(Fingerprint64(rdf_id))
+        # cityhash.CityHash64(item)
+        # Fingerprint64(rdf_id)
 
         adb_key = self.rdf_graph.value(rdf_term, self.adb_key_uri)
-        return str(adb_key) if adb_key else str(Fingerprint64(rdf_id))
+        return str(adb_key or Fingerprint64(rdf_id))
 
     def rdf_id_to_adb_label(self, rdf_id: str) -> str:
         """Return the suffix of an RDF URI. The suffix can (1)
@@ -1628,7 +1653,7 @@ class ArangoRDF(AbstractArangoRDF):
         :return: The suffix of the RDF URI string
         :rtype: str
         """
-        return re.split("/|#", rdf_id)[-1] or rdf_id
+        return re.split("/|#|:", rdf_id)[-1] or rdf_id
 
     def __add_adb_edge(
         self,
@@ -1660,14 +1685,15 @@ class ArangoRDF(AbstractArangoRDF):
         :type _sg: str
         """
 
-        if key not in self.adb_docs[col]:
-            self.adb_docs[col][key] = {
-                "_key": key,
-                "_from": _from,
-                "_to": _to,
-                "_uri": _uri,
-                "_label": _label,
-            }
+        self.adb_docs[col][key] = {
+            **self.adb_docs[col][key],
+            "_key": key,
+            "_from": _from,
+            "_to": _to,
+            "_uri": _uri,
+            "_label": _label,
+            "_rdftype": "URIRef",
+        }
 
         if _sg:
             self.adb_docs[col][key]["_sub_graph_uri"] = _sg
@@ -1811,14 +1837,16 @@ class ArangoRDF(AbstractArangoRDF):
         """
         explicit_type_map: TypeMap = defaultdict(set)
 
+        s: URIRef
+        o: URIRef
         for s, o, *_ in self.rdf_graph[: RDF.type :]:  # type: ignore[misc]
             explicit_type_map[s].add(str(o))
 
             if adb_mapping is not None:
                 self.__add_to_adb_mapping(adb_mapping, o, "Class", True)
 
-        for p in self.rdf_graph.predicates(unique=True):
-            assert type(p) is URIRef
+        p: URIRef
+        for p in self.rdf_graph.predicates(unique=True):  # type:ignore[assignment]
             explicit_type_map[p].add(self.__rdf_property_str)
 
             if adb_mapping is not None:
@@ -1874,7 +1902,7 @@ class ArangoRDF(AbstractArangoRDF):
         subclass_map: DefaultDict[str, Set[str]] = defaultdict(set)
 
         subclass_graph = self.meta_graph + self.rdf_graph
-        for s, o, *_ in subclass_graph[: RDFS.subClassOf :]:  # type: ignore[misc]
+        for s, o, *_ in subclass_graph[: RDFS.subClassOf :]:  # type:ignore
             subclass_map[str(o)].add(str(s))
 
             if adb_mapping is not None:
@@ -1933,7 +1961,7 @@ class ArangoRDF(AbstractArangoRDF):
         predicate_scope: PredicateScope = defaultdict(lambda: defaultdict(set))
         predicate_scope_graph = self.meta_graph + self.rdf_graph
         for label in ["domain", "range"]:
-            for p, c in predicate_scope_graph[: RDFS[label] :]:  # type:ignore[misc]
+            for p, c in predicate_scope_graph[: RDFS[label] :]:  # type:ignore
                 class_str = str(c)
 
                 if class_str not in class_blacklist:
@@ -2037,7 +2065,7 @@ class ArangoRDF(AbstractArangoRDF):
         if t.datatype == XSD.decimal:
             return float(t.value)
 
-        return t.value if t.value else t_str
+        return t.value if t.value is not None else t_str
 
     def __insert_adb_docs(
         self, use_async: bool, adb_col_blacklist: Set[str] = set()
@@ -2098,7 +2126,7 @@ class ArangoRDF(AbstractArangoRDF):
         rdf_graph: RDFGraph,
         metagraph: ADBMetagraph,
         list_conversion_mode: str = "static",
-        infer_type_from_adb_col: bool = False,
+        infer_type_from_adb_v_col: bool = False,
         include_adb_key_statements: bool = False,
         **export_options: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
@@ -2118,17 +2146,16 @@ class ArangoRDF(AbstractArangoRDF):
             RDF Container structure. If "static", elements within lists will be
             processed as individual statements. Defaults to "static".
         :type list_conversion_mode: str
-        :param infer_type_from_adb_col: Specify whether `rdf:type` relationships
+        :param infer_type_from_adb_v_col: Specify whether `rdf:type` relationships
             of the form (resource rdf:type adb_col) should be inferred upon
             transferring ArangoDB Documents into RDF. NOTE: Enabling this flag
             is only recommended if your ArangoDB graph is "native" to ArangoDB.
             That is, the ArangoDB graph does not originate from an RDF context.
-        :type infer_type_from_adb_col: bool
+        :type infer_type_from_adb_v_col: bool
         :param include_adb_key_statements: Specify whether `adb:key` relationships
-            of the form (resource adb:key adb_doc_key) should be generated upon
+            of the form (adb_doc adb:key adb_doc["key"]) should be generated upon
             transferring ArangoDB Documents into RDF. This can be used to
             maintain document keys when a user is interested in round-tripping.
-            NOTE: Currently only applies to ArangoDB Vertices (not edges).
             NOTE: Enabling this flag is only recommended if your ArangoDB graph
             is "native" to ArangoDB. That is, the ArangoDB graph does not
             originate from an RDF context.
@@ -2149,11 +2176,12 @@ class ArangoRDF(AbstractArangoRDF):
 
         self.__export_options = export_options
         self.__list_conversion = list_conversion_mode
-        self.__adb_graph_ns = f"{self.db._conn._url_prefixes[0]}/{name}#"
+        self.__graph_ns = f"{self.db._conn._url_prefixes[0]}/{name}#"
 
         # Maps the (soon-to-be) RDF Resources to their ArangoDB Collection
         adb_mapping: RDFGraph = RDFGraph()
         adb_mapping.bind("adb", "http://www.arangodb.com/")
+        adb_mapping.bind(name, self.__graph_ns)
 
         # Maps RDF Resources to the last Sub Graph that they been seen in (if any)
         subgraph_map: Dict[str, URIRef] = {}
@@ -2165,15 +2193,8 @@ class ArangoRDF(AbstractArangoRDF):
         self.__uri_map: Dict[str, str] = {}
 
         # TODO: REVISIT
-        self.rdf_graph.bind(name, self.__adb_graph_ns)
+        self.rdf_graph.bind(name, self.__graph_ns)
         self.rdf_graph.bind("adb", "http://www.arangodb.com/")
-        self.rdf_graph.bind("owl", "http://www.w3.org/2002/07/owl#")
-        self.rdf_graph.bind("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
-        self.rdf_graph.bind("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
-        self.rdf_graph.bind("xml", "http://www.w3.org/XML/1998/namespace")
-        self.rdf_graph.bind("xsd", "http://www.w3.org/2001/XMLSchema#")
-        self.rdf_graph.bind("dc", "http://purl.org/dc/elements/1.1/")
-        self.rdf_graph.bind("grddl", "http://www.w3.org/2003/g/data-view#")
 
         self.adb_key_blacklist = {
             "_id",
@@ -2203,7 +2224,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         term: Union[URIRef, BNode, Literal]
         for v_col, _ in metagraph["vertexCollections"].items():
-            v_col_uri = URIRef(f"{self.__adb_graph_ns}{v_col}")
+            v_col_uri = URIRef(f"{self.__graph_ns}{v_col}")
 
             self.__set_iterators(f"     ADB → RDF ({v_col})", "#97C423", "")
             with Live(Group(self.__adb_iterator, self.__rdf_iterator)):
@@ -2222,18 +2243,18 @@ class ArangoRDF(AbstractArangoRDF):
                     if not graph_supports_quads:
                         self.__unpack_adb_doc(doc, term)
 
-                    if include_adb_key_statements:
+                    if include_adb_key_statements and type(term) is URIRef:
                         key = Literal(doc["_key"])
                         self.__add_to_rdf_graph(term, self.adb_key_uri, key)
 
                     if v_col not in adb_v_col_blacklist:
                         self.__add_to_adb_mapping(adb_mapping, term, v_col)
 
-                        if infer_type_from_adb_col:
+                        if infer_type_from_adb_v_col:
                             self.__add_to_rdf_graph(term, RDF.type, v_col_uri)
 
         for e_col, _ in metagraph["edgeCollections"].items():
-            e_col_uri = URIRef(f"{self.__adb_graph_ns}{e_col}")
+            e_col_uri = URIRef(f"{self.__graph_ns}{e_col}")
 
             self.__set_iterators(f"     ADB → RDF ({e_col})", "#5E3108", "")
             with Live(Group(self.__adb_iterator, self.__rdf_iterator)):
@@ -2243,9 +2264,9 @@ class ArangoRDF(AbstractArangoRDF):
                 for doc in cursor:
                     self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
-                    subject = term_map[doc["_from"]]
+                    subject: RDFSubject = term_map[doc["_from"]]  # type:ignore
                     predicate = URIRef(doc.get("_uri", "")) or e_col_uri
-                    object = term_map[doc["_to"]]
+                    object: RDFObject = term_map[doc["_to"]]
 
                     sg_uri = None
                     if graph_supports_quads and "_sub_graph_uri" in doc:
@@ -2253,19 +2274,18 @@ class ArangoRDF(AbstractArangoRDF):
                         subgraph_map[doc["_from"]] = sg_uri
                         # subgraph_map[doc["_to"]] = sg_uri # TODO: REVISIT
 
-                    assert isinstance(subject, (URIRef, BNode))
                     self.__add_to_rdf_graph(subject, predicate, object, sg_uri)
 
                     # TODO: Revisit when rdflib introduces RDF-star support
-                    # edge = (subject, predicate, object)
-                    edge = URIRef(f"{self.__adb_graph_ns}{doc['_key']}")
+                    # edge = (s, p, o)
+                    edge = URIRef(f"{self.__graph_ns}{doc['_key']}")
 
                     edge_has_metadata = False
                     for k, v in doc.items():
                         if k not in self.adb_key_blacklist:
                             edge_has_metadata = True
-                            p = self.__uri_map.get(k, f"{self.__adb_graph_ns}{k}")
-                            self.__adb_property_to_rdf_val(edge, URIRef(p), v, sg_uri)
+                            p = URIRef(self.__uri_map.get(k, f"{self.__graph_ns}{k}"))
+                            self.__adb_property_to_rdf_val(edge, p, v, sg_uri)
 
                     if edge_has_metadata:
                         self.__add_to_rdf_graph(edge, RDF.type, RDF.Statement, sg_uri)
@@ -2273,12 +2293,8 @@ class ArangoRDF(AbstractArangoRDF):
                         self.__add_to_rdf_graph(edge, RDF.predicate, predicate, sg_uri)
                         self.__add_to_rdf_graph(edge, RDF.object, object, sg_uri)
 
-                        if e_col not in adb_v_col_blacklist:
-                            # TODO - REVISIT
-                            self.__add_to_adb_mapping(adb_mapping, edge, "Statement")
-
-                            if infer_type_from_adb_col:
-                                self.__add_to_rdf_graph(edge, RDF.type, e_col_uri)
+                        key = Literal(doc["_key"])
+                        self.__add_to_rdf_graph(edge, self.adb_key_uri, key)
 
         # TODO: REVISIT
         # Not a fan of this at all...
@@ -2298,7 +2314,7 @@ class ArangoRDF(AbstractArangoRDF):
         v_cols: Set[str],
         e_cols: Set[str],
         list_conversion_mode: str = "static",
-        infer_type_from_adb_col: bool = False,
+        infer_type_from_adb_v_col: bool = False,
         include_adb_key_statements: bool = False,
         **export_options: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
@@ -2319,17 +2335,16 @@ class ArangoRDF(AbstractArangoRDF):
             RDF Container structure. If "static", elements within lists will be
             processed as individual statements. Defaults to "static".
         :type list_conversion_mode: str
-        :param infer_type_from_adb_col: Specify whether `rdf:type` relationships
+        :param infer_type_from_adb_v_col: Specify whether `rdf:type` relationships
             of the form (adb_doc rdf:type adb_col) should be inferred upon
             transferring ArangoDB Documents into RDF. NOTE: Enabling this flag
             is only recommended if your ArangoDB graph is "native" to ArangoDB.
             That is, the ArangoDB graph does not originate from an RDF context.
-        :type infer_type_from_adb_col: bool
+        :type infer_type_from_adb_v_col: bool
         :param include_adb_key_statements: Specify whether `adb:key` relationships
-            of the form (resource adb:key adb_doc_key) should be generated upon
+            of the form (adb_doc adb:key adb_doc["key"]) should be generated upon
             transferring ArangoDB Documents into RDF. This can be used to
             maintain document keys when a user is interested in round-tripping.
-            NOTE: Currently only applies to ArangoDB Vertices (not edges).
             NOTE: Enabling this flag is only recommended if your ArangoDB graph
             is "native" to ArangoDB. That is, the ArangoDB graph does not
             originate from an RDF context.
@@ -2354,7 +2369,7 @@ class ArangoRDF(AbstractArangoRDF):
             rdf_graph,
             metagraph,
             list_conversion_mode,
-            infer_type_from_adb_col,
+            infer_type_from_adb_v_col,
             include_adb_key_statements,
             **export_options,
         )
@@ -2364,7 +2379,7 @@ class ArangoRDF(AbstractArangoRDF):
         name: str,
         rdf_graph: RDFGraph,
         list_conversion_mode: str = "static",
-        infer_type_from_adb_col: bool = False,
+        infer_type_from_adb_v_col: bool = False,
         include_adb_key_statements: bool = False,
         **export_options: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
@@ -2381,17 +2396,16 @@ class ArangoRDF(AbstractArangoRDF):
             RDF Container structure. If "static", elements within lists will be
             processed as individual statements. Defaults to "static".
         :type list_conversion_mode: str
-        :param infer_type_from_adb_col: Specify whether `rdf:type` relationships
+        :param infer_type_from_adb_v_col: Specify whether `rdf:type` relationships
             of the form (adb_doc rdf:type adb_col) should be inferred upon
             transferring ArangoDB Documents into RDF. NOTE: Enabling this flag
             is only recommended if your ArangoDB graph is "native" to ArangoDB.
             That is, the ArangoDB graph does not originate from an RDF context.
-        :type infer_type_from_adb_col: bool
+        :type infer_type_from_adb_v_col: bool
         :param include_adb_key_statements: Specify whether `adb:key` relationships
-            of the form (resource adb:key adb_doc_key) should be generated upon
+            of the form (adb_doc adb:key adb_doc["key"]) should be generated upon
             transferring ArangoDB Documents into RDF. This can be used to
             maintain document keys when a user is interested in round-tripping.
-            NOTE: Currently only applies to ArangoDB Vertices (not edges).
             NOTE: Enabling this flag is only recommended if your ArangoDB graph
             is "native" to ArangoDB. That is, the ArangoDB graph does not
             originate from an RDF context.
@@ -2416,7 +2430,7 @@ class ArangoRDF(AbstractArangoRDF):
             v_cols,
             e_cols,
             list_conversion_mode,
-            infer_type_from_adb_col,
+            infer_type_from_adb_v_col,
             include_adb_key_statements,
             **export_options,
         )
@@ -2439,7 +2453,7 @@ class ArangoRDF(AbstractArangoRDF):
         }
 
         rdf_type = doc.get("_rdftype", "URIRef")
-        val = doc.get(key_map[rdf_type], f"{self.__adb_graph_ns}{doc['_key']}")
+        val = doc.get(key_map[rdf_type], f"{self.__graph_ns}{doc['_key']}")
 
         if rdf_type == "URIRef":
             return URIRef(val)
@@ -2482,8 +2496,8 @@ class ArangoRDF(AbstractArangoRDF):
         # TODO: Iterate through metagraph values instead?
         for k, v in doc.items():
             if k not in self.adb_key_blacklist:
-                p = self.__uri_map.get(k, f"{self.__adb_graph_ns}{k}")
-                self.__adb_property_to_rdf_val(rdf_term, URIRef(p), v, sg_uri)
+                p = URIRef(self.__uri_map.get(k, f"{self.__graph_ns}{k}"))
+                self.__adb_property_to_rdf_val(rdf_term, p, v, sg_uri)
 
     def __add_to_rdf_graph(
         self, s: RDFSubject, p: URIRef, o: RDFObject, sg_uri: Optional[URIRef] = None
@@ -2564,7 +2578,7 @@ class ArangoRDF(AbstractArangoRDF):
             self.__add_to_rdf_graph(s, p, bnode, sg_uri)
 
             for k, v in val.items():
-                p_str = self.__uri_map.get(k, f"{self.__adb_graph_ns}{k}")
+                p_str = self.__uri_map.get(k, f"{self.__graph_ns}{k}")
                 self.__adb_property_to_rdf_val(bnode, URIRef(p_str), v)
 
         else:

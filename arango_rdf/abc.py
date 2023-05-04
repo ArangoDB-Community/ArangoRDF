@@ -48,7 +48,7 @@ class AbstractArangoRDF(ABC):
         rdf_graph: RDFGraph,
         metagraph: ADBMetagraph,
         list_conversion_mode: str,
-        infer_type_from_adb_col: bool,
+        infer_type_from_adb_v_col: bool,
         include_adb_key_statements: bool,
         **export_options: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
@@ -61,7 +61,7 @@ class AbstractArangoRDF(ABC):
         v_cols: Set[str],
         e_cols: Set[str],
         list_conversion_mode: str,
-        infer_type_from_adb_col: bool,
+        infer_type_from_adb_v_col: bool,
         include_adb_key_statements: bool,
         **export_options: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
@@ -72,7 +72,7 @@ class AbstractArangoRDF(ABC):
         name: str,
         rdf_graph: RDFGraph,
         list_conversion_mode: str,
-        infer_type_from_adb_col: bool,
+        infer_type_from_adb_v_col: bool,
         include_adb_key_statements: bool,
         **export_options: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
