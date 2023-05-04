@@ -37,9 +37,9 @@ META_GRAPH_CONTEXTS = {
 
 def pytest_addoption(parser: Any) -> None:
     parser.addoption("--url", action="store", default="http://localhost:8529")
-    parser.addoption("--dbName", action="store", default="_system")
     parser.addoption("--username", action="store", default="root")
     parser.addoption("--password", action="store", default="")
+    parser.addoption("--dbName", action="store", default="_system")
 
 
 def pytest_configure(config: Any) -> None:
@@ -68,28 +68,41 @@ def pytest_configure(config: Any) -> None:
     global adbrdf
     adbrdf = ArangoRDF(db, logging_lvl=logging.DEBUG)
 
-    if db.has_graph("fraud-detection") is False:
-        arango_restore(con, "tests/data/adb/fraud_dump")
-        db.delete_collection("Class")
-        db.delete_collection("Relationship")
+    if not db.has_graph("GameOfThrones"):
+        arango_restore(con, "tests/data/adb/got_dump")
         db.create_graph(
-            "fraud-detection",
+            "GameOfThrones",
             edge_definitions=[
                 {
-                    "edge_collection": "accountHolder",
-                    "from_vertex_collections": ["customer"],
-                    "to_vertex_collections": ["account"],
-                },
-                {
-                    "edge_collection": "transaction",
-                    "from_vertex_collections": ["account"],
-                    "to_vertex_collections": ["account"],
+                    "edge_collection": "ChildOf",
+                    "from_vertex_collections": ["Characters"],
+                    "to_vertex_collections": ["Characters"],
                 },
             ],
-            orphan_collections=["bank", "branch"],
+            orphan_collections=["Traits", "Locations"],
         )
 
-    # TODO: Look for another ArangoDB Dataset
+    # if not db.has_graph("fraud-detection"):
+    #     arango_restore(con, "tests/data/adb/fraud_dump")
+    #     db.delete_collection("Class")
+    #     db.delete_collection("Relationship")
+    #     db.create_graph(
+    #         "fraud-detection",
+    #         edge_definitions=[
+    #             {
+    #                 "edge_collection": "accountHolder",
+    #                 "from_vertex_collections": ["customer"],
+    #                 "to_vertex_collections": ["account"],
+    #             },
+    #             {
+    #                 "edge_collection": "transaction",
+    #                 "from_vertex_collections": ["account"],
+    #                 "to_vertex_collections": ["account"],
+    #             },
+    #         ],
+    #         orphan_collections=["bank", "branch"],
+    #     )
+
     # if db.has_graph("imdb") is False:
     #     arango_restore(con, "tests/data/adb/imdb_dump")
     #     db.create_graph(

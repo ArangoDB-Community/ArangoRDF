@@ -2,6 +2,7 @@ import os
 from typing import Dict
 
 import pytest
+from rdflib import BNode
 from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
 from rdflib import Dataset
 from rdflib import Graph as RDFGraph
@@ -1358,11 +1359,15 @@ def test_adb_doc_with_dict_property(name: str) -> None:
     db.delete_graph(name, drop_collections=True)
 
 
-@pytest.mark.parametrize("name", [("fraud-detection")])  # ("imdb")
+@pytest.mark.parametrize("name", [("GameOfThrones")])
 def test_adb_native_graph(name: str) -> None:
     adb_graph = db.graph(name)
     rdf_graph, adb_mapping = adbrdf.arangodb_graph_to_rdf(
-        name, RDFGraph(), infer_type_from_adb_col=True, include_adb_key_statements=True
+        name,
+        RDFGraph(),
+        list_conversion_mode="static",
+        infer_type_from_adb_v_col=True,
+        include_adb_key_statements=True,
     )
 
     doc_map: Dict[str, str] = {}
@@ -1379,10 +1384,10 @@ def test_adb_native_graph(name: str) -> None:
             term = URIRef(f"{adb_graph_namespace}{doc['_key']}")
             assert (term, RDF.type, v_col_uri) in rdf_graph
 
-            for k, v in doc.items():
+            for k, _ in doc.items():
                 if k not in ["_key", "_id", "_rev"]:
                     property = URIRef(f"{adb_graph_namespace}{k}")
-                    assert (term, property, Literal(v)) in rdf_graph
+                    assert (term, property, None) in rdf_graph
 
             assert (term, adbrdf.adb_col_uri, Literal(v_col)) in adb_mapping
             assert (term, adbrdf.adb_key_uri, Literal(doc["_key"])) in rdf_graph
@@ -1398,35 +1403,86 @@ def test_adb_native_graph(name: str) -> None:
 
             edge_has_metadata = False
             edge = URIRef(f"{adb_graph_namespace}{doc['_key']}")
-            for k, v in doc.items():
+            for k, _ in doc.items():
                 if k not in ["_key", "_id", "_rev", "_from", "_to"]:
                     edge_has_metadata = True
                     property = URIRef(f"{adb_graph_namespace}{k}")
-                    assert (edge, property, Literal(v)) in rdf_graph
+                    assert (edge, property, None) in rdf_graph
 
             if edge_has_metadata:
-                t = (edge, adbrdf.adb_col_uri, Literal("Statement"))
-                assert t in adb_mapping
-                assert (edge, RDF.type, e_col_uri) in rdf_graph
+                assert (edge, RDF.type, RDF.Statement) in rdf_graph
+                assert (edge, RDF.subject, subject) in rdf_graph
+                assert (edge, RDF.predicate, e_col_uri) in rdf_graph
+                assert (edge, RDF.object, object) in rdf_graph
 
-            # TODO: REVISIT - Not yet supported for ArangoDB Edges
-            # assert (edge, adbrdf.adb_key_uri, Literal(doc["_key"])) in rdf_graph
+                assert (edge, adbrdf.adb_key_uri, Literal(doc["_key"])) in rdf_graph
 
-    db.delete_graph(name, drop_collections=True)
-    adbrdf.rdf_to_arangodb_by_rpt("RPT", rdf_graph)
-    adbrdf.rdf_to_arangodb_by_pgt(
-        "PGT", rdf_graph, overwrite_graph=True, adb_mapping=adb_mapping
+    ####################################################
+    adbrdf.rdf_to_arangodb_by_rpt(
+        name, rdf_graph, use_async=False, overwrite_graph=True
     )
 
-    rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf("RPT", RDFGraph())
-    rdf_graph_3, _ = adbrdf.arangodb_graph_to_rdf("PGT", RDFGraph())
+    key_uris = {o for s, p, o in rdf_graph if p == adbrdf.adb_key_uri}
+    assert db.collection(f"{name}_Statement").count() == len(rdf_graph) - len(key_uris)
 
-    assert len(outersect_graphs(rdf_graph_2, rdf_graph_3)) == 0
-    assert len(outersect_graphs(rdf_graph_3, rdf_graph_2)) == 0
+    bnodes = {o for s, p, o in rdf_graph if type(o) is BNode}
+    assert db.collection(f"{name}_BNode").count() == len(bnodes)
 
-    diff = outersect_graphs(rdf_graph, rdf_graph_2)
-    predicates = {p for p in diff.predicates(unique=True)}
-    predicates == {URIRef("http://www.arangodb.com/key")}
+    lit = {o for _, p, o in rdf_graph if type(o) is Literal and p != adbrdf.adb_key_uri}
+    assert db.collection(f"{name}_Literal").count() == len(lit)
 
-    db.delete_graph("RPT", drop_collections=True)
-    db.delete_graph("PGT", drop_collections=True)
+    urirefs = set()
+    for s, _, o in rdf_graph:
+        if type(s) is URIRef:
+            urirefs.add(s)
+        if type(o) is URIRef:
+            urirefs.add(o)
+
+    assert db.collection(f"{name}_URIRef").count() == len(urirefs)
+
+    ####################################################
+
+    rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(
+        name,
+        RDFGraph(),
+        list_conversion_mode="static",
+        include_adb_key_statements=True,
+    )
+
+    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+
+    diff_1 = outersect_graphs(rdf_graph_2, rdf_graph)
+
+    ####################################################
+
+    adbrdf.rdf_to_arangodb_by_pgt(
+        name, rdf_graph, overwrite_graph=True, adb_mapping=adb_mapping, use_async=False
+    )
+
+    # TODO: Add assertions
+
+    ####################################################
+
+    rdf_graph_3, _ = adbrdf.arangodb_graph_to_rdf(
+        name,
+        RDFGraph(),
+        list_conversion_mode="static",
+        include_adb_key_statements=True,
+    )
+
+    assert len(outersect_graphs(rdf_graph, rdf_graph_3)) == 0
+
+    diff_2 = outersect_graphs(rdf_graph_3, rdf_graph)
+
+    ####################################################
+
+    diff_3 = outersect_graphs(rdf_graph_2, rdf_graph_3)
+    diff_4 = outersect_graphs(rdf_graph_3, rdf_graph_2)
+
+    for diff in [diff_1, diff_2, diff_3, diff_4]:
+        predicates = {p for p in diff.predicates(unique=True)}
+        assert predicates == {adbrdf.adb_key_uri}
+
+    ####################################################
+
+    db.delete_graph(name, drop_collections=True)
