@@ -260,14 +260,6 @@ class ArangoRDF(AbstractArangoRDF):
             else self.rdf_graph.triples
         )
 
-        rdf_predicate_blacklist = {
-            self.adb_col_uri,
-            self.adb_key_uri,
-            RDF.subject,
-            RDF.predicate,
-            RDF.object,
-        }
-
         self.__set_iterators("RDF → ADB (RPT)", "#08479E", "    ")
         with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
             self.__rdf_task = self.__rdf_iterator.add_task("", total=size)
@@ -278,7 +270,8 @@ class ArangoRDF(AbstractArangoRDF):
             for count, (s, p, o, *rest) in enum_statements:
                 self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
-                if p in rdf_predicate_blacklist or (p, o) == (RDF.type, RDF.Statement):
+                # Skip any ArangoDB Annotation Properties:
+                if p == self.adb_key_uri:
                     continue
 
                 # Get the Sub Graph URI (if it exists)
@@ -363,16 +356,6 @@ class ArangoRDF(AbstractArangoRDF):
         t_col = ""
         t_str = str(t)
         t_key = self.rdf_id_to_adb_key(t_str, t)
-
-        if (t, RDF.type, RDF.Statement) in self.rdf_graph:
-            t_col = self.__STATEMENT_COL
-
-            t_key = ""
-            for p in [RDF.subject, RDF.predicate, RDF.object]:
-                val = self.rdf_graph.value(t, p)
-                t_key += f"{self.rdf_id_to_adb_key(str(val), val)}-"  # type: ignore
-
-            return t_col, t_key.rstrip("-")
 
         if type(t) is URIRef:
             t_col = self.__URIREF_COL
