@@ -266,6 +266,8 @@ class ArangoRDF(AbstractArangoRDF):
             RDF.object,
         }
 
+        rdf_statement_blacklist = {(RDF.type, RDF.Statement), (RDF.type, RDF.List)}
+
         self.__set_iterators("RDF → ADB (RPT)", "#08479E", "    ")
         with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
             self.__rdf_task = self.__rdf_iterator.add_task("", total=size)
@@ -276,7 +278,7 @@ class ArangoRDF(AbstractArangoRDF):
             for count, (s, p, o, *rest) in enum_statements:
                 self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
-                if p in rdf_predicate_blacklist or (p, o) == (RDF.type, RDF.Statement):
+                if p in rdf_predicate_blacklist or (p, o) in rdf_statement_blacklist:
                     continue
 
                 # Get the Sub Graph URI (if it exists)
@@ -735,6 +737,8 @@ class ArangoRDF(AbstractArangoRDF):
             RDF.object,
         }
 
+        rdf_statement_blacklist = {(RDF.type, RDF.Statement), (RDF.type, RDF.List)}
+
         statements = (
             self.rdf_graph.quads
             if isinstance(self.rdf_graph, RDFConjunctiveGraph)
@@ -752,7 +756,7 @@ class ArangoRDF(AbstractArangoRDF):
             for count, (s, p, o, *rest) in enum_statements:
                 self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
-                if p in rdf_predicate_blacklist or (p, o) == (RDF.type, RDF.Statement):
+                if p in rdf_predicate_blacklist or (p, o) in rdf_statement_blacklist:
                     continue
 
                 # Address the possibility of (s, p, o) being a part of the

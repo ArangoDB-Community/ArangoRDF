@@ -101,11 +101,6 @@ rdf: {
 		rdfs:comment "The class of RDF Lists." ;
 		rdfs:subClassOf rdfs:Resource .
 
-	rdf:nil a rdf:List ; 
-		rdfs:isDefinedBy <http://www.w3.org/1999/02/22-rdf-syntax-ns#> ;
-		rdfs:label "nil" ;
-		rdfs:comment "The empty list, with no items in it. If the rest of a list is nil then the list has no more items in it." .
-
 	rdf:first a rdf:Property ; 
 		rdfs:isDefinedBy <http://www.w3.org/1999/02/22-rdf-syntax-ns#> ;
 		rdfs:label "first" ;
