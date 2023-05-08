@@ -1422,10 +1422,17 @@ def test_adb_native_graph(name: str) -> None:
         name, rdf_graph, use_async=False, overwrite_graph=True
     )
 
-    key_uris = {o for s, p, o in rdf_graph if p == adbrdf.adb_key_uri}
-    assert db.collection(f"{name}_Statement").count() == len(rdf_graph) - len(key_uris)
+    key_uri_triples = len({o for _, p, o in rdf_graph if p == adbrdf.adb_key_uri})
+    rdf_star_triples = (
+        len([1 for _, p, o in rdf_graph if (p, o) == (RDF.type, RDF.Statement)]) * 4
+    )
 
-    bnodes = {o for s, p, o in rdf_graph if type(o) is BNode}
+    assert (
+        db.collection(f"{name}_Statement").count()
+        == len(rdf_graph) - key_uri_triples - rdf_star_triples
+    )
+
+    bnodes = {o for _, p, o in rdf_graph if type(o) is BNode}
     assert db.collection(f"{name}_BNode").count() == len(bnodes)
 
     lit = {o for _, p, o in rdf_graph if type(o) is Literal and p != adbrdf.adb_key_uri}
@@ -1433,6 +1440,9 @@ def test_adb_native_graph(name: str) -> None:
 
     urirefs = set()
     for s, _, o in rdf_graph:
+        if (s, RDF.type, RDF.Statement) in rdf_graph:
+            continue
+
         if type(s) is URIRef:
             urirefs.add(s)
         if type(o) is URIRef:
@@ -1481,7 +1491,7 @@ def test_adb_native_graph(name: str) -> None:
 
     for diff in [diff_1, diff_2, diff_3, diff_4]:
         predicates = {p for p in diff.predicates(unique=True)}
-        assert predicates == {adbrdf.adb_key_uri}
+        assert predicates <= {adbrdf.adb_key_uri}
 
     ####################################################
 

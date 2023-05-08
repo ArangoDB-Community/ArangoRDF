@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-from typing import Set, Union
+from typing import Set
 
 from arango.database import StandardDatabase
-from rdflib import BNode, Graph, URIRef
+from rdflib import Graph
 
 from .abc import AbstractArangoRDFController
+from .typings import RDFTerm
 from .utils import Tree
 
 
@@ -20,7 +21,7 @@ class ArangoRDFController(AbstractArangoRDFController):
 
     def identify_best_class(
         self,
-        rdf_resource: Union[URIRef, BNode],
+        rdf_resource: RDFTerm,
         class_set: Set[str],
         subclass_tree: Tree,
     ) -> str:

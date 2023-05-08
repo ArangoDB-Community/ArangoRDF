@@ -3,8 +3,7 @@ __all__ = [
     "ADBMetagraph",
     "ADBDocs",
     "RDFLists",
-    "RDFObject",
-    "RDFSubject",
+    "RDFTerm",
     "TermMetadata",
     "PredicateScope",
     "TypeMap",
@@ -20,11 +19,10 @@ ADBMetagraph = Dict[str, Dict[str, Set[str]]]
 # ADBDocsRPT = DefaultDict[str, List[Json]]
 ADBDocs = DefaultDict[str, DefaultDict[str, Json]]
 
-RDFObject = Union[URIRef, BNode, Literal]
-RDFSubject = Union[URIRef, BNode]
+RDFTerm = Union[URIRef, BNode, Literal]
 
-RDFLists = DefaultDict[str, DefaultDict[RDFSubject, Json]]
+RDFLists = DefaultDict[str, DefaultDict[RDFTerm, Json]]
 TermMetadata = Tuple[str, str, str, str]
 
 PredicateScope = DefaultDict[URIRef, DefaultDict[str, Set[Tuple[str, str]]]]
-TypeMap = DefaultDict[RDFSubject, Set[str]]
+TypeMap = DefaultDict[RDFTerm, Set[str]]
