@@ -2244,13 +2244,19 @@ class ArangoRDF(AbstractArangoRDF):
         doc: Json
         edge: Json
 
+        adb_v_cols = set(metagraph["vertexCollections"].keys())
+        adb_e_cols = set(metagraph["edgeCollections"].keys())
+
         if self.db.has_collection("Property"):
             for doc in self.db.collection("Property"):
                 if doc.keys() >= {"_uri", "_label"}:
                     self.__uri_map[doc["_label"]] = doc["_uri"]
 
         term: Union[URIRef, BNode, Literal]
-        for v_col, _ in metagraph["vertexCollections"].items():
+        for v_col in adb_v_cols:
+            if v_col in adb_e_cols:
+                continue
+
             v_col_uri = URIRef(f"{self.__graph_ns}{v_col}")
 
             self.__set_iterators(f"     ADB → RDF ({v_col})", "#97C423", "")
@@ -2280,7 +2286,7 @@ class ArangoRDF(AbstractArangoRDF):
                         if infer_type_from_adb_v_col:
                             self.__add_to_rdf_graph(term, RDF.type, v_col_uri)
 
-        for e_col, _ in metagraph["edgeCollections"].items():
+        for e_col in adb_e_cols:
             e_col_uri = URIRef(f"{self.__graph_ns}{e_col}")
 
             self.__set_iterators(f"     ADB → RDF ({e_col})", "#5E3108", "")
