@@ -161,7 +161,7 @@ def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES
     assert {
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
-    } == {"Class", "Property", "List", "Ontology"}
+    } == {"Class", "Property", "Ontology"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
@@ -256,7 +256,7 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
-    } == {"Class", "Property", "List", "Ontology", "Person"}
+    } == {"Class", "Property", "Ontology", "Person"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
@@ -361,7 +361,7 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
-    } == {"Class", "Property", "List", "Ontology", "Person"}
+    } == {"Class", "Property", "Ontology", "Person"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
@@ -456,7 +456,7 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
-    } == {"Class", "Property", "List", "Ontology"}
+    } == {"Class", "Property", "Ontology"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
@@ -555,7 +555,7 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
-    } == {"Class", "Property", "List", "Ontology", "Person"}
+    } == {"Class", "Property", "Ontology", "Person"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
@@ -640,7 +640,7 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
-    } == {"Class", "Property", "List", "Ontology"}
+    } == {"Class", "Property", "Ontology"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
@@ -733,7 +733,7 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
-    } == {"Class", "Property", "List", "Ontology"}
+    } == {"Class", "Property", "Ontology"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
@@ -1030,7 +1030,7 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
-    } == {"Skill", "Person", "Website", "List", "Ontology", "Property", "Class"}
+    } == {"Skill", "Person", "Website", "Ontology", "Property", "Class"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == datatype_statements
     diff = outersect_graphs(rdf_graph_2, rdf_graph)
@@ -1180,7 +1180,7 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
         str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
-    } == {"Zenkey", "Arson", "Class", "Ontology", "Artist", "Property", "List", "Human"}
+    } == {"Zenkey", "Arson", "Class", "Ontology", "Artist", "Property", "Human"}
 
     diff_1 = outersect_graphs(rdf_graph, rdf_graph_2)
     assert len(diff_1) == 1

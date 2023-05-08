@@ -1513,6 +1513,7 @@ class ArangoRDF(AbstractArangoRDF):
             all_v_cols.add(str(col))
 
         all_v_cols.discard("Statement")  # TODO: REVISIT
+        all_v_cols.discard("List")  # TODO: REVISIT
 
         for e_col, v_cols in self.__e_col_map.items():
             edge_definitions.append(
