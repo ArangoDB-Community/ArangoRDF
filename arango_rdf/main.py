@@ -15,6 +15,7 @@ from arango.graph import Graph as ADBGraph
 from arango.result import Result
 from farmhash import Fingerprint64
 from isodate import Duration
+from pyparsing import ParseException
 from rdflib import RDF, RDFS, XSD, BNode
 from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
 from rdflib import Dataset as RDFDataset
@@ -136,6 +137,7 @@ class ArangoRDF(AbstractArangoRDF):
     # RDF to ArangoDB: RPT Methods
     # * rdf_to_arangodb_by_rpt:
     # * __rpt_process_term:
+    # * __rpt_process_predicate:
     # * __rpt_create_adb_graph
     ###################################################################################
 
@@ -286,43 +288,15 @@ class ArangoRDF(AbstractArangoRDF):
                 sg_str = str(sg.identifier) if sg else ""
 
                 # Load the RDF Subject & Object as ArangoDB Documents
-                s_str, s_col, s_key = self.__rpt_process_term(s)
-                o_str, o_col, o_key = self.__rpt_process_term(o)
+                s_meta = self.__rpt_process_term(s)
+                o_meta = self.__rpt_process_term(o)
 
-                # Fetch the RDF Predicate metadata
-                p_str = str(p)
-                p_key = self.rdf_id_to_adb_key(p_str)
-                p_label = self.rdf_id_to_adb_label(p_str)
-
-                e_key = f"{s_key}-{p_key}-{o_key}"
-
-                if type(o) is not Literal:
-                    res = self.rdf_graph.query(
-                        f"""
-                            SELECT ?s WHERE {{
-                                ?s <{RDF.subject}> <{s_str}> .
-                                ?s <{RDF.predicate}> <{p_str}> .
-                                ?s <{RDF.object}> <{o_str}> .
-                            }}
-                        """
-                    )
-
-                    if res:
-                        edge: URIRef = list(res)[0][0]  # type: ignore
-                        e_key = self.rdf_id_to_adb_key(str(edge), edge)
-
-                # Load the RDF triple/quad statement as an ArangoDB Edge
-                self.__add_adb_edge(
-                    self.__STATEMENT_COL,
-                    e_key,
-                    f"{s_col}/{s_key}",
-                    f"{o_col}/{o_key}",
-                    p_str,
-                    p_label,
-                    sg_str,
-                )
+                p_key = self.__rpt_process_predicate(p, s_meta, o_meta, sg_str)
 
                 if contextualize_graph:
+                    _, s_col, s_key, _ = s_meta
+                    _, o_col, o_key, _ = o_meta
+
                     # Load the RDF Predicate as an ArangoDB Document
                     self.__rpt_process_term(p)
 
@@ -367,21 +341,22 @@ class ArangoRDF(AbstractArangoRDF):
         assert len(self.adb_docs) == 0
         return self.__rpt_create_adb_graph(name)
 
-    def __rpt_process_term(self, t: Union[RDFTerm, RDFTerm]) -> Tuple[str, str, str]:
+    def __rpt_process_term(self, t: Union[RDFTerm, RDFTerm]) -> TermMetadata:
         """Process an RDF Term as an ArangoDB document via RPT Standards. Returns the
         ArangoDB Collection & Document Key associated to the RDF term along with
         the string representation of the RDF term.
 
         :param t: The RDF Term to process
         :type t: URIRef | BNode | Literal
-        :return: The ArangoDB Collection name & Document Key of the RDF Term, along
-            with the string representation of the RDF term.
-        :rtype: Tuple[str, str, str]
+        :return: The string representation of the RDF Term along with the ArangoDB
+            Collection name, Document Key, and Document label of the RDF Term.
+        :rtype: Tuple[str, str, str, str]
         """
 
-        t_col = ""
         t_str = str(t)
+        t_col = ""
         t_key = self.rdf_id_to_adb_key(t_str, t)
+        t_label = ""
 
         if (t, RDF.type, RDF.Statement) in self.rdf_graph:
             t_col = self.__STATEMENT_COL
@@ -402,18 +377,19 @@ class ArangoRDF(AbstractArangoRDF):
 
             self.adb_docs[t_col][t_key] = {
                 "_key": t_key,
-                "_label": t_key,  # TODO: REVISIT
+                "_label": t_label,  # TODO: REVISIT
                 "_rdftype": "BNode",
             }
 
         elif type(t) is Literal:
             t_col = self.__LITERAL_COL
             t_value = self.__get_literal_val(t, t_str)
+            t_label = t_value
 
             self.adb_docs[t_col][t_key] = {
                 "_key": t_key,
                 "_value": t_value,
-                "_label": t_value,  # TODO: REVISIT
+                "_label": t_label,  # TODO: REVISIT
                 "_rdftype": "Literal",
             }
 
@@ -425,7 +401,31 @@ class ArangoRDF(AbstractArangoRDF):
         else:
             raise ValueError()  # pragma: no cover
 
-        return t_str, t_col, t_key
+        return t_str, t_col, t_key, t_label  # return t, t_str, t_col, t_key, t_label
+
+    def __rpt_process_predicate(
+        self, p: URIRef, s_meta: TermMetadata, o_meta: TermMetadata, sg_str: str
+    ) -> str:
+        s_str, s_col, s_key, _ = s_meta
+        o_str, o_col, o_key, _ = o_meta
+
+        p_str = str(p)
+        p_key = self.rdf_id_to_adb_key(p_str)
+        p_label = self.rdf_id_to_adb_label(p_str)
+
+        e_key = self.__get_adb_edge_key(s_str, s_key, o_str, o_key, p_str, p_key)
+
+        self.__add_adb_edge(
+            self.__STATEMENT_COL,
+            e_key,
+            f"{s_col}/{s_key}",
+            f"{o_col}/{o_key}",
+            p_str,
+            p_label,
+            sg_str,
+        )
+
+        return p_key
 
     def __rpt_create_adb_graph(self, name: str) -> ADBGraph:
         """Create an ArangoDB graph based on an RPT Transformation.
@@ -1230,21 +1230,7 @@ class ArangoRDF(AbstractArangoRDF):
         p_str, p_key, _, p_label = p_meta
         o_str, o_key, o_col, _ = o_meta
 
-        e_key = f"{s_key}-{p_key}-{o_key}"
-
-        res = self.rdf_graph.query(
-            f"""
-                SELECT ?s WHERE {{
-                    ?s <{RDF.subject}> <{s_str}> .
-                    ?s <{RDF.predicate}> <{p_str}> .
-                    ?s <{RDF.object}> <{o_str}> .
-                }}
-            """
-        )
-
-        if res:
-            edge: URIRef = list(res)[0][0]  # type: ignore
-            e_key = self.rdf_id_to_adb_key(str(edge), edge)
+        e_key = self.__get_adb_edge_key(s_str, s_key, o_str, o_key, p_str, p_key)
 
         self.__add_adb_edge(
             p_label,
@@ -1540,6 +1526,7 @@ class ArangoRDF(AbstractArangoRDF):
     # * load_base_ontology
     # * rdf_id_to_adb_key
     # * rdf_id_to_adb_label
+    # * __get_adb_edge_key
     # * __add_adb_edge:
     # * __infer_and_introspect_dr:
     # * __build_explicit_type_map:
@@ -1684,6 +1671,33 @@ class ArangoRDF(AbstractArangoRDF):
         :rtype: str
         """
         return re.split("/|#|:", rdf_id)[-1] or rdf_id
+
+    def __get_adb_edge_key(
+        self, s_str: str, s_key: str, o_str: str, o_key: str, p_str: str, p_key: str
+    ) -> str:
+        e_key = f"{s_key}-{p_key}-{o_key}"
+
+        try:
+            # Expensive...
+            res = self.rdf_graph.query(
+                f"""
+                    SELECT ?statement WHERE {{
+                        ?statement <{RDF.subject}> <{s_str}> .
+                        ?statement <{RDF.predicate}> <{p_str}> .
+                        ?statement <{RDF.object}> <{o_str}> .
+                    }}
+                """,
+                # initBindings={"s": s, "p": p, "o": o},
+            )
+
+            if res:
+                edge: URIRef = list(res)[0][0]  # type: ignore
+                e_key = self.rdf_id_to_adb_key(str(edge), edge)
+
+        except ParseException:
+            pass
+
+        return e_key
 
     def __add_adb_edge(
         self,
