@@ -15,7 +15,6 @@ from arango.graph import Graph as ADBGraph
 from arango.result import Result
 from farmhash import Fingerprint64
 from isodate import Duration
-from pyparsing import ParseException
 from rdflib import RDF, RDFS, XSD, BNode
 from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
 from rdflib import Dataset as RDFDataset
@@ -31,9 +30,10 @@ from .typings import (
     ADBMetagraph,
     Json,
     PredicateScope,
-    RDFLists,
+    RDFListData,
+    RDFListHeads,
     RDFTerm,
-    TermMetadata,
+    RDFTermMeta,
     TypeMap,
 )
 from .utils import Node, Tree, adb_track, logger, rdf_track
@@ -291,12 +291,9 @@ class ArangoRDF(AbstractArangoRDF):
                 s_meta = self.__rpt_process_term(s)
                 o_meta = self.__rpt_process_term(o)
 
-                p_key = self.__rpt_process_predicate(p, s_meta, o_meta, sg_str)
+                p_key = self.__rpt_process_predicate(s_meta, p, o_meta, sg_str)
 
                 if contextualize_graph:
-                    _, s_col, s_key, _ = s_meta
-                    _, o_col, o_key, _ = o_meta
-
                     # Load the RDF Predicate as an ArangoDB Document
                     self.__rpt_process_term(p)
 
@@ -316,11 +313,7 @@ class ArangoRDF(AbstractArangoRDF):
                         )
 
                     # Run RDFS Domain/Range Inference & Introspection
-                    dr_meta = [
-                        (s, s_key, s_col, "domain"),
-                        (o, o_key, o_col, "range"),
-                    ]
-
+                    dr_meta = [(*s_meta, "domain"), (*o_meta, "range")]
                     self.__infer_and_introspect_dr(
                         p,
                         p_key,
@@ -341,16 +334,16 @@ class ArangoRDF(AbstractArangoRDF):
         assert len(self.adb_docs) == 0
         return self.__rpt_create_adb_graph(name)
 
-    def __rpt_process_term(self, t: Union[RDFTerm, RDFTerm]) -> TermMetadata:
+    def __rpt_process_term(self, t: RDFTerm) -> RDFTermMeta:
         """Process an RDF Term as an ArangoDB document via RPT Standards. Returns the
         ArangoDB Collection & Document Key associated to the RDF term along with
         the string representation of the RDF term.
 
         :param t: The RDF Term to process
         :type t: URIRef | BNode | Literal
-        :return: The string representation of the RDF Term along with the ArangoDB
-            Collection name, Document Key, and Document label of the RDF Term.
-        :rtype: Tuple[str, str, str, str]
+        :return: The RDF Term object, along with its associated ArangoDB
+            Collection name, Document Key, and Document label.
+        :rtype: Tuple[URIRef | BNode | Literal, str, str, str]
         """
 
         t_str = str(t)
@@ -401,19 +394,19 @@ class ArangoRDF(AbstractArangoRDF):
         else:
             raise ValueError()  # pragma: no cover
 
-        return t_str, t_col, t_key, t_label  # return t, t_str, t_col, t_key, t_label
+        return t, t_col, t_key, t_label
 
     def __rpt_process_predicate(
-        self, p: URIRef, s_meta: TermMetadata, o_meta: TermMetadata, sg_str: str
+        self, s_meta: RDFTermMeta, p: URIRef, o_meta: RDFTermMeta, sg_str: str
     ) -> str:
-        s_str, s_col, s_key, _ = s_meta
-        o_str, o_col, o_key, _ = o_meta
+        s, s_col, s_key, _ = s_meta
+        o, o_col, o_key, _ = o_meta
 
         p_str = str(p)
         p_key = self.rdf_id_to_adb_key(p_str)
         p_label = self.rdf_id_to_adb_label(p_str)
 
-        e_key = self.__get_adb_edge_key(s_str, s_key, o_str, o_key, p_str, p_key)
+        e_key = self.__get_adb_edge_key(s, s_key, p, p_key, o, o_key)
 
         self.__add_adb_edge(
             self.__STATEMENT_COL,
@@ -461,7 +454,6 @@ class ArangoRDF(AbstractArangoRDF):
     # RDF to ArangoDB: PGT Methods
     # * rdf_to_arangodb_by_pgt:
     # * build_adb_mapping_for_pgt:
-    # * __pgt_get_term_metadata:
     # * __pgt_get_term_metadata:
     # * __pgt_process_rdf_term:
     # * __pgt_rdf_val_to_adb_property:
@@ -670,9 +662,10 @@ class ArangoRDF(AbstractArangoRDF):
         self.__import_options = import_options
         self.__import_options["on_duplicate"] = "update"
 
-        # A unique set of instance variable for the PGT Process to
-        # convert RDF Lists into JSON Lists
-        self.__rdf_lists: RDFLists = defaultdict(lambda: defaultdict(dict))
+        # A unique set of instance variables to
+        # convert RDF Lists into JSON Lists during the PGT Process
+        self.__rdf_list_heads: RDFListHeads = defaultdict(lambda: defaultdict(dict))
+        self.__rdf_list_data: RDFListData = defaultdict(lambda: defaultdict(dict))
 
         # A set of ArangoDB Collections that will NOT imported via
         # batch processing, as they contain documents whose properties
@@ -764,11 +757,11 @@ class ArangoRDF(AbstractArangoRDF):
                 rdf_list_col = self.__pgt_statement_is_part_of_rdf_list(s, p)
                 if rdf_list_col:
                     key = self.rdf_id_to_adb_label(str(p))
-                    doc = self.__rdf_lists[rdf_list_col][s]
-                    self.__pgt_rdf_val_to_adb_property(doc, key, val=o)
+                    doc = self.__rdf_list_data[rdf_list_col][s]
+                    self.__pgt_rdf_val_to_adb_property(doc, key, o)
                     continue
 
-                # Get the Sub Graph URI (if it exists)
+                # Get the Sub Graph URI (if it exists)``
                 sg = rest[0] if rest else None
                 sg_str = str(sg.identifier) if sg else ""
 
@@ -778,17 +771,17 @@ class ArangoRDF(AbstractArangoRDF):
                 o_meta = self.__pgt_get_term_metadata(o)
 
                 # Load the RDF Subject & Object as ArangoDB Documents
-                self.__pgt_process_subject(s, s_meta)
-                self.__pgt_process_object(s, s_meta, p_meta, o, o_meta, sg_str)
+                self.__pgt_process_subject(s_meta)
+                self.__pgt_process_object(s_meta, p_meta, o_meta, sg_str)
 
                 # Load the RDF triple/quad as an ArangoDB Edge
-                self.__pgt_process_predicate(s_meta, p_meta, o, o_meta, sg_str)
+                self.__pgt_process_predicate(s_meta, p_meta, o_meta, sg_str)
 
                 # Load the RDF Predicate as an ArangoDB Document
-                self.__pgt_process_rdf_term(p, p_meta)
+                self.__pgt_process_rdf_term(p_meta)
 
                 if contextualize_graph:
-                    p_key = p_meta[1]
+                    _, _, p_key, _ = p_meta
 
                     # Create the <Predicate> <RDF.type> <RDF.Property> ArangoDB Edge
                     # p_has_no_type_statement = len(type_map[p]) == 0
@@ -805,11 +798,7 @@ class ArangoRDF(AbstractArangoRDF):
                         )
 
                     # Run RDFS Domain/Range Inference & Introspection
-                    dr_meta = [
-                        (s, s_meta[1], s_meta[2], "domain"),
-                        (o, o_meta[1], o_meta[2], "range"),
-                    ]
-
+                    dr_meta = [(*s_meta, "domain"), (*o_meta, "range")]
                     self.__infer_and_introspect_dr(
                         p,
                         p_key,
@@ -830,7 +819,8 @@ class ArangoRDF(AbstractArangoRDF):
         ############## Post Processing ##############
         self.__set_iterators("RDF → ADB (PGT Post-Process)", "#EF7D00", "    ")
         with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
-            # Process `self.__rdf_lists` data into `self.adb_docs`
+            # Process `self.__rdf_list_heads` & `self.__rdf_list_data`
+            # into `self.adb_docs`
             self.__pgt_process_rdf_lists()
             # Insert the remaining `self.adb_docs` into ArangoDB
             self.__insert_adb_docs(use_async)
@@ -1007,60 +997,58 @@ class ArangoRDF(AbstractArangoRDF):
 
     def __pgt_get_term_metadata(
         self, term: Union[URIRef, BNode, Literal]
-    ) -> TermMetadata:
+    ) -> RDFTermMeta:
         """Return the following PGT-relevant metadata associated to the RDF Term:
-            1. The string representation of the term
-            2. The Arangodb Key of the term
-            3. The Arangodb Collection of the term
+            1. The RDF Term object
+            2. The Arangodb Collection of the term
+            3. The Arangodb Key of the term
             4. The ArangoDB "label" value of the term (i.e its localname)
 
         :param term: The RDF Term
         :type term: URIRef | BNode | Literal
-        :return: Metadata associated to the RDF Term.
-        :rtype: Tuple[str, str, str, str]
+        :return: The RDF Term object, along with its associated ArangoDB
+            Collection name, Document Key, and Document label.
+        :rtype: Tuple[URIRef | BNode | Literal, str, str, str]
         """
-        term_str = str(term)
-
         if type(term) is Literal:
-            return term_str, "", "", ""  # No other metadata needed
+            return term, "", "", ""  # No other metadata needed
 
+        term_str = str(term)
         term_key = self.rdf_id_to_adb_key(term_str, term)
 
         if (term, RDF.type, RDF.Statement) in self.rdf_graph:
-            p_str = str(self.rdf_graph.value(term, RDF.predicate))
-            p_col = self.rdf_id_to_adb_label(p_str)
+            p: URIRef = self.rdf_graph.value(term, RDF.predicate)  # type: ignore
 
+            p_col = self.rdf_id_to_adb_label(str(p))
             self.__adb_col_blacklist.add(p_col)
-            return p_str, term_key, p_col, p_col
+
+            return p, p_col, term_key, p_col
 
         adb_mapping_val = self.adb_mapping.value(term, self.adb_col_uri)
         term_col = str(adb_mapping_val or self.__UNKNOWN_RESOURCE)
 
         term_label = self.rdf_id_to_adb_label(term_str)
 
-        return term_str, term_key, term_col, term_label
+        return term, term_col, term_key, term_label
 
     def __pgt_process_rdf_term(
         self,
-        t: Union[URIRef, BNode, Literal],
-        t_meta: TermMetadata,
-        s_key: str = "",
+        t_meta: RDFTermMeta,
         s_col: str = "",
+        s_key: str = "",
         p_label: str = "",
         process_val_as_string: bool = False,
     ) -> None:
         """Process an RDF Term as an ArangoDB document by PGT.
 
-        :param t: The RDF Term
-        :type t: URIRef | BNode | Literal
         :param t_meta: The PGT Metadata associated to the RDF Term.
-        :type t_meta: arango_rdf.typings.TermMetadata
+        :type t_meta: arango_rdf.typings.RDFTermMeta
+        :param s_col: The ArangoDB document collection of the Subject associated
+            to the RDF Term **t**. Only required if the RDF Term is of type Literal.
+        :type s_col: str
         :param s_key: The ArangoDB document key of the Subject associated
             to the RDF Term **t**. Only required if the RDF Term is of type Literal.
         :type s_key: str
-        :param s_col: The ArangoDB document key of the Subject associated
-            to the RDF Term **t**. Only required if the RDF Term is of type Literal.
-        :type s_col: str
         :param p_label: The RDF Predicate Label key of the Predicate associated
             to the RDF Term **t**. Only required if the RDF Term is of type Literal.
         :type p_label: str
@@ -1070,7 +1058,7 @@ class ArangoRDF(AbstractArangoRDF):
         :type process_val_as_string: bool
         """
 
-        t_str, t_key, t_col, t_label = t_meta
+        t, t_col, t_key, t_label = t_meta
 
         if t_key in self.adb_docs.get(t_col, {}):
             return
@@ -1078,7 +1066,7 @@ class ArangoRDF(AbstractArangoRDF):
         if type(t) is URIRef:
             self.adb_docs[t_col][t_key] = {
                 "_key": t_key,
-                "_uri": t_str,
+                "_uri": str(t),
                 "_label": t_label,
                 "_rdftype": "URIRef",
             }
@@ -1092,7 +1080,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         elif type(t) is Literal and all([s_col, s_key, p_label]):
             doc = self.adb_docs[s_col][s_key]
-            t_value = self.__get_literal_val(t, t_str)
+            t_value = self.__get_literal_val(t, str(t))
             self.__pgt_rdf_val_to_adb_property(
                 doc, p_label, t_value, process_val_as_string
             )
@@ -1143,24 +1131,20 @@ class ArangoRDF(AbstractArangoRDF):
             # Catch assumption #2
             doc[key] = [doc[key], val]
 
-    def __pgt_process_subject(self, s: RDFTerm, s_meta: TermMetadata) -> None:
+    def __pgt_process_subject(self, s_meta: RDFTermMeta) -> None:
         """A wrapper over the `__pgt_process_rdf_term` method for easier
         code readability. Processes the RDF Subject into ArangoDB.
 
-        :param s: The RDF Subject to process into ArangoDB
-        :type s: URIRef | BNode
         :param s_meta: The PGT Metadata associated to the RDF Subject.
-        :type s_meta: arango_rdf.typings.TermMetadata
+        :type s_meta: arango_rdf.typings.RDFTermMeta
         """
-        self.__pgt_process_rdf_term(s, s_meta)
+        self.__pgt_process_rdf_term(s_meta)
 
     def __pgt_process_object(
         self,
-        s: RDFTerm,
-        s_meta: TermMetadata,
-        p_meta: TermMetadata,
-        o: RDFTerm,
-        o_meta: TermMetadata,
+        s_meta: RDFTermMeta,
+        p_meta: RDFTermMeta,
+        o_meta: RDFTermMeta,
         sg_str: str,
     ) -> None:
         """Processes the RDF Object into ArangoDB. Given the possibily of
@@ -1168,40 +1152,36 @@ class ArangoRDF(AbstractArangoRDF):
         an RDF Container (i.e an RDF List), this wrapper function is used
         to prevent calling `__pgt_process_rdf_term` if it is not required.
 
-        :param s: The RDF Subject of the statement (s,p,o).
-        :type s: URIRef | BNode
         :param s_meta: The PGT Metadata associated to the
             RDF Subject of the statement containing the RDF Object.
-        :type s_meta: arango_rdf.typings.TermMetadata
+        :type s_meta: arango_rdf.typings.RDFTermMeta
         :param p_meta: The PGT Metadata associated to the
             RDF Predicate of the statement containing the RDF Object.
-        :type p_meta: arango_rdf.typings.TermMetadata
-        :param o: The RDF Object of the statement (s,p,o).
-        :type o: URIRef | BNode | Literal
+        :type p_meta: arango_rdf.typings.RDFTermMeta
         :param o_meta: The PGT Metadata associated to the RDF Object.
-        :type o_meta: arango_rdf.typings.TermMetadata
+        :type o_meta: arango_rdf.typings.RDFTermMeta
         :param sg_str: The string representation of the sub-graph URIRef associated
             to this statement (if any).
         :type sg_str: str
         """
 
-        p_str, _, _, p_label = p_meta
+        s, s_col, s_key, _ = s_meta
+        p, _, _, p_label = p_meta
+        o, _, _, _ = o_meta
 
         if self.__pgt_object_is_head_of_rdf_list(o):
             head = {"root": o, "sub_graph": sg_str}
-            self.__rdf_lists["_LIST_HEAD"][s][p_str] = head
+            self.__rdf_list_heads[s][p] = head
 
         else:
-            _, s_key, s_col, _ = s_meta
-            self.__pgt_process_rdf_term(o, o_meta, s_key, s_col, p_label)
+            self.__pgt_process_rdf_term(o_meta, s_col, s_key, p_label)
 
     def __pgt_process_predicate(
         self,
-        s_meta: TermMetadata,
-        p_meta: TermMetadata,
-        o: RDFTerm,
-        o_meta: TermMetadata,
-        sg: str,
+        s_meta: RDFTermMeta,
+        p_meta: RDFTermMeta,
+        o_meta: RDFTermMeta,
+        sg_str: str,
     ) -> None:
         """Processes the RDF Statement as an edge into ArangoDB.
 
@@ -1211,35 +1191,34 @@ class ArangoRDF(AbstractArangoRDF):
 
         :param s_meta: The PGT Metadata associated to the
             RDF Subject of the statement containing the RDF Object.
-        :type s_meta: arango_rdf.typings.TermMetadata
+        :type s_meta: arango_rdf.typings.RDFTermMeta
         :param p_meta: The PGT Metadata associated to the
             RDF Predicate of the statement containing the RDF Object.
-        :type p_meta: arango_rdf.typings.TermMetadata
-        :param o: The RDF Object to process into ArangoDB.
-        :type o: URIRef | BNode | Literal
+        :type p_meta: arango_rdf.typings.RDFTermMeta
         :param o_meta: The PGT Metadata associated to the RDF Object.
-        :type o_meta: arango_rdf.typings.TermMetadata
-        :param sg: The string representation of the sub-graph URIRef associated
+        :type o_meta: arango_rdf.typings.RDFTermMeta
+        :param sg_str: The string representation of the sub-graph URIRef associated
             to this statement (if any).
-        :type sg: str
+        :type sg_str: str
         """
+        o, o_col, o_key, _ = o_meta
+
         if type(o) is Literal or self.__pgt_object_is_head_of_rdf_list(o):
             return
 
-        s_str, s_key, s_col, _ = s_meta
-        p_str, p_key, _, p_label = p_meta
-        o_str, o_key, o_col, _ = o_meta
+        s, s_col, s_key, _ = s_meta
+        p, _, p_key, p_label = p_meta
 
-        e_key = self.__get_adb_edge_key(s_str, s_key, o_str, o_key, p_str, p_key)
+        e_key = self.__get_adb_edge_key(s, s_key, p, p_key, o, o_key)
 
         self.__add_adb_edge(
             p_label,
             e_key,
             f"{s_col}/{s_key}",
             f"{o_col}/{o_key}",
-            p_str,
+            str(p),
             p_label,
-            sg,
+            sg_str,
         )
 
         self.__e_col_map[p_label]["from"].add(s_col)
@@ -1322,20 +1301,20 @@ class ArangoRDF(AbstractArangoRDF):
         constructed via a string-based solution:
         "[" → "[1" → "[1, [" → "[1, [2," → "[1, [2, 3" → "[1, [2, 3]" → "[1, [2, 3]]"
         """
-        list_heads = self.__rdf_lists["_LIST_HEAD"].items()
+        list_heads = self.__rdf_list_heads.items()
 
         self.__rdf_task = self.__rdf_iterator.add_task("", total=len(list_heads))
         for s, s_dict in list_heads:
             self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
             s_meta = self.__pgt_get_term_metadata(s)
-            _, s_key, s_col, _ = s_meta
+            _, s_col, s_key, _ = s_meta
 
             doc = self.adb_docs[s_col][s_key]
             doc["_key"] = s_key
 
-            for p_str, p_dict in s_dict.items():
-                p_meta = self.__pgt_get_term_metadata(URIRef(p_str))
+            for p, p_dict in s_dict.items():
+                p_meta = self.__pgt_get_term_metadata(p)
                 p_label = p_meta[-1]
 
                 root: RDFTerm = p_dict["root"]
@@ -1354,8 +1333,8 @@ class ArangoRDF(AbstractArangoRDF):
     def __pgt_process_rdf_list_object(
         self,
         doc: Json,
-        s_meta: TermMetadata,
-        p_meta: TermMetadata,
+        s_meta: RDFTermMeta,
+        p_meta: RDFTermMeta,
         o: RDFTerm,
         sg: str,
     ) -> None:
@@ -1375,45 +1354,45 @@ class ArangoRDF(AbstractArangoRDF):
         :param doc: The ArangoDB Document associated to the RDF List.
         :type doc: Dict[str, Any]
         :param s_meta: The PGT Metadata associated to the RDF Subject.
-        :type s_meta: arango_rdf.typings.TermMetadata
+        :type s_meta: arango_rdf.typings.RDFTermMeta
         :param p_meta: The PGT Metadata associated to the RDF Predicate.
-        :type p_meta: arango_rdf.typings.TermMetadata
+        :type p_meta: arango_rdf.typings.RDFTermMeta
         :param o: The RDF List Object to process into ArangoDB.
         :type o: URIRef | BNode | Literal
         :param sg: The string representation of the sub-graph URIRef associated
-            to the RDF List Statement (if any).
+            to the RDF List Statement (if any).s
         :type sg: str
         """
         p_label = p_meta[-1]
 
-        if o in self.__rdf_lists["_COLLECTION_BNODE"]:
+        if o in self.__rdf_list_data["_COLLECTION_BNODE"]:
             doc[p_label] += "["
 
-            next_bnode_dict = self.__rdf_lists["_COLLECTION_BNODE"][o]
+            next_bnode_dict = self.__rdf_list_data["_COLLECTION_BNODE"][o]
             self.__pgt_unpack_rdf_collection(doc, s_meta, p_meta, next_bnode_dict, sg)
 
             doc[p_label] = doc[p_label].rstrip(",") + "],"
 
-        elif o in self.__rdf_lists["_CONTAINER_BNODE"]:
+        elif o in self.__rdf_list_data["_CONTAINER_BNODE"]:
             doc[p_label] += "["
 
-            next_bnode_dict = self.__rdf_lists["_CONTAINER_BNODE"][o]
+            next_bnode_dict = self.__rdf_list_data["_CONTAINER_BNODE"][o]
             self.__pgt_unpack_rdf_container(doc, s_meta, p_meta, next_bnode_dict, sg)
 
             doc[p_label] = doc[p_label].rstrip(",") + "],"
 
         else:
-            _, s_key, s_col, _ = s_meta
+            _, s_col, s_key, _ = s_meta
             o_meta = self.__pgt_get_term_metadata(o)
 
-            self.__pgt_process_rdf_term(o, o_meta, s_key, s_col, p_label, True)
-            self.__pgt_process_predicate(s_meta, p_meta, o, o_meta, sg)
+            self.__pgt_process_rdf_term(o_meta, s_col, s_key, p_label, True)
+            self.__pgt_process_predicate(s_meta, p_meta, o_meta, sg)
 
     def __pgt_unpack_rdf_collection(
         self,
         doc: Json,
-        s_meta: TermMetadata,
-        p_meta: TermMetadata,
+        s_meta: RDFTermMeta,
+        p_meta: RDFTermMeta,
         bnode_dict: Dict[str, RDFTerm],
         sg: str,
     ) -> None:
@@ -1423,9 +1402,9 @@ class ArangoRDF(AbstractArangoRDF):
         :param doc: The ArangoDB Document associated to the RDF Collection.
         :type doc: Dict[str, Any]
         :param s_meta: The PGT Metadata associated to the RDF Subject.
-        :type s_meta: arango_rdf.typings.TermMetadata
+        :type s_meta: arango_rdf.typings.RDFTermMeta
         :param p_meta: The PGT Metadata associated to the RDF Predicate.
-        :type p_meta: arango_rdf.typings.TermMetadata
+        :type p_meta: arango_rdf.typings.RDFTermMeta
         :param bnode_dict: A dictionary mapping the RDF.First and RDF.Rest
             values associated to the current BNode of the RDF Collection.
         :type bnode_dict: Dict[str, URIRef | BNode | Literal]
@@ -1440,14 +1419,14 @@ class ArangoRDF(AbstractArangoRDF):
         if "rest" in bnode_dict and bnode_dict["rest"] != RDF.nil:
             rest = bnode_dict["rest"]
 
-            next_bnode_dict = self.__rdf_lists["_COLLECTION_BNODE"][rest]
+            next_bnode_dict = self.__rdf_list_data["_COLLECTION_BNODE"][rest]
             self.__pgt_unpack_rdf_collection(doc, s_meta, p_meta, next_bnode_dict, sg)
 
     def __pgt_unpack_rdf_container(
         self,
         doc: Json,
-        s_meta: TermMetadata,
-        p_meta: TermMetadata,
+        s_meta: RDFTermMeta,
+        p_meta: RDFTermMeta,
         bnode_dict: Dict[str, Union[RDFTerm, List[RDFTerm]]],
         sg: str,
     ) -> None:
@@ -1458,9 +1437,9 @@ class ArangoRDF(AbstractArangoRDF):
         :param doc: The ArangoDB Document associated to the RDF Collection.
         :type doc: Dict[str, Any]
         :param s_meta: The PGT Metadata associated to the RDF Subject.
-        :type s_meta: arango_rdf.typings.TermMetadata
+        :type s_meta: arango_rdf.typings.RDFTermMeta
         :param p_meta: The PGT Metadata associated to the RDF Predicate.
-        :type p_meta: arango_rdf.typings.TermMetadata
+        :type p_meta: arango_rdf.typings.RDFTermMeta
         :param bnode_dict: A dictionary mapping the values associated
             associated to the current BNode of the RDF Container.
         :type bnode_dict: Dict[str, URIRef | BNode | Literal]
@@ -1673,29 +1652,25 @@ class ArangoRDF(AbstractArangoRDF):
         return re.split("/|#|:", rdf_id)[-1] or rdf_id
 
     def __get_adb_edge_key(
-        self, s_str: str, s_key: str, o_str: str, o_key: str, p_str: str, p_key: str
+        self, s: RDFTerm, s_key: str, p: RDFTerm, p_key: str, o: RDFTerm, o_key: str
     ) -> str:
         e_key = f"{s_key}-{p_key}-{o_key}"
 
-        try:
-            # Expensive...
-            res = self.rdf_graph.query(
-                f"""
-                    SELECT ?statement WHERE {{
-                        ?statement <{RDF.subject}> <{s_str}> .
-                        ?statement <{RDF.predicate}> <{p_str}> .
-                        ?statement <{RDF.object}> <{o_str}> .
-                    }}
-                """,
-                # initBindings={"s": s, "p": p, "o": o},
-            )
+        # Expensive...
+        res = self.rdf_graph.query(
+            f"""
+                SELECT ?statement WHERE {{
+                    ?statement <{RDF.subject}> ?s .
+                    ?statement <{RDF.predicate}> ?p .
+                    ?statement <{RDF.object}> ?o .
+                }}
+            """,
+            initBindings={"s": s, "p": p, "o": o},
+        )
 
-            if res:
-                edge: URIRef = list(res)[0][0]  # type: ignore
-                e_key = self.rdf_id_to_adb_key(str(edge), edge)
-
-        except ParseException:
-            pass
+        if res:
+            edge: URIRef = list(res)[0][0]  # type: ignore
+            e_key = self.rdf_id_to_adb_key(str(edge), edge)
 
         return e_key
 
@@ -1746,7 +1721,7 @@ class ArangoRDF(AbstractArangoRDF):
         self,
         p: URIRef,
         p_key: str,
-        dr_meta: List[Tuple[RDFTerm, str, str, str]],
+        dr_meta: List[Tuple[RDFTerm, str, str, str, str]],
         type_map: TypeMap,
         predicate_scope: PredicateScope,
         sg_str: str,
@@ -1767,7 +1742,6 @@ class ArangoRDF(AbstractArangoRDF):
         :type p_key: str
         :param dr_meta: The Domain & Range Metadata associated to the
             current (s,p,o) statement.
-            i.e [(s, s_key, s_col, "domain"), (o, o_key, o_col, "range")].
         :type dr_meta: List[Tuple[URIRef | BNode | Literal, str, str, str]]
         :param type_map: A dictionary mapping the "natural" & "synthetic"
             `RDF.Type` statements of every RDF Resource.
@@ -1797,7 +1771,7 @@ class ArangoRDF(AbstractArangoRDF):
             "range": (self.__rdfs_range_str, self.__rdfs_range_key),
         }
 
-        for t, t_key, t_col, dr_label in dr_meta:
+        for t, t_col, t_key, t_label, dr_label in dr_meta:
             if isinstance(t, Literal):
                 continue
 
@@ -2228,7 +2202,7 @@ class ArangoRDF(AbstractArangoRDF):
         adb_mapping.bind(name, self.__graph_ns)
 
         # Maps ArangoDB Document IDs to RDFLib Terms (i.e URIRef, Literal, BNode)
-        self.__term_map: Dict[str, Union[RDFTerm, RDFTerm]] = {}
+        self.__term_map: Dict[str, RDFTerm] = {}
 
         # Maps ArangoDB Document IDs to URI strings
         self.__uri_map: Dict[str, str] = {}
@@ -2510,7 +2484,14 @@ class ArangoRDF(AbstractArangoRDF):
         # Expensive...
         doc: Json = self.db.document({"_id": doc_id})  # type: ignore
 
-        if doc.keys() >= {"_from", "_to"}:
+        if not doc:
+            m = f"""
+                Unable to find ArangoDB Document
+                '{doc_id}' within Database {self.db.name}
+            """
+            raise ValueError(m)
+
+        elif doc.keys() >= {"_from", "_to"}:
             edge_uri = URIRef(f"{self.__graph_ns}{doc['_key']}")
             self.__term_map[doc_id] = edge_uri
 
