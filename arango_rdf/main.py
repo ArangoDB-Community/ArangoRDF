@@ -13,7 +13,7 @@ from arango.cursor import Cursor
 from arango.database import StandardDatabase
 from arango.graph import Graph as ADBGraph
 from arango.result import Result
-from farmhash import Fingerprint64
+from farmhash import Fingerprint64 as FP64
 from isodate import Duration
 from rdflib import RDF, RDFS, XSD, BNode
 from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
@@ -307,7 +307,7 @@ class ArangoRDF(AbstractArangoRDF):
                         key = f"{p_key}-{self.__rdf_type_key}-{self.__rdf_property_key}"
                         self.__add_adb_edge(
                             self.__STATEMENT_COL,
-                            key,
+                            str(FP64(key)),
                             f"{self.__URIREF_COL}/{p_key}",
                             f"{self.__URIREF_COL}/{self.__rdf_property_key}",
                             self.__rdf_type_str,
@@ -800,9 +800,10 @@ class ArangoRDF(AbstractArangoRDF):
                     # TODO: REVISIT - Should this even be here?
                     p_has_no_type_statement = (p, RDF.type, None) not in self.rdf_graph
                     if p_has_no_type_statement:
+                        key = f"{p_key}-{self.__rdf_type_key}-{self.__rdf_property_key}"
                         self.__add_adb_edge(
                             "type",
-                            f"{p_key}-{self.__rdf_type_key}-{self.__rdf_property_key}",
+                            str(FP64(key)),
                             f"Property/{p_key}",
                             f"Class/{self.__rdf_property_key}",
                             self.__rdf_type_str,
@@ -1622,10 +1623,10 @@ class ArangoRDF(AbstractArangoRDF):
         # xxhash.xxh64(rdf_id.encode()).hexdigest()
         # mmh3.hash64(rdf_id, signed=False)[0]
         # cityhash.CityHash64(item)
-        # Fingerprint64(rdf_id)
+        # FP64(rdf_id)
 
         adb_key = self.rdf_graph.value(rdf_term, self.adb_key_uri)
-        return str(adb_key or Fingerprint64(rdf_id))
+        return str(adb_key or FP64(rdf_id))
 
     def rdf_id_to_adb_label(self, rdf_id: str) -> str:
         """Return the suffix of an RDF URI. The suffix can (1)
@@ -1659,7 +1660,7 @@ class ArangoRDF(AbstractArangoRDF):
         :return: The ArangoDB Edge Key for the statement (s, p, o)
         :rtype: str
         """
-        e_key = f"{s_key}-{p_key}-{o_key}"
+        e_key = str(FP64(f"{s_key}-{p_key}-{o_key}"))
 
         # Expensive...
         res = self.rdf_graph.query(
@@ -1790,7 +1791,7 @@ class ArangoRDF(AbstractArangoRDF):
                 for _, class_key in predicate_scope[p][dr_label]:
                     self.__add_adb_edge(
                         TYPE_COL,
-                        f"{t_key}-{self.__rdf_type_key}-{class_key}",
+                        str(FP64(f"{t_key}-{self.__rdf_type_key}-{class_key}")),
                         f"{t_col}/{t_key}",
                         f"{CLASS_COL}/{class_key}",
                         self.__rdf_type_str,
@@ -1816,7 +1817,7 @@ class ArangoRDF(AbstractArangoRDF):
                     class_key = self.rdf_id_to_adb_key(class_str)
                     self.__add_adb_edge(
                         DR_COL,
-                        f"{p_key}-{dr_key}-{class_key}",
+                        str(FP64(f"{p_key}-{dr_key}-{class_key}")),
                         f"{P_COL}/{p_key}",
                         f"{CLASS_COL}/{class_key}",
                         dr_str,

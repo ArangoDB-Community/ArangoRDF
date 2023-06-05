@@ -2,6 +2,7 @@ import os
 from typing import Dict
 
 import pytest
+from farmhash import Fingerprint64 as FP64
 from rdflib import RDF, RDFS, BNode
 from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
 from rdflib import Graph as RDFGraph
@@ -43,7 +44,7 @@ def test_constructor() -> None:
     "name, rdf_graph",
     [("Case_1_RPT", get_rdf_graph("cases/1.ttl"))],
 )
-def test_rpt_case_1(name: str, rdf_graph: RDFGraph) -> None:
+def test_rpt_case_1_0(name: str, rdf_graph: RDFGraph) -> None:
     num_triples = 3
     num_urirefs = 3
     num_bnodes = 0
@@ -78,9 +79,9 @@ def test_rpt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     assert URIREF_COL.has(_bob)
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
-    assert STATEMENT_COL.has(f"{_alice}-{_type}-{_person}")
-    assert STATEMENT_COL.has(f"{_bob}-{_type}-{_person}")
-    assert STATEMENT_COL.has(f"{_alice}-{_meets}-{_bob}")
+    assert STATEMENT_COL.has(str(FP64(f"{_alice}-{_type}-{_person}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_bob}-{_type}-{_person}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_alice}-{_meets}-{_bob}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -109,10 +110,10 @@ def test_rpt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     assert e_count == num_triples
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
-    assert STATEMENT_COL.has(f"{_person}-{_type}-{_class}")
-    assert STATEMENT_COL.has(f"{_meets}-{_type}-{_property}")
-    assert STATEMENT_COL.has(f"{_meets}-{_domain}-{_person}")
-    assert STATEMENT_COL.has(f"{_meets}-{_range}-{_person}")
+    assert STATEMENT_COL.has(str(FP64(f"{_person}-{_type}-{_class}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_meets}-{_type}-{_property}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_meets}-{_domain}-{_person}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_meets}-{_range}-{_person}")))
 
     rdf_graph_3, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -170,11 +171,11 @@ def test_rpt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     assert LITERAL_COL.has(_mentors_name)
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
-    assert STATEMENT_COL.has(f"{_sam}-{_mentor}-{_lee}")
-    assert STATEMENT_COL.has(f"{_mentor}-{_label}-{_project_supervisor}")
-    assert STATEMENT_COL.has(f"{_mentor}-{_name}-{_mentors_name}")
-    assert STATEMENT_COL.has(f"{_sam}-{_type}-{_person}")
-    assert STATEMENT_COL.has(f"{_lee}-{_type}-{_person}")
+    assert STATEMENT_COL.has(str(FP64(f"{_sam}-{_mentor}-{_lee}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_mentor}-{_label}-{_project_supervisor}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_mentor}-{_name}-{_mentors_name}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_sam}-{_type}-{_person}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_lee}-{_type}-{_person}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -221,8 +222,8 @@ def test_rpt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     assert URIREF_COL.has(_teacher)
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
-    assert STATEMENT_COL.has(f"{_martin}-{_mentorJoe}-{_joe}")
-    assert STATEMENT_COL.has(f"{_mentorJoe}-{_alias}-{_teacher}")
+    assert STATEMENT_COL.has(str(FP64(f"{_martin}-{_mentorJoe}-{_joe}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_mentorJoe}-{_alias}-{_teacher}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -271,10 +272,10 @@ def test_rpt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     assert URIREF_COL.has(_administer)
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
-    assert STATEMENT_COL.has(f"{_jan}-{_type}-{_person}")
-    assert STATEMENT_COL.has(f"{_leo}-{_type}-{_person}")
-    assert STATEMENT_COL.has(f"{_jan}-{_supervise}-{_leo}")
-    assert STATEMENT_COL.has(f"{_supervise}-{_subPropertyOf}-{_administer}")
+    assert STATEMENT_COL.has(str(FP64(f"{_jan}-{_type}-{_person}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_leo}-{_type}-{_person}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_jan}-{_supervise}-{_leo}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_supervise}-{_subPropertyOf}-{_administer}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -321,8 +322,8 @@ def test_rpt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     assert URIREF_COL.has(_relation)
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
-    assert STATEMENT_COL.has(f"{_tom}-{_friend}-{_chris}")
-    assert STATEMENT_COL.has(f"{_friend}-{_type}-{_relation}")
+    assert STATEMENT_COL.has(str(FP64(f"{_tom}-{_friend}-{_chris}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_friend}-{_type}-{_relation}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -379,10 +380,10 @@ def test_rpt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     assert LITERAL_COL.has(_55)
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
-    assert STATEMENT_COL.has(f"{_book}-{_publish_date}-{_date}")
-    assert STATEMENT_COL.has(f"{_book}-{_pages}-{_100}")
-    assert STATEMENT_COL.has(f"{_book}-{_cover}-{_20}")
-    assert STATEMENT_COL.has(f"{_book}-{_index}-{_55}")
+    assert STATEMENT_COL.has(str(FP64(f"{_book}-{_publish_date}-{_date}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_book}-{_pages}-{_100}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_book}-{_cover}-{_20}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_book}-{_index}-{_55}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -431,8 +432,8 @@ def test_rpt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     assert LITERAL_COL.get(_book_da)["_lang"] == "da"
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
-    assert STATEMENT_COL.has(f"{_book}-{_title}-{_book_en}")
-    assert STATEMENT_COL.has(f"{_book}-{_title}-{_book_da}")
+    assert STATEMENT_COL.has(str(FP64(f"{_book}-{_title}-{_book_en}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_book}-{_title}-{_book_da}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -494,13 +495,13 @@ def test_rpt_case_4(name: str, rdf_graph: RDFGraph) -> None:
     assert LITERAL_COL.has(_three)
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
-    assert STATEMENT_COL.has(f"{_list1}-{_contents}-{_bnode_1}")
-    assert STATEMENT_COL.has(f"{_bnode_1}-{_first}-{_one}")
-    assert STATEMENT_COL.has(f"{_bnode_1}-{_rest}-{_bnode_2}")
-    assert STATEMENT_COL.has(f"{_bnode_2}-{_first}-{_two}")
-    assert STATEMENT_COL.has(f"{_bnode_2}-{_rest}-{_bnode_3}")
-    assert STATEMENT_COL.has(f"{_bnode_3}-{_first}-{_three}")
-    assert STATEMENT_COL.has(f"{_bnode_3}-{_rest}-{_nil}")
+    assert STATEMENT_COL.has(str(FP64(f"{_list1}-{_contents}-{_bnode_1}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_bnode_1}-{_first}-{_one}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_bnode_1}-{_rest}-{_bnode_2}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_bnode_2}-{_first}-{_two}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_bnode_2}-{_rest}-{_bnode_3}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_bnode_3}-{_first}-{_three}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_bnode_3}-{_rest}-{_nil}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -557,8 +558,8 @@ def test_rpt_case_5(name: str, rdf_graph: RDFGraph) -> None:
     assert LITERAL_COL.has(_canada)
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
-    assert STATEMENT_COL.has(f"{_bob}-{_nationality}-{_bnode}")
-    assert STATEMENT_COL.has(f"{_bnode}-{_country}-{_canada}")
+    assert STATEMENT_COL.has(str(FP64(f"{_bob}-{_nationality}-{_bnode}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_bnode}-{_country}-{_canada}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
@@ -605,13 +606,13 @@ def test_rpt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     assert e_count == num_triples
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
-    e1 = STATEMENT_COL.get(f"{_monica}-{_type}-{_entity}")
+    e1 = STATEMENT_COL.get(str(FP64(f"{_monica}-{_type}-{_entity}")))
     assert e1["_sub_graph_uri"] == graph1
-    e2 = STATEMENT_COL.get(f"{_monica}-{_hasSkill}-{_management}")
+    e2 = STATEMENT_COL.get(str(FP64(f"{_monica}-{_hasSkill}-{_management}")))
     assert e2["_sub_graph_uri"] == graph1
-    e3 = STATEMENT_COL.get(f"{_monica}-{_type}-{_person}")
+    e3 = STATEMENT_COL.get(str(FP64(f"{_monica}-{_type}-{_person}")))
     assert e3["_sub_graph_uri"] == graph2
-    e4 = STATEMENT_COL.get(f"{_person}-{_subClassOf}-{_entity}")
+    e4 = STATEMENT_COL.get(str(FP64(f"{_person}-{_subClassOf}-{_entity}")))
     assert e4["_sub_graph_uri"] == graph2
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
@@ -703,7 +704,7 @@ def test_rpt_case_8(name: str, rdf_graph: RDFGraph) -> None:
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
     assert STATEMENT_COL.has(_alice_likes_bob)
-    assert STATEMENT_COL.has(f"{_alice_likes_bob}-{_certainty}-{_05}")
+    assert STATEMENT_COL.has(str(FP64(f"{_alice_likes_bob}-{_certainty}-{_05}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
     assert len(rdf_graph_2) == len(rdf_graph) + 1
@@ -728,7 +729,7 @@ def test_rpt_case_8(name: str, rdf_graph: RDFGraph) -> None:
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
     assert STATEMENT_COL.has(_alice_likes_bob)
-    assert STATEMENT_COL.has(f"{_alice_likes_bob}-{_certainty}-{_05}")
+    assert STATEMENT_COL.has(str(FP64(f"{_alice_likes_bob}-{_certainty}-{_05}")))
 
     rdf_graph_3, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph_2)())
     assert len(rdf_graph_3) == len(rdf_graph_2)
@@ -790,7 +791,9 @@ def test_rpt_case_10(name: str, rdf_graph: RDFGraph) -> None:
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
     assert STATEMENT_COL.has(_mainpage_writer_alice)
-    assert STATEMENT_COL.has(f"{_bobshomepage}-{_source}-{_mainpage_writer_alice}")
+    assert STATEMENT_COL.has(
+        str(FP64(f"{_bobshomepage}-{_source}-{_mainpage_writer_alice}"))
+    )
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
     assert len(rdf_graph_2) == len(rdf_graph) + 1
@@ -853,7 +856,9 @@ def test_rpt_case_11_1(name: str, rdf_graph: RDFGraph) -> None:
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
     assert STATEMENT_COL.has(_mainpage_writer_alice)
-    assert STATEMENT_COL.has(f"{_mainpage_writer_alice}-{_source}-{_bobshomepage}")
+    assert STATEMENT_COL.has(
+        str(FP64(f"{_mainpage_writer_alice}-{_source}-{_bobshomepage}"))
+    )
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
     assert len(rdf_graph_2) == len(rdf_graph) + 1
@@ -919,8 +924,8 @@ def test_rpt_case_11_2(name: str, rdf_graph: RDFGraph) -> None:
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
     assert STATEMENT_COL.has(_alice_friend_bob)
-    assert STATEMENT_COL.has(f"{_alex}-{_age}-{_25}")
-    assert STATEMENT_COL.has(f"{_alice_friend_bob}-{_mentionedby}-{_alex}")
+    assert STATEMENT_COL.has(str(FP64(f"{_alex}-{_age}-{_25}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_alice_friend_bob}-{_mentionedby}-{_alex}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
     assert len(rdf_graph_2) == len(rdf_graph) + 1
@@ -982,7 +987,9 @@ def test_rpt_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
     assert STATEMENT_COL.has(_mainpage_writer_alice)
-    assert STATEMENT_COL.has(f"{_mainpage_writer_alice}-{_type}-{_bobshomepage}")
+    assert STATEMENT_COL.has(
+        str(FP64(f"{_mainpage_writer_alice}-{_type}-{_bobshomepage}"))
+    )
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
     assert len(rdf_graph_2) == len(rdf_graph) + 1
@@ -1044,7 +1051,7 @@ def test_rpt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
     assert STATEMENT_COL.has(_lara_type_writer)
-    assert STATEMENT_COL.has(f"{_lara_type_writer}-{_owner}-{_journal}")
+    assert STATEMENT_COL.has(str(FP64(f"{_lara_type_writer}-{_owner}-{_journal}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
     assert len(rdf_graph_2) == len(rdf_graph) + 1
@@ -1113,8 +1120,8 @@ def test_rpt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
     assert LITERAL_COL.has(_aau_page)
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
-    assert STATEMENT_COL.has(f"{_college_page}-{_subject}-{_info_page}")
-    assert STATEMENT_COL.has(f"{_college_page}-{_subject}-{_aau_page}")
+    assert STATEMENT_COL.has(str(FP64(f"{_college_page}-{_subject}-{_info_page}")))
+    assert STATEMENT_COL.has(str(FP64(f"{_college_page}-{_subject}-{_aau_page}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
     assert len(rdf_graph_2) == len(rdf_graph)
@@ -1174,8 +1181,12 @@ def test_rpt_case_14_2(name: str, rdf_graph: RDFGraph) -> None:
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
     assert STATEMENT_COL.has(_mary_likes_matt)
-    assert STATEMENT_COL.has(f"{_mary_likes_matt}-{_certainty}-{_certainty_val_1}")
-    assert STATEMENT_COL.has(f"{_mary_likes_matt}-{_certainty}-{_certainty_val_2}")
+    assert STATEMENT_COL.has(
+        str(FP64(f"{_mary_likes_matt}-{_certainty}-{_certainty_val_1}"))
+    )
+    assert STATEMENT_COL.has(
+        str(FP64(f"{_mary_likes_matt}-{_certainty}-{_certainty_val_2}"))
+    )
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
     assert len(rdf_graph_2) == len(rdf_graph) + 1
@@ -1248,8 +1259,10 @@ def test_rpt_case_15(name: str, rdf_graph: RDFGraph) -> None:
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
     assert STATEMENT_COL.has(_mary_likes_matt)
-    assert STATEMENT_COL.has(f"{_mary_likes_matt}-{_certainty}-{_certainty_val}")
-    assert STATEMENT_COL.has(f"{_mary_likes_matt}-{_source}-{_text}")
+    assert STATEMENT_COL.has(
+        str(FP64(f"{_mary_likes_matt}-{_certainty}-{_certainty_val}"))
+    )
+    assert STATEMENT_COL.has(str(FP64(f"{_mary_likes_matt}-{_source}-{_text}")))
 
     rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
     assert len(rdf_graph_2) == len(rdf_graph) + 1
@@ -1332,7 +1345,7 @@ def test_rpt_meta(name: str, rdf_graph: RDFGraph) -> None:
     "name, rdf_graph",
     [("Case_1_PGT", get_rdf_graph("cases/1.ttl"))],
 )
-def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
+def test_pgt_case_1_0(name: str, rdf_graph: RDFGraph) -> None:
     size = len(rdf_graph)
     unique_nodes = 4
     identified_unique_nodes = 4
@@ -1375,11 +1388,17 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     assert adb_graph.vertex_collection("Person").has(_alice)
     assert adb_graph.vertex_collection("Person").has(_bob)
     assert adb_graph.has_edge_collection("type")
-    assert adb_graph.edge_collection("type").has(f"{_alice}-{_type}-{_person}")
-    assert adb_graph.edge_collection("type").has(f"{_bob}-{_type}-{_person}")
-    assert adb_graph.edge_collection("type").has(f"{_person}-{_type}-{_class}")
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_alice}-{_type}-{_person}"))
+    )
+    assert adb_graph.edge_collection("type").has(str(FP64(f"{_bob}-{_type}-{_person}")))
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_person}-{_type}-{_class}"))
+    )
     assert adb_graph.has_edge_collection("meets")
-    assert adb_graph.edge_collection("meets").has(f"{_alice}-{_meets}-{_bob}")
+    assert adb_graph.edge_collection("meets").has(
+        str(FP64(f"{_alice}-{_meets}-{_bob}"))
+    )
 
     print("\n")
 
@@ -1475,11 +1494,15 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     assert adb_graph.vertex_collection("Person").has(_lee)
 
     assert adb_graph.has_edge_collection("type")
-    assert adb_graph.edge_collection("type").has(f"{_sam}-{_type}-{_person}")
-    assert adb_graph.edge_collection("type").has(f"{_lee}-{_type}-{_person}")
-    assert adb_graph.edge_collection("type").has(f"{_person}-{_type}-{_class}")
+    assert adb_graph.edge_collection("type").has(str(FP64(f"{_sam}-{_type}-{_person}")))
+    assert adb_graph.edge_collection("type").has(str(FP64(f"{_lee}-{_type}-{_person}")))
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_person}-{_type}-{_class}"))
+    )
     assert adb_graph.has_edge_collection("mentor")
-    assert adb_graph.edge_collection("mentor").has(f"{_sam}-{_mentor}-{_lee}")
+    assert adb_graph.edge_collection("mentor").has(
+        str(FP64(f"{_sam}-{_mentor}-{_lee}"))
+    )
 
     print("\n")
 
@@ -1577,9 +1600,13 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     assert adb_graph.vertex_collection(f"{name}_UnknownResource").has(_joe)
     assert adb_graph.vertex_collection(f"{name}_UnknownResource").has(_teacher)
     assert adb_graph.has_edge_collection("type")
-    assert adb_graph.edge_collection("type").has(f"{_mentorJoe}-{_type}-{_property}")
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_mentorJoe}-{_type}-{_property}"))
+    )
     assert adb_graph.has_edge_collection("mentorJoe")
-    assert adb_graph.edge_collection("mentorJoe").has(f"{_martin}-{_mentorJoe}-{_joe}")
+    assert adb_graph.edge_collection("mentorJoe").has(
+        str(FP64(f"{_martin}-{_mentorJoe}-{_joe}"))
+    )
 
     print("\n")
 
@@ -1673,7 +1700,7 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
 
     assert adb_graph.has_edge_collection("subPropertyOf")
     assert adb_graph.edge_collection("subPropertyOf").has(
-        f"{_supervise}-{_subPropertyOf}-{_administer}"
+        str(FP64(f"{_supervise}-{_subPropertyOf}-{_administer}"))
     )
 
     print("\n")
@@ -1757,11 +1784,17 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     _chris = adbrdf.rdf_id_to_adb_key("http://example.com/Chris")
 
     assert adb_graph.has_edge_collection("type")
-    assert adb_graph.edge_collection("type").has(f"{_friend}-{_type}-{_relation}")
-    assert adb_graph.edge_collection("type").has(f"{_relation}-{_type}-{_class}")
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_friend}-{_type}-{_relation}"))
+    )
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_relation}-{_type}-{_class}"))
+    )
 
     assert adb_graph.has_edge_collection("friend")
-    assert adb_graph.edge_collection("friend").has(f"{_tom}-{_friend}-{_chris}")
+    assert adb_graph.edge_collection("friend").has(
+        str(FP64(f"{_tom}-{_friend}-{_chris}"))
+    )
 
     assert not adb_graph.has_vertex_collection("relation")
     assert adb_graph.vertex_collection("Property").has(_friend)
@@ -1852,7 +1885,9 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     assert adb_graph.vertex_collection("Property").has(_index)
     assert adb_graph.vertex_collection("Property").has(_pages)
     assert adb_graph.has_edge_collection("type")
-    assert adb_graph.edge_collection("type").has(f"{_index}-{_type}-{_property}")
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_index}-{_type}-{_property}"))
+    )
 
     print("\n")
 
@@ -2112,25 +2147,33 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     assert adb_graph.vertex_collection("Website").count() == 1
 
     edge = adb_graph.edge_collection("hasSkill").get(
-        f"{_monica}-{_hasSkill}-{_management}"
+        str(FP64(f"{_monica}-{_hasSkill}-{_management}"))
     )
     assert edge["_sub_graph_uri"] == "http://example.com/Graph1"
 
-    edge = adb_graph.edge_collection("type").get(f"{_monica}-{_type}-{_person}")
+    edge = adb_graph.edge_collection("type").get(
+        str(FP64(f"{_monica}-{_type}-{_person}"))
+    )
     assert edge["_sub_graph_uri"] == "http://example.com/Graph2"
 
-    edge = adb_graph.edge_collection("type").get(f"{_monica}-{_type}-{_entity}")
+    edge = adb_graph.edge_collection("type").get(
+        str(FP64(f"{_monica}-{_type}-{_entity}"))
+    )
     assert edge["_sub_graph_uri"] == "http://example.com/Graph1"
 
     assert adb_graph.edge_collection("subClassOf").has(
-        f"{_person}-{_subClassOf}-{_entity}"
+        str(FP64(f"{_person}-{_subClassOf}-{_entity}"))
     )
 
     # TODO: REVISIT
     # Is there a limit of 1 RDFS Domain per Predicate?
     for _from in [_hasSkill, _homepage, _name, _employer]:
-        assert adb_graph.edge_collection("domain").has(f"{_from}-{_domain}-{_entity}")
-        assert adb_graph.edge_collection("domain").has(f"{_from}-{_domain}-{_person}")
+        assert adb_graph.edge_collection("domain").has(
+            str(FP64(f"{_from}-{_domain}-{_entity}"))
+        )
+        assert adb_graph.edge_collection("domain").has(
+            str(FP64(f"{_from}-{_domain}-{_person}"))
+        )
 
     print("\n")
 
@@ -2257,28 +2300,52 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
 
     assert adb_graph.has_vertex_collection("Arson")
     assert not adb_graph.has_vertex_collection("Author")
-    assert adb_graph.edge_collection("type").get(f"{_alice}-{_type}-{_author}")
-    assert adb_graph.edge_collection("type").get(f"{_alice}-{_type}-{_arson}")
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_alice}-{_type}-{_author}"))
+    )
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_alice}-{_type}-{_arson}"))
+    )
 
     assert adb_graph.has_vertex_collection("Zenkey")
     assert adb_graph.has_vertex_collection("Human")
     assert not adb_graph.has_vertex_collection("Animal")
     assert not adb_graph.has_vertex_collection("LivingThing")
-    assert adb_graph.edge_collection("type").get(f"{_charlie}-{_type}-{_livingthing}")
-    assert adb_graph.edge_collection("type").get(f"{_charlie}-{_type}-{_animal}")
-    assert adb_graph.edge_collection("type").get(f"{_charlie}-{_type}-{_zenkey}")
-    assert adb_graph.edge_collection("type").get(f"{_marty}-{_type}-{_livingthing}")
-    assert adb_graph.edge_collection("type").get(f"{_marty}-{_type}-{_animal}")
-    assert adb_graph.edge_collection("type").get(f"{_marty}-{_type}-{_human}")
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_charlie}-{_type}-{_livingthing}"))
+    )
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_charlie}-{_type}-{_animal}"))
+    )
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_charlie}-{_type}-{_zenkey}"))
+    )
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_marty}-{_type}-{_livingthing}"))
+    )
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_marty}-{_type}-{_animal}"))
+    )
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_marty}-{_type}-{_human}"))
+    )
 
     assert adb_graph.has_vertex_collection("Artist")
     assert not adb_graph.has_vertex_collection("Singer")
     assert not adb_graph.has_vertex_collection("Writer")
     assert not adb_graph.has_vertex_collection("Guitarist")
-    assert adb_graph.edge_collection("type").get(f"{_john}-{_type}-{_singer}")
-    assert adb_graph.edge_collection("type").get(f"{_john}-{_type}-{_writer}")
-    assert adb_graph.edge_collection("type").get(f"{_john}-{_type}-{_guitarist}")
-    assert not adb_graph.edge_collection("type").has(f"{_john}-{_type}-{_artist}")
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_john}-{_type}-{_singer}"))
+    )
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_john}-{_type}-{_writer}"))
+    )
+    assert adb_graph.edge_collection("type").has(
+        str(FP64(f"{_john}-{_type}-{_guitarist}"))
+    )
+    assert not adb_graph.edge_collection("type").has(
+        str(FP64(f"{_john}-{_type}-{_artist}"))
+    )
 
     # ArangoDB to RDF
     rdf_graph_2, adb_mapping = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
@@ -2426,7 +2493,9 @@ def test_pgt_collection(name: str, rdf_graph: RDFGraph) -> None:
 
     assert adb_graph.edge_collection("planets").count() == 4
     assert adb_graph.edge_collection("random").count() == 1
-    assert adb_graph.edge_collection("random").get(f"{_doc}-{_random}-{_mars}")
+    assert adb_graph.edge_collection("random").has(
+        str(FP64(f"{_doc}-{_random}-{_mars}"))
+    )
 
     print("\n")
 
