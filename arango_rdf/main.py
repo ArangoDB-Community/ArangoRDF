@@ -209,7 +209,6 @@ class ArangoRDF(AbstractArangoRDF):
         :return: The ArangoDB Graph API wrapper.
         :rtype: arango.graph.Graph
         """
-        # TODO: REVISIT
         if isinstance(rdf_graph, RDFDataset):
             raise TypeError(  # pragma: no cover
                 """
@@ -374,7 +373,7 @@ class ArangoRDF(AbstractArangoRDF):
 
             self.adb_docs[t_col][t_key] = {
                 "_key": t_key,
-                "_label": t_label,  # TODO: REVISIT
+                "_label": "",
                 "_rdftype": "BNode",
             }
 
@@ -660,7 +659,6 @@ class ArangoRDF(AbstractArangoRDF):
         :return: The ArangoDB Graph API wrapper.
         :rtype: arango.graph.Graph
         """
-        # TODO: REVISIT
         if isinstance(rdf_graph, RDFDataset):
             raise TypeError(  # pragma: no cover
                 """
@@ -799,6 +797,7 @@ class ArangoRDF(AbstractArangoRDF):
 
                     # Create the <Predicate> <RDF.type> <RDF.Property> ArangoDB Edge
                     # p_has_no_type_statement = len(type_map[p]) == 0
+                    # TODO: REVISIT - Should this even be here?
                     p_has_no_type_statement = (p, RDF.type, None) not in self.rdf_graph
                     if p_has_no_type_statement:
                         self.__add_adb_edge(
@@ -958,14 +957,7 @@ class ArangoRDF(AbstractArangoRDF):
             subclass_tree = self.__build_subclass_tree(adb_mapping)
 
         ############################################################
-        # 3) RDFS.subPropertyOf statements
-        ############################################################
-        for s, o, *_ in self.rdf_graph[: RDFS.subPropertyOf :]:  # type: ignore
-            self.__add_to_adb_mapping(adb_mapping, s, "Property", True)
-            self.__add_to_adb_mapping(adb_mapping, o, "Property", True)
-
-        ############################################################
-        # 4) Domain & Range Statements
+        # 3) Domain & Range Statements
         ############################################################
         if predicate_scope is None:
             predicate_scope = self.__build_predicate_scope(adb_mapping)
@@ -974,7 +966,7 @@ class ArangoRDF(AbstractArangoRDF):
             domain_range_map = self.__build_domain_range_map(predicate_scope)
 
         ############################################################
-        # 5) ADB.Collection Statements
+        # 4) ADB.Collection Statements
         ############################################################
         for s, o, *_ in self.rdf_graph[: self.adb_col_uri :]:  # type: ignore
             if type(o) is not Literal:
@@ -1013,10 +1005,10 @@ class ArangoRDF(AbstractArangoRDF):
         self, term: Union[URIRef, BNode, Literal]
     ) -> RDFTermMeta:
         """Return the following PGT-relevant metadata associated to the RDF Term:
-            1. The RDF Term object
-            2. The Arangodb Collection of the term
-            3. The Arangodb Key of the term
-            4. The ArangoDB "label" value of the term (i.e its localname)
+            1. The RDF Term (**term**)
+            2. The Arangodb Collection of **term**
+            3. The Arangodb Key of **term**
+            4. The ArangoDB "label" value of **term** (i.e its localname)
 
         :param term: The RDF Term
         :type term: URIRef | BNode | Literal
@@ -1032,14 +1024,15 @@ class ArangoRDF(AbstractArangoRDF):
 
         if (term, RDF.type, RDF.Statement) in self.rdf_graph:
             p: URIRef = self.rdf_graph.value(term, RDF.predicate)  # type: ignore
-
             p_col = self.rdf_id_to_adb_label(str(p))
+
             self.__adb_col_blacklist.add(p_col)
 
             return p, p_col, term_key, p_col
 
-        adb_mapping_val = self.adb_mapping.value(term, self.adb_col_uri)
-        term_col = str(adb_mapping_val or self.__UNKNOWN_RESOURCE)
+        term_col = str(
+            self.adb_mapping.value(term, self.adb_col_uri) or self.__UNKNOWN_RESOURCE
+        )
 
         term_label = self.rdf_id_to_adb_label(term_str)
 
@@ -1120,7 +1113,7 @@ class ArangoRDF(AbstractArangoRDF):
         elif type(t) is BNode:
             self.adb_docs[t_col][t_key] = {
                 "_key": t_key,
-                "_label": "",  # TODO: REVISIT
+                "_label": "",
                 "_rdftype": "BNode",
             }
 
@@ -1230,7 +1223,7 @@ class ArangoRDF(AbstractArangoRDF):
         :rtype: bool
         """
         # TODO: Discuss repurcussions of this assumption
-        if type(o) in {URIRef, Literal}:
+        if type(o) != BNode:
             return False
 
         first = (o, RDF.first, None)
@@ -1263,7 +1256,7 @@ class ArangoRDF(AbstractArangoRDF):
         :rtype: str
         """
         # TODO: Discuss repurcussions of this assumption
-        if type(s) is not BNode:
+        if type(s) != BNode:
             return ""
 
         if p in {RDF.first, RDF.rest}:
@@ -1473,8 +1466,9 @@ class ArangoRDF(AbstractArangoRDF):
         for col in self.adb_mapping.objects(None, self.adb_col_uri, True):
             all_v_cols.add(str(col))
 
-        all_v_cols.discard("Statement")  # TODO: REVISIT
-        all_v_cols.discard("List")  # TODO: REVISIT
+        adb_col_colblacklist = ["Statement", "List"]  # TODO: REVISIT
+        for adb_col in adb_col_colblacklist:
+            all_v_cols.discard(adb_col)
 
         for e_col, v_cols in self.__e_col_map.items():
             edge_definitions.append(
