@@ -3,11 +3,9 @@
 
 # ex:bobshomepage ex:source << ex:mainPage ex:writer ex:alice >> .
 
-ex:mainPage ex:writer ex:alice .
-
-ex:bobshomepage ex:source _:x .
-
 _:x a rdf:Statement;
     rdf:subject ex:mainPage;
     rdf:predicate ex:writer;
     rdf:object ex:alice .
+
+ex:bobshomepage ex:source _:x .

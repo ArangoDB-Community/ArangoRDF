@@ -3,8 +3,6 @@
 
 # << ex:mainPage ex:writer ex:alice >> rdf:type ex:bobshomepage .
 
-ex:mainPage ex:writer ex:alice .
-
 [] a rdf:Statement;
     rdf:subject ex:mainPage;
     rdf:predicate ex:writer;

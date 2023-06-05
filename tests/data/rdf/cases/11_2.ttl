@@ -4,7 +4,6 @@
 # << ex:alice ex:friend ex:bob >> ex:mentionedBy ex:alex .
 # ex:alex ex:age 25 .
 
-ex:alice ex:friend ex:bob .
 ex:alex ex:age 25 .
 
 [] a rdf:Statement;

@@ -4,8 +4,6 @@
 # << ex:Mary ex:likes ex:Matt >> ex:certainty 0.5 .
 # << ex:Mary ex:likes ex:Matt >> ex:source "text" .
 
-ex:Mary ex:likes ex:Matt .
-
 [] a rdf:Statement;
     rdf:subject ex:Mary;
     rdf:predicate ex:likes;

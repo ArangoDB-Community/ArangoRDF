@@ -269,8 +269,6 @@ class ArangoRDF(AbstractArangoRDF):
             RDF.object,
         }
 
-        rdf_statement_blacklist = {(RDF.type, RDF.Statement), (RDF.type, RDF.List)}
-
         self.__set_iterators("RDF → ADB (RPT)", "#08479E", "    ")
         with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
             self.__rdf_task = self.__rdf_iterator.add_task("", total=size)
@@ -281,8 +279,16 @@ class ArangoRDF(AbstractArangoRDF):
             for count, (s, p, o, *rest) in enum_statements:
                 self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
-                if p in rdf_predicate_blacklist or (p, o) in rdf_statement_blacklist:
+                if p in rdf_predicate_blacklist:
                     continue
+
+                reified_triple_key: str = ""
+                if (p, o) == (RDF.type, RDF.Statement):
+                    old_s = s
+                    s = rdf_graph.value(old_s, RDF.subject)  # type: ignore
+                    o = rdf_graph.value(old_s, RDF.object)  # type: ignore
+                    p = rdf_graph.value(old_s, RDF.predicate)  # type: ignore
+                    reified_triple_key = self.rdf_id_to_adb_key(str(old_s), old_s)
 
                 # Get the Sub Graph URI (if it exists)
                 sg = rest[0] if rest else None
@@ -292,7 +298,9 @@ class ArangoRDF(AbstractArangoRDF):
                 s_meta = self.__rpt_process_term(s)
                 o_meta = self.__rpt_process_term(o)
 
-                self.__rpt_process_statement(s_meta, p, o_meta, sg_str)
+                self.__rpt_process_statement(
+                    s_meta, p, o_meta, sg_str, reified_triple_key
+                )
 
                 # NOTE: Graph Contextualization is an experimental work-in-progress
                 if contextualize_graph:
@@ -400,7 +408,12 @@ class ArangoRDF(AbstractArangoRDF):
         return t, t_col, t_key, t_label
 
     def __rpt_process_statement(
-        self, s_meta: RDFTermMeta, p: URIRef, o_meta: RDFTermMeta, sg_str: str
+        self,
+        s_meta: RDFTermMeta,
+        p: URIRef,
+        o_meta: RDFTermMeta,
+        sg_str: str,
+        reified_triple_key: str = "",
     ) -> None:
         """Processes the RDF Statement (s, p, o) as an ArangoDB edge for RPT.
 
@@ -415,14 +428,14 @@ class ArangoRDF(AbstractArangoRDF):
             to this statement (if any).
         :type sg_str: str
         """
-        s, s_col, s_key, _ = s_meta
-        o, o_col, o_key, _ = o_meta
+        _, s_col, s_key, _ = s_meta
+        _, o_col, o_key, _ = o_meta
 
         p_str = str(p)
         p_key = self.rdf_id_to_adb_key(p_str)
         p_label = self.rdf_id_to_adb_label(p_str)
 
-        e_key = self.__get_adb_edge_key(s, s_key, p, p_key, o, o_key)
+        e_key = reified_triple_key or str(FP64(f"{s_key}-{p_key}-{o_key}"))
 
         self.__add_adb_edge(
             self.__STATEMENT_COL,
@@ -743,7 +756,11 @@ class ArangoRDF(AbstractArangoRDF):
             RDF.object,
         }
 
-        rdf_statement_blacklist = {(RDF.type, RDF.Statement), (RDF.type, RDF.List)}
+        rdf_statement_blacklist = {
+            (RDF.type, RDF.List),
+            (RDF.type, RDF.Bag),
+            (RDF.type, RDF.Seq),
+        }
 
         statements = (
             self.rdf_graph.quads
@@ -764,6 +781,14 @@ class ArangoRDF(AbstractArangoRDF):
 
                 if p in rdf_predicate_blacklist or (p, o) in rdf_statement_blacklist:
                     continue
+
+                reified_triple_key: str = ""
+                if (p, o) == (RDF.type, RDF.Statement):
+                    old_s = s
+                    s = rdf_graph.value(old_s, RDF.subject)  # type: ignore
+                    o = rdf_graph.value(old_s, RDF.object)  # type: ignore
+                    p = rdf_graph.value(old_s, RDF.predicate)  # type: ignore
+                    reified_triple_key = self.rdf_id_to_adb_key(str(old_s), old_s)
 
                 # Address the possibility of (s, p, o) being a part of the
                 # structure of an RDF Collection or an RDF Container.
@@ -789,7 +814,9 @@ class ArangoRDF(AbstractArangoRDF):
                 self.__pgt_process_object(s_meta, p_meta, o_meta, sg_str)
 
                 # Load the RDF triple/quad as an ArangoDB Edge
-                self.__pgt_process_statement(s_meta, p_meta, o_meta, sg_str)
+                self.__pgt_process_statement(
+                    s_meta, p_meta, o_meta, sg_str, reified_triple_key
+                )
 
                 # NOTE: Graph Contextualization is an experimental work-in-progress
                 if contextualize_graph:
@@ -1170,6 +1197,7 @@ class ArangoRDF(AbstractArangoRDF):
         p_meta: RDFTermMeta,
         o_meta: RDFTermMeta,
         sg_str: str,
+        reified_triple_key: str = "",
     ) -> None:
         """Processes the RDF Statement (s, p, o) as an ArangoDB Edge for PGT.
 
@@ -1194,10 +1222,10 @@ class ArangoRDF(AbstractArangoRDF):
         if type(o) is Literal or self.__pgt_object_is_head_of_rdf_list(o):
             return
 
-        s, s_col, s_key, _ = s_meta
+        _, s_col, s_key, _ = s_meta
         p, _, p_key, p_label = p_meta
 
-        e_key = self.__get_adb_edge_key(s, s_key, p, p_key, o, o_key)
+        e_key = reified_triple_key or str(FP64(f"{s_key}-{p_key}-{o_key}"))
 
         self.__add_adb_edge(
             p_label,
@@ -1211,6 +1239,9 @@ class ArangoRDF(AbstractArangoRDF):
 
         self.__e_col_map[p_label]["from"].add(s_col)
         self.__e_col_map[p_label]["to"].add(o_col)
+
+        if reified_triple_key:
+            self.__adb_col_blacklist.add(p_label)
 
     def __pgt_object_is_head_of_rdf_list(self, o: RDFTerm) -> bool:
         """Return True if the RDF Object *o* is either the "root" node
@@ -1496,7 +1527,6 @@ class ArangoRDF(AbstractArangoRDF):
     # * load_base_ontology
     # * rdf_id_to_adb_key
     # * rdf_id_to_adb_label
-    # * __get_adb_edge_key
     # * __add_adb_edge:
     # * __infer_and_introspect_dr:
     # * __build_explicit_type_map:
@@ -1641,44 +1671,6 @@ class ArangoRDF(AbstractArangoRDF):
         :rtype: str
         """
         return re.split("/|#|:", rdf_id)[-1] or rdf_id
-
-    def __get_adb_edge_key(
-        self, s: RDFTerm, s_key: str, p: RDFTerm, p_key: str, o: RDFTerm, o_key: str
-    ) -> str:
-        """Return the ArangoDB Edge Key of the RDF Statement (s, p, o).
-
-        Given the possibility of the statement (s, p, o) being used as an
-        RDF-star statement, a Graph Query is required to check if the statement
-        (s, p, o) is using the `http://www.arangodb.com/key` URI.
-
-        :param s: The RDF Subject of an arbitrary RDF statement (s, p, o).
-        :type s: URIRef | BNode | Literal
-        :param p: The RDF Predicate of an arbitrary RDF statement (s, p, o).
-        :type p: URIRef
-        :param o: The RDF Object of an arbitrary RDF statement (s, p, o).
-        :type o: URIRef | BNode | Literal
-        :return: The ArangoDB Edge Key for the statement (s, p, o)
-        :rtype: str
-        """
-        e_key = str(FP64(f"{s_key}-{p_key}-{o_key}"))
-
-        # Expensive...
-        res = self.rdf_graph.query(
-            f"""
-                SELECT ?statement WHERE {{
-                    ?statement <{RDF.subject}> ?s .
-                    ?statement <{RDF.predicate}> ?p .
-                    ?statement <{RDF.object}> ?o .
-                }}
-            """,
-            initBindings={"s": s, "p": p, "o": o},
-        )
-
-        if res:
-            edge: URIRef = list(res)[0][0]  # type: ignore
-            e_key = self.rdf_id_to_adb_key(str(edge), edge)
-
-        return e_key
 
     def __add_adb_edge(
         self,
@@ -1875,6 +1867,12 @@ class ArangoRDF(AbstractArangoRDF):
 
             if adb_mapping is not None:
                 self.__add_to_adb_mapping(adb_mapping, p, "Property", True)
+
+        for _, o, *_ in self.rdf_graph[: RDF.predicate :]:  # type: ignore
+            explicit_type_map[o].add(self.__rdf_property_str)
+
+            if adb_mapping is not None:
+                self.__add_to_adb_mapping(adb_mapping, o, "Property", True)
 
         return explicit_type_map
 
@@ -2172,7 +2170,7 @@ class ArangoRDF(AbstractArangoRDF):
         :type list_conversion_mode: str
         :param infer_type_from_adb_v_col: Specify whether `rdf:type` relationships
             of the form (resource rdf:type adb_col) should be inferred upon
-            transferring ArangoDB Documents into RDF. NOTE: Enabling this flag
+            transferring ArangoDB Vertices into RDF. NOTE: Enabling this flag
             is only recommended if your ArangoDB graph is "native" to ArangoDB.
             That is, the ArangoDB graph does not originate from an RDF context.
         :type infer_type_from_adb_v_col: bool
@@ -2200,6 +2198,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         self.__export_options = export_options
         self.__list_conversion = list_conversion_mode
+        self.__include_adb_key_statements = include_adb_key_statements
         self.__graph_ns = f"{self.db._conn._url_prefixes[0]}/{name}#"
 
         self.rdf_graph.bind(name, self.__graph_ns)
@@ -2277,7 +2276,7 @@ class ArangoRDF(AbstractArangoRDF):
                         sg = self.__subgraph_map.get(doc["_id"])
                         self.__unpack_adb_doc(doc, term, sg)
 
-                    if include_adb_key_statements and type(term) is URIRef:
+                    if self.__include_adb_key_statements and type(term) is URIRef:
                         key = Literal(doc["_key"])
                         self.__add_to_rdf_graph(term, self.adb_key_uri, key)
 
@@ -2555,26 +2554,31 @@ class ArangoRDF(AbstractArangoRDF):
         _from: str = edge["_from"]
         _to: str = edge["_to"]
 
-        subject = self.__term_map.get(_from, self.__process_missing_adb_doc(_from))
+        subject = self.__term_map.get(_from) or self.__process_missing_adb_doc(_from)
         predicate = URIRef(edge.get("_uri", "")) or e_col_uri
-        object = self.__term_map.get(_to, self.__process_missing_adb_doc(_to))
+        object = self.__term_map.get(_to) or self.__process_missing_adb_doc(_to)
 
         sg = URIRef(edge.get("_sub_graph_uri", "")) or None
         if sg:
             self.__subgraph_map[edge["_from"]] = sg
             # self.__subgraph_map[edge["_to"]] = subgraph  # TODO: REVISIT
 
-        self.__add_to_rdf_graph(subject, predicate, object, sg)
-
         # TODO: Revisit when rdflib introduces RDF-star support
         # edge_uri = (subject, predicate, object, sg)
         edge_uri = URIRef(f"{self.__graph_ns}{edge['_key']}")
+        self.__unpack_adb_doc(edge, edge_uri, sg)
 
-        edge_has_metadata = self.__unpack_adb_doc(edge, edge_uri, sg)
-        if edge_has_metadata or edge_is_referenced_by_another_edge:
+        if (
+            len(edge.keys() - self.adb_key_blacklist) != 0
+            or edge_is_referenced_by_another_edge
+            or self.__include_adb_key_statements
+        ):
             self.__reify_rdf_triple(
                 edge_uri, subject, predicate, object, edge["_key"], sg
             )
+
+        elif (edge_uri, None, None) not in self.rdf_graph:
+            self.__add_to_rdf_graph(subject, predicate, object, sg)
 
     def __reify_rdf_triple(
         self,
@@ -2603,13 +2607,16 @@ class ArangoRDF(AbstractArangoRDF):
         :param sg: The Sub Graph URI of the (s,p,o) statement, if any.
         :type sg: URIRef | None
         """
+        # Triple reification overwrites existing triple
+        self.rdf_graph.remove((s, p, o))
+
         self.__add_to_rdf_graph(edge_uri, RDF.type, RDF.Statement, sg)
         self.__add_to_rdf_graph(edge_uri, RDF.subject, s, sg)
         self.__add_to_rdf_graph(edge_uri, RDF.predicate, p, sg)
         self.__add_to_rdf_graph(edge_uri, RDF.object, o, sg)
         self.__add_to_rdf_graph(edge_uri, self.adb_key_uri, Literal(adb_key), sg)
 
-    def __unpack_adb_doc(self, doc: Json, term: RDFTerm, sg: Optional[URIRef]) -> bool:
+    def __unpack_adb_doc(self, doc: Json, term: RDFTerm, sg: Optional[URIRef]) -> None:
         """An ArangoDB-to-RDF helper method to transfer the ArangoDB
         Document Properties of **doc** into the RDF Graph, as triples.
 
@@ -2622,15 +2629,11 @@ class ArangoRDF(AbstractArangoRDF):
         :return: Returns True if the ArangoDB Document has property data.
         :rtype: bool
         """
-        doc_keys = doc.keys() - self.adb_key_blacklist
-
         # TODO: Iterate through metagraph values instead?
-        for k in doc_keys:
+        for k in doc.keys() - self.adb_key_blacklist:
             val = doc[k]
             p = self.__uri_map.get(k, URIRef(f"{self.__graph_ns}{k}"))
             self.__adb_val_to_rdf_val(term, p, val, sg)
-
-        return len(doc_keys) != 0
 
     def __add_to_rdf_graph(
         self, s: RDFTerm, p: URIRef, o: RDFTerm, sg: Optional[URIRef] = None

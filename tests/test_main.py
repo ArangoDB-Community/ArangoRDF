@@ -710,7 +710,6 @@ def test_rpt_case_8(name: str, rdf_graph: RDFGraph) -> None:
     assert len(rdf_graph_2) == len(rdf_graph) + 1
 
     statement = rdf_graph_2.value(predicate=RDF.type, object=RDF.Statement)
-    assert (alice, likes, bob) in rdf_graph_2
     assert (statement, RDF.subject, alice) in rdf_graph_2
     assert (statement, RDF.predicate, likes) in rdf_graph_2
     assert (statement, RDF.object, bob) in rdf_graph_2
@@ -799,7 +798,6 @@ def test_rpt_case_10(name: str, rdf_graph: RDFGraph) -> None:
     assert len(rdf_graph_2) == len(rdf_graph) + 1
 
     statement = rdf_graph_2.value(predicate=RDF.type, object=RDF.Statement)
-    assert (mainpage, writer, alice) in rdf_graph_2
     assert (statement, RDF.subject, mainpage) in rdf_graph_2
     assert (statement, RDF.predicate, writer) in rdf_graph_2
     assert (statement, RDF.object, alice) in rdf_graph_2
@@ -864,7 +862,6 @@ def test_rpt_case_11_1(name: str, rdf_graph: RDFGraph) -> None:
     assert len(rdf_graph_2) == len(rdf_graph) + 1
 
     statement = rdf_graph_2.value(predicate=RDF.type, object=RDF.Statement)
-    assert (mainpage, writer, alice) in rdf_graph_2
     assert (statement, RDF.subject, mainpage) in rdf_graph_2
     assert (statement, RDF.predicate, writer) in rdf_graph_2
     assert (statement, RDF.object, alice) in rdf_graph_2
@@ -931,7 +928,6 @@ def test_rpt_case_11_2(name: str, rdf_graph: RDFGraph) -> None:
     assert len(rdf_graph_2) == len(rdf_graph) + 1
 
     statement = rdf_graph_2.value(predicate=RDF.type, object=RDF.Statement)
-    assert (alice, friend, bob) in rdf_graph_2
     assert (statement, RDF.subject, alice) in rdf_graph_2
     assert (statement, RDF.predicate, friend) in rdf_graph_2
     assert (statement, RDF.object, bob) in rdf_graph_2
@@ -995,7 +991,6 @@ def test_rpt_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
     assert len(rdf_graph_2) == len(rdf_graph) + 1
 
     statement = rdf_graph_2.value(predicate=RDF.type, object=RDF.Statement)
-    assert (mainpage, writer, alice) in rdf_graph_2
     assert (statement, RDF.subject, mainpage) in rdf_graph_2
     assert (statement, RDF.predicate, writer) in rdf_graph_2
     assert (statement, RDF.object, alice) in rdf_graph_2
@@ -1057,7 +1052,6 @@ def test_rpt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
     assert len(rdf_graph_2) == len(rdf_graph) + 1
 
     statement = rdf_graph_2.value(predicate=RDF.type, object=RDF.Statement)
-    assert (lara, RDF.type, writer) in rdf_graph_2
     assert (statement, RDF.subject, lara) in rdf_graph_2
     assert (statement, RDF.predicate, RDF.type) in rdf_graph_2
     assert (statement, RDF.object, writer) in rdf_graph_2
@@ -1192,7 +1186,6 @@ def test_rpt_case_14_2(name: str, rdf_graph: RDFGraph) -> None:
     assert len(rdf_graph_2) == len(rdf_graph) + 1
 
     statement = rdf_graph_2.value(predicate=RDF.type, object=RDF.Statement)
-    assert (mary, likes, matt) in rdf_graph_2
     assert (statement, RDF.subject, mary) in rdf_graph_2
     assert (statement, RDF.predicate, likes) in rdf_graph_2
     assert (statement, RDF.object, matt) in rdf_graph_2
@@ -1268,7 +1261,6 @@ def test_rpt_case_15(name: str, rdf_graph: RDFGraph) -> None:
     assert len(rdf_graph_2) == len(rdf_graph) + 1
 
     statement = rdf_graph_2.value(predicate=RDF.type, object=RDF.Statement)
-    assert (mary, likes, matt) in rdf_graph_2
     assert (statement, RDF.subject, mary) in rdf_graph_2
     assert (statement, RDF.predicate, likes) in rdf_graph_2
     assert (statement, RDF.object, matt) in rdf_graph_2
@@ -2662,7 +2654,6 @@ def test_adb_native_graph(name: str) -> None:
         for doc in db.collection(e_col):
             subject = URIRef(f"{adb_graph_namespace}{doc_map[doc['_from']]}")
             object = URIRef(f"{adb_graph_namespace}{doc_map[doc['_to']]}")
-            assert (subject, e_col_uri, object) in rdf_graph
 
             edge_has_metadata = False
             edge = URIRef(f"{adb_graph_namespace}{doc['_key']}")
@@ -2677,7 +2668,6 @@ def test_adb_native_graph(name: str) -> None:
                 assert (edge, RDF.subject, subject) in rdf_graph
                 assert (edge, RDF.predicate, e_col_uri) in rdf_graph
                 assert (edge, RDF.object, object) in rdf_graph
-
                 assert (edge, adbrdf.adb_key_uri, Literal(doc["_key"])) in rdf_graph
 
     ####################################################
@@ -2687,7 +2677,7 @@ def test_adb_native_graph(name: str) -> None:
 
     key_uri_triples = len({o for _, p, o in rdf_graph if p == adbrdf.adb_key_uri})
     rdf_star_triples = (
-        len([1 for _, p, o in rdf_graph if (p, o) == (RDF.type, RDF.Statement)]) * 4
+        len([1 for _, p, o in rdf_graph if (p, o) == (RDF.type, RDF.Statement)]) * 3
     )
 
     assert (
@@ -2719,12 +2709,12 @@ def test_adb_native_graph(name: str) -> None:
         name,
         RDFGraph(),
         list_conversion_mode="static",
-        include_adb_key_statements=True,
+        include_adb_key_statements=False,
     )
 
-    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+    assert len(outersect_graphs(rdf_graph_2, rdf_graph)) == 0
 
-    diff_1 = outersect_graphs(rdf_graph_2, rdf_graph)
+    diff_1 = outersect_graphs(rdf_graph, rdf_graph_2)
 
     ####################################################
 
@@ -2740,12 +2730,12 @@ def test_adb_native_graph(name: str) -> None:
         name,
         RDFGraph(),
         list_conversion_mode="static",
-        include_adb_key_statements=True,
+        include_adb_key_statements=False,
     )
 
-    assert len(outersect_graphs(rdf_graph, rdf_graph_3)) == 0
+    assert len(outersect_graphs(rdf_graph_3, rdf_graph)) == 0
 
-    diff_2 = outersect_graphs(rdf_graph_3, rdf_graph)
+    diff_2 = outersect_graphs(rdf_graph, rdf_graph_3)
 
     ####################################################
 
