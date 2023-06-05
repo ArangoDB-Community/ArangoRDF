@@ -1,0 +1,12 @@
+@prefix ex: <http://example.com/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+# << ex:alice ex:likes ex:bob >> ex:certainty 0.5 .
+
+ex:alice ex:likes ex:bob .
+
+[] a rdf:Statement;
+    rdf:subject ex:alice;
+    rdf:predicate ex:likes;
+    rdf:object ex:bob ;
+    ex:certainty 0.5 .

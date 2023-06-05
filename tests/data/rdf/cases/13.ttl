@@ -1,0 +1,5 @@
+@prefix ex: <http://example.com/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+# Not yet supported by ArangoRDF
+# << << ex:Steve ex:position "CEO" >> ex:mentionedBy ex:book >> ex:source ex:Journal .

@@ -1,0 +1,4 @@
+@prefix ex: <http://example.com/> .
+
+ex:college_page ex:subject "Info_Page";
+    ex:subject "aau_page" .

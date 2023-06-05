@@ -1,0 +1,12 @@
+@prefix ex: <http://example.com/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+# << ex:mainPage ex:writer ex:alice >> rdf:type ex:bobshomepage .
+
+ex:mainPage ex:writer ex:alice .
+
+[] a rdf:Statement;
+    rdf:subject ex:mainPage;
+    rdf:predicate ex:writer;
+    rdf:object ex:alice ;
+    rdf:type ex:bobshomepage .

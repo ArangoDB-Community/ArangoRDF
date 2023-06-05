@@ -1,0 +1,4 @@
+@prefix ex: <http://example.com/> .
+
+# Not yet supported by ArangoRDF
+# << ex:Mark ex:age 28 >> ex: certainty 1 .
