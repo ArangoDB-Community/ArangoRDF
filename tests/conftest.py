@@ -165,8 +165,13 @@ def get_meta_graph() -> RDFConjunctiveGraph:
 def get_adb_graph_count(name: str) -> Tuple[int, int]:
     adb_graph = db.graph(name)
 
+    e_cols = {col["edge_collection"] for col in adb_graph.edge_definitions()}
+
     v_count = 0
     for v in db.graph(name).vertex_collections():
+        if v in e_cols:
+            continue
+
         v_count += adb_graph.vertex_collection(v).count()
 
     e_count = 0

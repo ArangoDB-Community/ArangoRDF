@@ -1,4 +1,12 @@
 @prefix ex: <http://example.com/> .
 
-# Not yet supported by ArangoRDF
-# << ex:Mark ex:age 28 >> ex: certainty 1 .
+# << ex:mark ex:age 28 >> ex:certainty 1 .
+
+@prefix ex: <http://example.com/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+[] a rdf:Statement;
+    rdf:subject ex:mark;
+    rdf:predicate ex:age;
+    rdf:object 28 ;
+    ex:certainty 1 .

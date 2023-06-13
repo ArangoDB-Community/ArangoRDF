@@ -1,5 +1,6 @@
 @prefix ex: <http://example.com/> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 # << ex:alice ex:likes ex:bob >> ex:certainty 0.5 .
 
@@ -7,4 +8,4 @@
     rdf:subject ex:alice;
     rdf:predicate ex:likes;
     rdf:object ex:bob ;
-    ex:certainty 0.5 .
+    ex:certainty "0.5"^^xsd:double .
