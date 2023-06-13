@@ -799,7 +799,7 @@ class ArangoRDF(AbstractArangoRDF):
                     self.__pgt_rdf_val_to_adb_val(doc, key, o)
                     continue
 
-                # Get the Sub Graph URI (if it exists)``
+                # Get the Sub Graph URI (if it exists)
                 sg = rest[0] if rest else None
                 sg_str = str(sg.identifier) if sg else ""
 
@@ -1048,21 +1048,21 @@ class ArangoRDF(AbstractArangoRDF):
             return term, "", "", ""  # No other metadata needed
 
         term_str = str(term)
+        term_col = ""
         term_key = self.rdf_id_to_adb_key(term_str, term)
+        term_label = self.rdf_id_to_adb_label(term_str)
 
         if (term, RDF.type, RDF.Statement) in self.rdf_graph:
-            p: URIRef = self.rdf_graph.value(term, RDF.predicate)  # type: ignore
-            p_col = self.rdf_id_to_adb_label(str(p))
+            p = self.rdf_graph.value(term, RDF.predicate)
+            term_col = term_label = self.rdf_id_to_adb_label(str(p))
 
-            self.__adb_col_blacklist.add(p_col)
+            self.__adb_col_blacklist.add(term_col)
 
-            return p, p_col, term_key, p_col
-
-        term_col = str(
-            self.adb_mapping.value(term, self.adb_col_uri) or self.__UNKNOWN_RESOURCE
-        )
-
-        term_label = self.rdf_id_to_adb_label(term_str)
+        else:
+            term_col = str(
+                self.adb_mapping.value(term, self.adb_col_uri)
+                or self.__UNKNOWN_RESOURCE
+            )
 
         return term, term_col, term_key, term_label
 
@@ -1868,11 +1868,17 @@ class ArangoRDF(AbstractArangoRDF):
             if adb_mapping is not None:
                 self.__add_to_adb_mapping(adb_mapping, p, "Property", True)
 
-        for _, o, *_ in self.rdf_graph[: RDF.predicate :]:  # type: ignore
+        # Reified Triples
+        for s, o, *_ in self.rdf_graph[: RDF.predicate :]:  # type: ignore
             explicit_type_map[o].add(self.__rdf_property_str)
 
             if adb_mapping is not None:
                 self.__add_to_adb_mapping(adb_mapping, o, "Property", True)
+
+                # See Case 12_2.ttl
+                if o in {RDF.type, RDFS.subClassOf}:
+                    c: URIRef = self.rdf_graph.value(s, RDF.object)  # type: ignore
+                    self.__add_to_adb_mapping(adb_mapping, c, "Class", True)
 
         return explicit_type_map
 
@@ -2477,7 +2483,7 @@ class ArangoRDF(AbstractArangoRDF):
                 return Literal(val)
 
         else:  # pragma: no cover
-            raise ValueError(f"Unrecognized type {rdf_type} ({doc})")
+            raise ValueError(f"Unrecognized type '{rdf_type}' ({doc})")
 
     def __process_missing_adb_doc(self, doc_id: str) -> Union[URIRef, BNode, Literal]:
         """An ArangoDB to RDF helper method used to process missing ArangoDB
