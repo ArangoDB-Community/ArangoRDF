@@ -256,12 +256,6 @@ class ArangoRDF(AbstractArangoRDF):
         o: RDFTerm  # Object
         sg: Optional[RDFGraph]  # Sub Graph
 
-        statements = (
-            self.rdf_graph.quads
-            if isinstance(self.rdf_graph, RDFConjunctiveGraph)
-            else self.rdf_graph.triples
-        )
-
         rdf_predicate_blacklist = {
             self.adb_key_uri,
             RDF.subject,
@@ -269,20 +263,24 @@ class ArangoRDF(AbstractArangoRDF):
             RDF.object,
         }
 
+        statements = (
+            self.rdf_graph.quads
+            if isinstance(self.rdf_graph, RDFConjunctiveGraph)
+            else self.rdf_graph.triples
+        )
+
         self.__set_iterators("RDF → ADB (RPT)", "#08479E", "    ")
         with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
             self.__rdf_task = self.__rdf_iterator.add_task("", total=size)
 
-            triple = (None, None, None)
-            enum_statements = enumerate(statements(triple), 1)  # type: ignore
-
-            for count, (s, p, o, *rest) in enum_statements:
+            t = (None, None, None)
+            for count, (s, p, o, *rest) in enumerate(statements(t), 1):  # type: ignore
                 self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
                 if p in rdf_predicate_blacklist:
                     continue
 
-                reified_triple_key: str = ""
+                reified_triple_key = None
                 if (p, o) == (RDF.type, RDF.Statement):
                     old_s = s
                     s = rdf_graph.value(old_s, RDF.subject)  # type: ignore
@@ -413,7 +411,7 @@ class ArangoRDF(AbstractArangoRDF):
         p: URIRef,
         o_meta: RDFTermMeta,
         sg_str: str,
-        reified_triple_key: str = "",
+        reified_triple_key: Optional[str] = None,
     ) -> None:
         """Processes the RDF Statement (s, p, o) as an ArangoDB edge for RPT.
 
@@ -773,16 +771,14 @@ class ArangoRDF(AbstractArangoRDF):
         with Live(Group(self.__rdf_iterator, self.__adb_iterator)):
             self.__rdf_task = self.__rdf_iterator.add_task("", total=size)
 
-            triple = (None, None, None)
-            enum_statements = enumerate(statements(triple), 1)  # type: ignore
-
-            for count, (s, p, o, *rest) in enum_statements:
+            t = (None, None, None)
+            for count, (s, p, o, *rest) in enumerate(statements(t), 1):  # type: ignore
                 self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
                 if p in rdf_predicate_blacklist or (p, o) in rdf_statement_blacklist:
                     continue
 
-                reified_triple_key: str = ""
+                reified_triple_key = None
                 if (p, o) == (RDF.type, RDF.Statement):
                     old_s = s
                     s = rdf_graph.value(old_s, RDF.subject)  # type: ignore
@@ -854,6 +850,9 @@ class ArangoRDF(AbstractArangoRDF):
                 if count % batch_size == 0:
                     self.__insert_adb_docs(use_async, self.__adb_col_blacklist)
 
+            # Insert the remaining `self.adb_docs` into ArangoDB
+            self.__insert_adb_docs(use_async)
+
         gc.collect()
         ############## ############## ##############
 
@@ -863,7 +862,6 @@ class ArangoRDF(AbstractArangoRDF):
             # Process `self.__rdf_list_heads` & `self.__rdf_list_data`
             # into `self.adb_docs`
             self.__pgt_process_rdf_lists()
-            # Insert the remaining `self.adb_docs` into ArangoDB
             self.__insert_adb_docs(use_async)
 
         gc.collect()
@@ -1197,7 +1195,7 @@ class ArangoRDF(AbstractArangoRDF):
         p_meta: RDFTermMeta,
         o_meta: RDFTermMeta,
         sg_str: str,
-        reified_triple_key: str = "",
+        reified_triple_key: Optional[str] = None,
     ) -> None:
         """Processes the RDF Statement (s, p, o) as an ArangoDB Edge for PGT.
 
@@ -1261,11 +1259,11 @@ class ArangoRDF(AbstractArangoRDF):
         first = (o, RDF.first, None)
         rest = (o, RDF.rest, None)
 
-        _n = (o, URIRef(f"{RDF}_1"), None)
-        li = (o, URIRef(f"{RDF}li"), None)
-
         if first in self.rdf_graph or rest in self.rdf_graph:
             return True
+
+        _n = (o, URIRef(f"{RDF}_1"), None)
+        li = (o, URIRef(f"{RDF}li"), None)
 
         if _n in self.rdf_graph or li in self.rdf_graph:
             return True
@@ -1297,6 +1295,7 @@ class ArangoRDF(AbstractArangoRDF):
         p_str = str(p)
         _n = r"^http://www.w3.org/1999/02/22-rdf-syntax-ns#_[0-9]{1,}$"
         li = r"^http://www.w3.org/1999/02/22-rdf-syntax-ns#li$"
+
         if re.match(_n, p_str) or re.match(li, p_str):
             return "_CONTAINER_BNODE"
 
@@ -2613,7 +2612,7 @@ class ArangoRDF(AbstractArangoRDF):
         :param sg: The Sub Graph URI of the (s,p,o) statement, if any.
         :type sg: URIRef | None
         """
-        # Triple reification overwrites existing triple
+        # Triple reification overwrites existing triple (if any)
         self.rdf_graph.remove((s, p, o))
 
         self.__add_to_rdf_graph(edge_uri, RDF.type, RDF.Statement, sg)
@@ -2713,7 +2712,7 @@ class ArangoRDF(AbstractArangoRDF):
                     self.__adb_val_to_rdf_val(s, p, v, sg)
 
             else:
-                raise ValueError("Invalid **list_conversion_mode value")
+                raise ValueError("Invalid **list_conversion_mode** value")
 
         elif type(val) is dict:
             bnode = BNode()
