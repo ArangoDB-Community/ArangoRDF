@@ -5,9 +5,9 @@ with open("./README.md") as fp:
 
 setup(
     name="arango_rdf",
-    author="ArangoDB-MSG",
-    author_email="hackers@arangodb.com",
-    description="Import RDF graphs into ArangoDB",
+    author="Anthony Mahanna",
+    author_email="anthony.mahanna@arangodb.com",
+    description="Convert ArangoDB graphs to RDF & vice-versa.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/ArangoDB-Community/ArangoRDF",
@@ -43,6 +43,8 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Utilities",
         "Typing :: Typed",
     ],
