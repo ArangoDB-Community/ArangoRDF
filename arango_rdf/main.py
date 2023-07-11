@@ -150,6 +150,7 @@ class ArangoRDF(AbstractArangoRDF):
         overwrite_graph: bool = False,
         use_async: bool = True,
         batch_size: Optional[int] = None,
+        keyify_literals: bool = True,
         simplify_reified_triples: bool = True,
         **import_options: Any,
     ) -> ADBGraph:
@@ -202,6 +203,11 @@ class ArangoRDF(AbstractArangoRDF):
             process for every **batch_size** RDF triples/quads within **rdf_graph**.
             Defaults to `len(rdf_graph)`.
         :type batch_size: int | None
+        :param keyify_literals: If set to False, will not use the hashed value of an
+            RDF Literal as its ArangoDB Document Key (i.e a randomly-generated
+            key will instead be used). If set to True, all RDF Literals with the same
+            value will be represented as one single ArangoDB Document. Defaults to True.
+        :type keyify_literals: bool
         :param simplify_reified_triples: If set to False, will preserve the RDF
             Structure of any reified triples. If set to True, will convert any reified
             triples into regular ArangoDB edges. Defaults to True.
@@ -226,6 +232,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         # Reset the ArangoDB Config
         self.adb_docs = defaultdict(lambda: defaultdict(dict))
+        self.__keyify_literals = keyify_literals
         self.__simplify_reified_triples = simplify_reified_triples
         self.__import_options = import_options
         self.__import_options["on_duplicate"] = "update"
@@ -397,11 +404,13 @@ class ArangoRDF(AbstractArangoRDF):
             t_label = t_value
 
             self.adb_docs[t_col][t_key] = {
-                "_key": t_key,
                 "_value": t_value,
                 "_label": t_label,  # TODO: REVISIT
                 "_rdftype": "Literal",
             }
+
+            if self.__keyify_literals:
+                self.adb_docs[t_col][t_key]["_key"] = t_key
 
             if t.language:
                 self.adb_docs[t_col][t_key]["_lang"] = t.language
@@ -1057,27 +1066,27 @@ class ArangoRDF(AbstractArangoRDF):
         if type(term) is Literal:
             return term, "", "", ""  # No other metadata needed
 
-        term_str = str(term)
-        term_col = ""
-        term_key = self.rdf_id_to_adb_key(term_str, term)
-        term_label = self.rdf_id_to_adb_label(term_str)
+        t_str = str(term)
+        t_col = ""
+        t_key = self.rdf_id_to_adb_key(t_str, term)
+        t_label = self.rdf_id_to_adb_label(t_str)
 
         if (
             self.__simplify_reified_triples
             and (term, RDF.type, RDF.Statement) in self.rdf_graph
         ):
             p = self.rdf_graph.value(term, RDF.predicate)
-            term_col = term_label = self.rdf_id_to_adb_label(str(p))
+            t_col = t_label = self.rdf_id_to_adb_label(str(p))
 
-            self.__adb_col_blacklist.add(term_col)
+            self.__adb_col_blacklist.add(t_col)
 
         else:
-            term_col = str(
+            t_col = str(
                 self.adb_mapping.value(term, self.adb_col_uri)
                 or self.__UNKNOWN_RESOURCE
             )
 
-        return term, term_col, term_key, term_label
+        return term, t_col, t_key, t_label
 
     def __pgt_rdf_val_to_adb_val(
         self, doc: Json, key: str, val: Any, process_val_as_string: bool = False
