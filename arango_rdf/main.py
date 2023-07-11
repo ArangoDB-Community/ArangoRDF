@@ -150,6 +150,7 @@ class ArangoRDF(AbstractArangoRDF):
         overwrite_graph: bool = False,
         use_async: bool = True,
         batch_size: Optional[int] = None,
+        simplify_reified_triples: bool = True,
         **import_options: Any,
     ) -> ADBGraph:
         """Create an ArangoDB Graph from an RDF Graph using
@@ -201,6 +202,10 @@ class ArangoRDF(AbstractArangoRDF):
             process for every **batch_size** RDF triples/quads within **rdf_graph**.
             Defaults to `len(rdf_graph)`.
         :type batch_size: int | None
+        :param simplify_reified_triples: If set to False, will preserve the RDF
+            Structure of any reified triples. If set to True, will convert any reified
+            triples into regular ArangoDB edges. Defaults to True.
+        :type simplify_reified_triples: bool
         :param import_options: Keyword arguments to specify additional
             parameters for the ArangoDB Data Ingestion process.
             The full parameter list is here:
@@ -221,6 +226,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         # Reset the ArangoDB Config
         self.adb_docs = defaultdict(lambda: defaultdict(dict))
+        self.__simplify_reified_triples = simplify_reified_triples
         self.__import_options = import_options
         self.__import_options["on_duplicate"] = "update"
 
@@ -256,12 +262,15 @@ class ArangoRDF(AbstractArangoRDF):
         o: RDFTerm  # Object
         sg: Optional[RDFGraph]  # Sub Graph
 
-        rdf_predicate_blacklist = {
-            self.adb_key_uri,
-            RDF.subject,
-            RDF.predicate,
-            RDF.object,
-        }
+        rdf_predicate_blacklist = {self.adb_key_uri}
+        if simplify_reified_triples:
+            rdf_predicate_blacklist.update(
+                {
+                    RDF.subject,
+                    RDF.predicate,
+                    RDF.object,
+                }
+            )
 
         statements = (
             self.rdf_graph.quads
@@ -281,12 +290,8 @@ class ArangoRDF(AbstractArangoRDF):
                     continue
 
                 reified_triple_key = None
-                if (p, o) == (RDF.type, RDF.Statement):
-                    old_s = s
-                    s = rdf_graph.value(old_s, RDF.subject)  # type: ignore
-                    o = rdf_graph.value(old_s, RDF.object)  # type: ignore
-                    p = rdf_graph.value(old_s, RDF.predicate)  # type: ignore
-                    reified_triple_key = self.rdf_id_to_adb_key(str(old_s), old_s)
+                if simplify_reified_triples and (p, o) == (RDF.type, RDF.Statement):
+                    s, p, o, reified_triple_key = self.__parse_reified_triple(s)
 
                 # Get the Sub Graph URI (if it exists)
                 sg = rest[0] if rest else None
@@ -360,7 +365,10 @@ class ArangoRDF(AbstractArangoRDF):
         t_key = self.rdf_id_to_adb_key(t_str, t)
         t_label = ""
 
-        if (t, RDF.type, RDF.Statement) in self.rdf_graph:
+        if (
+            self.__simplify_reified_triples
+            and (t, RDF.type, RDF.Statement) in self.rdf_graph
+        ):
             t_col = self.__STATEMENT_COL
 
         elif type(t) is URIRef:
@@ -502,6 +510,7 @@ class ArangoRDF(AbstractArangoRDF):
         use_async: bool = True,
         batch_size: Optional[int] = None,
         adb_mapping: Optional[RDFGraph] = None,
+        simplify_reified_triples: bool = True,
         **import_options: Any,
     ) -> ADBGraph:
         """Create an ArangoDB Graph from an RDF Graph using
@@ -663,6 +672,10 @@ class ArangoRDF(AbstractArangoRDF):
             Collection Mapping statements of all identifiable Resources.
             See `ArangoRDF.build_adb_mapping_for_pgt()` for more info.
         :type adb_mapping: rdflib.graph.Graph | None
+        :param simplify_reified_triples: If set to False, will preserve the RDF
+            Structure of any reified triples. If set to True, will convert any reified
+            triples into regular ArangoDB edges. Defaults to True.
+        :type simplify_reified_triples: bool
         :param import_options: Keyword arguments to specify additional
             parameters for the ArangoDB Data Ingestion process.
             The full parameter list is here:
@@ -682,6 +695,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         # Reset the ArangoDB Config
         self.adb_docs = defaultdict(lambda: defaultdict(dict))
+        self.__simplify_reified_triples = simplify_reified_triples
         self.__import_options = import_options
         self.__import_options["on_duplicate"] = "update"
 
@@ -746,13 +760,15 @@ class ArangoRDF(AbstractArangoRDF):
         o: RDFTerm  # Object
         sg: Optional[RDFGraph]  # Sub Graph
 
-        rdf_predicate_blacklist = {
-            self.adb_col_uri,
-            self.adb_key_uri,
-            RDF.subject,
-            RDF.predicate,
-            RDF.object,
-        }
+        rdf_predicate_blacklist = {self.adb_col_uri, self.adb_key_uri}
+        if simplify_reified_triples:
+            rdf_predicate_blacklist.update(
+                {
+                    RDF.subject,
+                    RDF.predicate,
+                    RDF.object,
+                }
+            )
 
         rdf_statement_blacklist = {
             (RDF.type, RDF.List),
@@ -779,12 +795,8 @@ class ArangoRDF(AbstractArangoRDF):
                     continue
 
                 reified_triple_key = None
-                if (p, o) == (RDF.type, RDF.Statement):
-                    old_s = s
-                    s = rdf_graph.value(old_s, RDF.subject)  # type: ignore
-                    o = rdf_graph.value(old_s, RDF.object)  # type: ignore
-                    p = rdf_graph.value(old_s, RDF.predicate)  # type: ignore
-                    reified_triple_key = self.rdf_id_to_adb_key(str(old_s), old_s)
+                if simplify_reified_triples and (p, o) == (RDF.type, RDF.Statement):
+                    s, p, o, reified_triple_key = self.__parse_reified_triple(s)
 
                 # Address the possibility of (s, p, o) being a part of the
                 # structure of an RDF Collection or an RDF Container.
@@ -1050,7 +1062,10 @@ class ArangoRDF(AbstractArangoRDF):
         term_key = self.rdf_id_to_adb_key(term_str, term)
         term_label = self.rdf_id_to_adb_label(term_str)
 
-        if (term, RDF.type, RDF.Statement) in self.rdf_graph:
+        if (
+            self.__simplify_reified_triples
+            and (term, RDF.type, RDF.Statement) in self.rdf_graph
+        ):
             p = self.rdf_graph.value(term, RDF.predicate)
             term_col = term_label = self.rdf_id_to_adb_label(str(p))
 
@@ -1526,6 +1541,7 @@ class ArangoRDF(AbstractArangoRDF):
     # * load_base_ontology
     # * rdf_id_to_adb_key
     # * rdf_id_to_adb_label
+    # * __parse_reified_triple
     # * __add_adb_edge:
     # * __infer_and_introspect_dr:
     # * __build_explicit_type_map:
@@ -1670,6 +1686,29 @@ class ArangoRDF(AbstractArangoRDF):
         :rtype: str
         """
         return re.split("/|#|:", rdf_id)[-1] or rdf_id
+
+    def __parse_reified_triple(
+        self, reified_subject: RDFTerm
+    ) -> Tuple[RDFTerm, URIRef, RDFTerm, str]:
+        """Helper method to extract the subject, predicate, object
+        values of a reified triple. Used if **simplify_reified_triples**
+        parameter is set to True.
+
+        :param reified_subject: The 'main' subject of the reified triple.
+        :type reified_subject: URIRef | BNode
+        :return: A tuple containing the reified triple's subject, predicate,
+            and object values, along with the ArangoDB Key of the reified triple.
+        :rtype: Tuple[RDFTerm, URIRef, RDFTerm, str]
+        """
+        s: RDFTerm = self.rdf_graph.value(reified_subject, RDF.subject)  # type: ignore
+        p: URIRef = self.rdf_graph.value(reified_subject, RDF.predicate)  # type: ignore
+        o: RDFTerm = self.rdf_graph.value(reified_subject, RDF.object)  # type: ignore
+
+        reified_triple_key = self.rdf_id_to_adb_key(
+            str(reified_subject), reified_subject
+        )
+
+        return s, p, o, reified_triple_key
 
     def __add_adb_edge(
         self,
@@ -2201,7 +2240,6 @@ class ArangoRDF(AbstractArangoRDF):
         self.rdf_graph = rdf_graph
         self.__graph_supports_quads = isinstance(self.rdf_graph, RDFConjunctiveGraph)
 
-        self.__export_options = export_options
         self.__list_conversion = list_conversion_mode
         self.__include_adb_key_statements = include_adb_key_statements
         self.__graph_ns = f"{self.db._conn._url_prefixes[0]}/{name}#"
@@ -2251,6 +2289,7 @@ class ArangoRDF(AbstractArangoRDF):
         doc: Json
         edge: Json
 
+        # PGT Scenario: Build a mapping of the RDF Predicates stored in ArangoDB
         if self.db.has_collection("Property"):
             for doc in self.db.collection("Property"):
                 if doc.keys() >= {"_uri", "_label"}:
@@ -2265,7 +2304,7 @@ class ArangoRDF(AbstractArangoRDF):
 
             self.__set_iterators(f"     ADB → RDF ({v_col})", "#97C423", "")
             with Live(Group(self.__adb_iterator, self.__rdf_iterator)):
-                cursor = self.__fetch_adb_docs(v_col)
+                cursor = self.__fetch_adb_docs(v_col, export_options)
                 self.__rdf_task = self.__rdf_iterator.add_task("", total=cursor.count())
 
                 for doc in cursor:
@@ -2296,7 +2335,7 @@ class ArangoRDF(AbstractArangoRDF):
 
             self.__set_iterators(f"     ADB → RDF ({e_col})", "#5E3108", "")
             with Live(Group(self.__adb_iterator, self.__rdf_iterator)):
-                cursor = self.__fetch_adb_docs(e_col)
+                cursor = self.__fetch_adb_docs(e_col, export_options)
                 self.__rdf_task = self.__rdf_iterator.add_task("", total=cursor.count())
 
                 for edge in cursor:
@@ -2308,7 +2347,7 @@ class ArangoRDF(AbstractArangoRDF):
         # Not a fan of this at all...
         if self.__graph_supports_quads:
             for v_col, _ in metagraph["vertexCollections"].items():
-                for doc in self.__fetch_adb_docs(v_col):
+                for doc in self.__fetch_adb_docs(v_col, export_options):
                     term = self.__term_map[doc["_id"]]
 
                     if not isinstance(term, Literal):
@@ -2726,19 +2765,23 @@ class ArangoRDF(AbstractArangoRDF):
             # TODO: Datatype? Lang?
             self.__add_to_rdf_graph(s, p, Literal(val), sg)
 
-    def __fetch_adb_docs(self, adb_col: str) -> Result[Cursor]:
+    def __fetch_adb_docs(self, adb_col: str, export_options: Any) -> Result[Cursor]:
         """Fetches ArangoDB documents within a collection.
 
         :param adb_col: The ArangoDB collection.
         :type adb_col: str
+        :param export_options: Keyword arguments to specify AQL query options
+            when fetching documents from the ArangoDB instance.
+        :type export_options: Any
         :return: Result cursor.
         :rtype: arango.cursor.Cursor
         """
         action = f"ArangoDB Export: {adb_col}"
         adb_task = self.__adb_iterator.add_task("", action=action)
 
+        # TODO: Return **doc** attributes based on **metagraph**
         aql = f"FOR doc IN {adb_col} RETURN doc"
-        cursor = self.db.aql.execute(aql, count=True, **self.__export_options)
+        cursor = self.db.aql.execute(aql, count=True, stream=True, **export_options)
 
         self.__adb_iterator.stop_task(adb_task)
         self.__adb_iterator.update(adb_task, visible=True)
