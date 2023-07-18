@@ -416,6 +416,7 @@ def test_rpt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
         contextualize_graph=False,
         overwrite_graph=True,
         use_async=False,
+        batch_size=1,
     )
 
     v_count, e_count = get_adb_graph_count(name)
@@ -435,7 +436,7 @@ def test_rpt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     assert STATEMENT_COL.has(str(FP64(f"{_book}-{_title}-{_book_en}")))
     assert STATEMENT_COL.has(str(FP64(f"{_book}-{_title}-{_book_da}")))
 
-    rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
+    rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), batch_size=1)
 
     assert len(rdf_graph_2) == len(rdf_graph)
     assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
@@ -2135,6 +2136,7 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
         overwrite_graph=True,
         contextualize_graph=False,
         use_async=False,
+        batch_size=1,
     )
 
     v_count, e_count = get_adb_graph_count(name)
@@ -2152,7 +2154,9 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     print("\n")
 
     # ArangoDB to RDF (List Conversion Method = "collection")
-    rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), "collection")
+    rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(
+        name, type(rdf_graph)(), "collection", batch_size=1
+    )
 
     book = URIRef("http://example.com/book")
     title = URIRef("http://example.com/title")
