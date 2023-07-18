@@ -1250,7 +1250,7 @@ class ArangoRDF(AbstractArangoRDF):
         e_key = reified_triple_key or str(FP64(f"{s_key}-{p_key}-{o_key}"))
 
         self.__add_adb_edge(
-            p_label,
+            p_label,  # local name of predicate URI is used as the collection name
             e_key,
             f"{s_col}/{s_key}",
             f"{o_col}/{o_key}",
@@ -1901,14 +1901,17 @@ class ArangoRDF(AbstractArangoRDF):
         explicit_type_map: TypeMap = defaultdict(set)
 
         s: URIRef
+        p: URIRef
         o: URIRef
+
+        # RDF Type Statements
         for s, o, *_ in self.rdf_graph[: RDF.type :]:  # type: ignore
             explicit_type_map[s].add(str(o))
 
             if adb_mapping is not None:
                 self.__add_to_adb_mapping(adb_mapping, o, "Class", True)
 
-        p: URIRef
+        # RDF Predicates
         for p in self.rdf_graph.predicates(unique=True):  # type:ignore
             explicit_type_map[p].add(self.__rdf_property_str)
 
@@ -1923,6 +1926,7 @@ class ArangoRDF(AbstractArangoRDF):
                 self.__add_to_adb_mapping(adb_mapping, o, "Property", True)
 
                 # See Case 12_2.ttl
+                # TODO: Clarify
                 if o in {RDF.type, RDFS.subClassOf}:
                     c: URIRef = self.rdf_graph.value(s, RDF.object)  # type: ignore
                     self.__add_to_adb_mapping(adb_mapping, c, "Class", True)
@@ -1984,6 +1988,7 @@ class ArangoRDF(AbstractArangoRDF):
                 self.__add_to_adb_mapping(adb_mapping, s, "Class", True)
                 self.__add_to_adb_mapping(adb_mapping, o, "Class", True)
 
+        # TODO: Clarify
         for key in set(subclass_map) ^ {self.__rdfs_resource_str}:
             if (URIRef(key), RDFS.subClassOf, None) not in subclass_graph:
                 subclass_map[self.__rdfs_class_str].add(key)
@@ -2035,6 +2040,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         predicate_scope: PredicateScope = defaultdict(lambda: defaultdict(set))
         predicate_scope_graph = self.meta_graph + self.rdf_graph
+
         for label in ["domain", "range"]:
             for p, c in predicate_scope_graph[: RDFS[label] :]:  # type:ignore
                 class_str = str(c)
@@ -2313,55 +2319,71 @@ class ArangoRDF(AbstractArangoRDF):
 
             self.__set_iterators(f"     ADB → RDF ({v_col})", "#97C423", "")
             with Live(Group(self.__adb_iterator, self.__rdf_iterator)):
+                total: int = self.db.collection(v_col).count()  # type: ignore
+                self.__rdf_task = self.__rdf_iterator.add_task("", total=total)
+
                 cursor = self.__fetch_adb_docs(v_col, export_options)
-                self.__rdf_task = self.__rdf_iterator.add_task("", total=cursor.count())
+                while not cursor.empty():
+                    for doc in cursor:
+                        self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
-                for doc in cursor:
-                    self.__rdf_iterator.update(self.__rdf_task, advance=1)
+                        term = self.__process_adb_doc(doc)
+                        self.__term_map[doc["_id"]] = term
 
-                    term = self.__process_adb_doc(doc)
-                    self.__term_map[doc["_id"]] = term
+                        if isinstance(term, Literal):
+                            continue
 
-                    if isinstance(term, Literal):
-                        continue
+                        if not self.__graph_supports_quads:
+                            sg = self.__subgraph_map.get(doc["_id"])
+                            self.__unpack_adb_doc(doc, term, sg)
 
-                    if not self.__graph_supports_quads:
-                        sg = self.__subgraph_map.get(doc["_id"])
-                        self.__unpack_adb_doc(doc, term, sg)
+                        if self.__include_adb_key_statements and type(term) is URIRef:
+                            key = Literal(doc["_key"])
+                            self.__add_to_rdf_graph(term, self.adb_key_uri, key)
 
-                    if self.__include_adb_key_statements and type(term) is URIRef:
-                        key = Literal(doc["_key"])
-                        self.__add_to_rdf_graph(term, self.adb_key_uri, key)
+                        if v_col not in adb_v_col_blacklist:
+                            self.__add_to_adb_mapping(adb_mapping, term, v_col)
 
-                    if v_col not in adb_v_col_blacklist:
-                        self.__add_to_adb_mapping(adb_mapping, term, v_col)
+                            if infer_type_from_adb_v_col:
+                                self.__add_to_rdf_graph(term, RDF.type, v_col_uri)
 
-                        if infer_type_from_adb_v_col:
-                            self.__add_to_rdf_graph(term, RDF.type, v_col_uri)
+                    if cursor.has_more():
+                        cursor.fetch()
 
         for e_col in adb_e_cols:
             e_col_uri = URIRef(f"{self.__graph_ns}{e_col}")
 
             self.__set_iterators(f"     ADB → RDF ({e_col})", "#5E3108", "")
             with Live(Group(self.__adb_iterator, self.__rdf_iterator)):
+                total = self.db.collection(e_col).count()  # type: ignore
+                self.__rdf_task = self.__rdf_iterator.add_task("", total=total)
+
                 cursor = self.__fetch_adb_docs(e_col, export_options)
-                self.__rdf_task = self.__rdf_iterator.add_task("", total=cursor.count())
+                while not cursor.empty():
+                    for edge in cursor:
+                        self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
-                for edge in cursor:
-                    self.__rdf_iterator.update(self.__rdf_task, advance=1)
+                        self.__process_adb_edge(edge, e_col_uri)
 
-                    self.__process_adb_edge(edge, e_col_uri)
+                    if cursor.has_more():
+                        cursor.fetch()
 
         # TODO: REVISIT
         # Not a fan of this at all...
         if self.__graph_supports_quads:
             for v_col, _ in metagraph["vertexCollections"].items():
-                for doc in self.__fetch_adb_docs(v_col, export_options):
-                    term = self.__term_map[doc["_id"]]
+                cursor = self.__fetch_adb_docs(v_col, export_options)
 
-                    if not isinstance(term, Literal):
-                        sg = self.__subgraph_map.get(doc["_id"])
-                        self.__unpack_adb_doc(doc, term, sg)
+                while not cursor.empty():
+                    for doc in cursor:
+                        term = self.__term_map[doc["_id"]]
+
+                        if not isinstance(term, Literal):
+                            sg = self.__subgraph_map.get(doc["_id"])
+                            self.__unpack_adb_doc(doc, term, sg)
+
+                    if cursor.has_more():
+                        cursor.fetch()
 
         return self.rdf_graph, adb_mapping
 
@@ -2790,7 +2812,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         # TODO: Return **doc** attributes based on **metagraph**
         aql = f"FOR doc IN {adb_col} RETURN doc"
-        cursor = self.db.aql.execute(aql, count=True, stream=True, **export_options)
+        cursor = self.db.aql.execute(aql, stream=True, **export_options)
 
         self.__adb_iterator.stop_task(adb_task)
         self.__adb_iterator.update(adb_task, visible=True)
