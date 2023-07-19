@@ -7,7 +7,7 @@ from ast import literal_eval
 from collections import defaultdict
 from datetime import date, time
 from pathlib import Path
-from typing import Any, DefaultDict, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, DefaultDict, Dict, List, Optional, Set, Tuple, Union
 
 from arango.cursor import Cursor
 from arango.database import StandardDatabase
@@ -1878,7 +1878,9 @@ class ArangoRDF(AbstractArangoRDF):
                         sg_str,
                     )
 
-    def __build_explicit_type_map(self, add_to_adb_mapping=empty_function) -> TypeMap:
+    def __build_explicit_type_map(
+        self, add_to_adb_mapping: Callable[[RDFTerm, str, bool], None] = empty_function
+    ) -> TypeMap:
         """An RPT/PGT helper method used to build a dictionary mapping
         the (subject rdf:type object) relationships within the RDF Graph.
 
@@ -1941,7 +1943,9 @@ class ArangoRDF(AbstractArangoRDF):
 
         return explicit_type_map
 
-    def __build_subclass_tree(self, add_to_adb_mapping=empty_function) -> Tree:
+    def __build_subclass_tree(
+        self, add_to_adb_mapping: Callable[[RDFTerm, str, bool], None] = empty_function
+    ) -> Tree:
         """An RPT/PGT helper method used to build a Tree Data Structure
         representing the `rdfs:subClassOf` Taxonomy of the RDF Graph.
 
@@ -2015,7 +2019,7 @@ class ArangoRDF(AbstractArangoRDF):
         return Tree(root=Node(self.__rdfs_resource_str), submap=subclass_map)
 
     def __build_predicate_scope(
-        self, add_to_adb_mapping=empty_function
+        self, add_to_adb_mapping: Callable[[RDFTerm, str, bool], None] = empty_function
     ) -> PredicateScope:
         """An RPT/PGT helper method used to build a dictionary mapping
         the Domain & Range values of RDF Predicates within `self.rdf_graph`.
@@ -2091,10 +2095,6 @@ class ArangoRDF(AbstractArangoRDF):
 
                 add_to_adb_mapping(reified_s, "Property", True)
                 add_to_adb_mapping(reified_o, "Class", True)
-
-                # if adb_mapping is not None:
-                #     self.__add_to_adb_mapping(adb_mapping, p, "Property", True)
-                #     self.__add_to_adb_mapping(adb_mapping, c, "Class", True)
 
         return predicate_scope
 
