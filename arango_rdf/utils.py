@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import DefaultDict, Dict, List, Set
+from typing import Any, DefaultDict, Dict, List, Set
 
 from rich.progress import (
     BarColumn,
@@ -38,6 +38,10 @@ def adb_track(text: str) -> Progress:
         TextColumn("{task.fields[action]}"),
         SpinnerColumn("aesthetic", "#5BC0DE"),
     )
+
+
+def empty_function(*args: Any) -> None:
+    pass
 
 
 class Node:
