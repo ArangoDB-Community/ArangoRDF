@@ -3083,8 +3083,10 @@ def test_pgt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
     assert v_count == unique_nodes
     assert e_count == non_literal_statements
 
-    col = adb_graph.vertex_collection(f"{name}_UnknownResource")
+    col = adb_graph.vertex_collection("writer")
     assert col.has(_lara)
+
+    col = adb_graph.vertex_collection(f"{name}_UnknownResource")
     assert col.has(_journal)
 
     col = adb_graph.vertex_collection("Class")
@@ -3840,3 +3842,43 @@ def test_adb_native_graph(name: str) -> None:
     ####################################################
 
     db.delete_graph(name, drop_collections=True)
+
+
+@pytest.mark.parametrize(
+    "name, rdf_graph",
+    [("Key", get_rdf_graph("key.ttl"))],
+)
+def test_adb_key_uri(name: str, rdf_graph: RDFGraph) -> None:
+    adb_graph_rpt = adbrdf.rdf_to_arangodb_by_rpt(f"{name}_RPT", rdf_graph)
+    adb_graph_pgt = adbrdf.rdf_to_arangodb_by_pgt(f"{name}_PGT", rdf_graph)
+
+    _bob = "1"
+    _alice = "2"
+    _john = "3"
+
+    col = adb_graph_rpt.vertex_collection(f"{name}_RPT_URIRef")
+    assert col.has(_bob)
+    assert col.has(_alice)
+    assert col.has(_john)
+
+    col = adb_graph_pgt.vertex_collection(f"{name}_PGT_UnknownResource")
+    assert col.has(_bob)
+    assert col.has(_alice)
+    assert col.has(_john)
+
+    rdf_graph_2, _ = adbrdf.arangodb_graph_to_rdf(
+        f"{name}_RPT", type(rdf_graph)(), include_adb_key_statements=True
+    )
+
+    assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
+    assert len(outersect_graphs(rdf_graph_2, rdf_graph)) == 0
+
+    rdf_graph_3, _ = adbrdf.arangodb_graph_to_rdf(
+        f"{name}_PGT", type(rdf_graph)(), include_adb_key_statements=True
+    )
+
+    assert len(outersect_graphs(rdf_graph, rdf_graph_3)) == 0
+    assert len(outersect_graphs(rdf_graph_3, rdf_graph)) == 0
+
+    db.delete_graph(f"{name}_RPT", drop_collections=True)
+    db.delete_graph(f"{name}_PGT", drop_collections=True)

@@ -1,0 +1,6 @@
+@prefix adb: <http://www.arangodb.com/> .
+@prefix : <http://example.com/> .
+
+:bob adb:key "1" .
+:alice adb:key "2" .
+:john adb:key "3" .
