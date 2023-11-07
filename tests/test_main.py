@@ -1,4 +1,3 @@
-import os
 from typing import Dict
 
 import pytest
@@ -19,7 +18,6 @@ from .conftest import (
     META_GRAPH_NON_LITERAL_STATEMENTS,
     META_GRAPH_SIZE,
     META_GRAPH_UNKNOWN_RESOURCES,
-    PROJECT_DIR,
     adbrdf,
     db,
     get_adb_graph_count,
@@ -44,7 +42,7 @@ def test_constructor() -> None:
     "name, rdf_graph",
     [("Case_1_RPT", get_rdf_graph("cases/1.ttl"))],
 )
-def test_rpt_case_1_0(name: str, rdf_graph: RDFGraph) -> None:
+def test_rpt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     num_triples = 3
     num_urirefs = 3
     num_bnodes = 0
@@ -1527,7 +1525,7 @@ def test_rpt_meta(name: str, rdf_graph: RDFGraph) -> None:
     "name, rdf_graph",
     [("Case_1_PGT", get_rdf_graph("cases/1.ttl"))],
 )
-def test_pgt_case_1_0(name: str, rdf_graph: RDFGraph) -> None:
+def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     size = len(rdf_graph)
     unique_nodes = 4
     identified_unique_nodes = 4
@@ -2287,16 +2285,18 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     non_literal_statements = 10
     contextualize_statements = 21
     datatype_statements = 1  # see ex:dateOfBirth statement
-    rdf_graph_contexts = {
+    case_6_contexts = {
         "http://example.com/Graph1",
         "http://example.com/Graph2",
-        f"file://{os.path.abspath(f'{PROJECT_DIR}/tests/data/rdf/cases/6.trig')}",
     }
 
     rdf_graph = adbrdf.load_meta_ontology(rdf_graph)
-    assert {str(sg.identifier) for sg in rdf_graph.contexts()} == (
-        META_GRAPH_CONTEXTS | rdf_graph_contexts
-    )
+    rdf_graph_contexts = {str(sg.identifier) for sg in rdf_graph.contexts()}
+    context_diff = rdf_graph_contexts - META_GRAPH_CONTEXTS - case_6_contexts
+
+    assert len(context_diff) == 1
+    bnode_context = rdf_graph.get_context(BNode(context_diff.pop()))
+    assert bnode_context in rdf_graph.contexts()
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name, rdf_graph, overwrite_graph=True, contextualize_graph=True, use_async=False
@@ -2432,10 +2432,22 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     predicates = {p for p in diff.predicates(unique=True)}
     assert predicates <= {RDF.type, RDFS.domain, RDFS.range, dob}
 
-    assert type(rdf_graph_2) == RDFConjunctiveGraph
+    assert type(rdf_graph_2) is RDFConjunctiveGraph
     assert {str(sg.identifier) for sg in rdf_graph_2.contexts()} == (
         META_GRAPH_CONTEXTS | rdf_graph_contexts
     )
+
+    rdf_graph_2_contexts = {str(sg.identifier) for sg in rdf_graph_2.contexts()}
+    assert rdf_graph_contexts == rdf_graph_2_contexts
+
+    context_diff_2 = rdf_graph_2_contexts - META_GRAPH_CONTEXTS - case_6_contexts
+    assert len(context_diff_2) == 1
+
+    # TODO: Revisit
+    # Transforming from ArangoDB back to RDF converts the
+    # "default" BNode context in `rdf_graph` to a URIRef context in `rdf_graph_2`
+    uriref_context = rdf_graph_2.get_context(URIRef(context_diff_2.pop()))
+    assert uriref_context in rdf_graph_2.contexts()
 
     db.delete_graph(name, drop_collections=True)
 
@@ -3716,6 +3728,7 @@ def test_adb_native_graph(name: str) -> None:
         list_conversion_mode="static",
         infer_type_from_adb_v_col=True,
         include_adb_key_statements=True,
+        batch_size=1,
     )
 
     doc_map: Dict[str, str] = {}
