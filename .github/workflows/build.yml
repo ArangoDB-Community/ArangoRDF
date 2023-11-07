@@ -1,9 +1,8 @@
 name: build
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
   pull_request:
+  push:
     branches: [ main ]
 env:
   PACKAGE_DIR: arango_rdf
@@ -13,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     name: Python ${{ matrix.python }}
     steps:
       - uses: actions/checkout@v2
@@ -22,7 +21,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Set up ArangoDB Instance via Docker
-        run: docker create --name adb -p 8529:8529 -e ARANGO_ROOT_PASSWORD= arangodb/arangodb:3.11.0
+        run: docker create --name adb -p 8529:8529 -e ARANGO_ROOT_PASSWORD= arangodb/arangodb
       - name: Start ArangoDB Instance
         run: docker start adb
       - name: Setup pip
