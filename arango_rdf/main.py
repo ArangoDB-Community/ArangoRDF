@@ -1044,7 +1044,7 @@ class ArangoRDF(AbstractArangoRDF):
             self.__add_to_adb_mapping(s, str(o))
 
         ############################################################
-        # 6) Finalize **adb_mapping**
+        # 5) Finalize **adb_mapping**
         ############################################################
         for rdf_map in [explicit_type_map, domain_range_map]:
             for rdf_resource, class_set in rdf_map.items():
@@ -1092,7 +1092,7 @@ class ArangoRDF(AbstractArangoRDF):
             p = self.rdf_graph.value(term, RDF.predicate)
             t_col = t_label = self.rdf_id_to_adb_label(str(p))
 
-            self.__adb_col_blacklist.add(t_col)
+            self.__adb_col_blacklist.add(t_col)  # TODO: Revisit
 
         else:
             t_col = str(
@@ -1291,7 +1291,7 @@ class ArangoRDF(AbstractArangoRDF):
         :rtype: bool
         """
         # TODO: Discuss repurcussions of this assumption
-        if type(o) != BNode:
+        if type(o) is not BNode:
             return False
 
         first = (o, RDF.first, None)
@@ -1324,7 +1324,7 @@ class ArangoRDF(AbstractArangoRDF):
         :rtype: str
         """
         # TODO: Discuss repurcussions of this assumption
-        if type(s) != BNode:
+        if type(s) is not BNode:
             return ""
 
         if p in {RDF.first, RDF.rest}:
@@ -1343,11 +1343,13 @@ class ArangoRDF(AbstractArangoRDF):
         """A helper function to help process all RDF Collections & Containers
         within the RDF Graph prior to inserting the documents into ArangoDB.
 
+        # TODO: Rework the following paragraph to address `_rdf_list_head` and
+        `_rdf_list_data` usage instead
         This function relies on a Dictionary/Linked-List representation of the
         RDF Lists. This representation is stored via the "_LIST_HEAD",
         "_CONTAINER_BNODE", and "_COLLECTION_BNODE" keys within `self.adb_docs`.
 
-        Given the recursive nature of these RDF Lists, we rely on
+        Given the "linked-list" nature of these RDF Lists, we rely on
         recursion via the `__pgt_process_rdf_list_object`,
         `__pgt_unpack_rdf_collection`, and `__pgt_unpack_rdf_container` functions.
 
@@ -1381,6 +1383,7 @@ class ArangoRDF(AbstractArangoRDF):
                 doc[p_label] = doc[p_label].rstrip(",")
 
                 # Delete doc[p_key] if there are no Literals within the RDF List
+                # TODO: Revisit the possibility of empty collections or containers...
                 if set(doc[p_label]) == {"[", "]"}:
                     del doc[p_label]
                 else:
@@ -2014,6 +2017,7 @@ class ArangoRDF(AbstractArangoRDF):
         # Excludes the RDFS Resource URI
         for key in set(subclass_map) - {self.__rdfs_resource_str}:
             if (URIRef(key), RDFS.subClassOf, None) not in subclass_graph:
+                # TODO: Consider using OWL:Thing instead of RDFS:Class
                 subclass_map[self.__rdfs_class_str].add(key)
 
         return Tree(root=Node(self.__rdfs_resource_str), submap=subclass_map)
@@ -2062,8 +2066,6 @@ class ArangoRDF(AbstractArangoRDF):
         predicate_scope: PredicateScope = defaultdict(lambda: defaultdict(set))
         predicate_scope_graph = self.meta_graph + self.rdf_graph
 
-        # CHECKPOINT
-
         # RDFS Domain & Range
         for label in ["domain", "range"]:
             for p, c in predicate_scope_graph[: RDFS[label] :]:  # type:ignore
@@ -2075,10 +2077,6 @@ class ArangoRDF(AbstractArangoRDF):
 
                 add_to_adb_mapping(p, "Property", True)
                 add_to_adb_mapping(c, "Class", True)
-
-                # if adb_mapping is not None:
-                #     self.__add_to_adb_mapping(adb_mapping, p, "Property", True)
-                #     self.__add_to_adb_mapping(adb_mapping, c, "Class", True)
 
         # RDFS Domain & Range (Reified)
         for label in ["domain", "range"]:
@@ -2378,7 +2376,7 @@ class ArangoRDF(AbstractArangoRDF):
 
                 cursor = self.__fetch_adb_docs(v_col, export_options)
                 while not cursor.empty():
-                    for doc in cursor:
+                    for doc in cursor.batch():
                         self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
                         term = self.__process_adb_doc(doc)
@@ -2401,6 +2399,7 @@ class ArangoRDF(AbstractArangoRDF):
                             if infer_type_from_adb_v_col:
                                 self.__add_to_rdf_graph(term, RDF.type, v_col_uri)
 
+                    cursor.batch().clear()
                     if cursor.has_more():
                         cursor.fetch()
 
@@ -2414,28 +2413,31 @@ class ArangoRDF(AbstractArangoRDF):
 
                 cursor = self.__fetch_adb_docs(e_col, export_options)
                 while not cursor.empty():
-                    for edge in cursor:
+                    for edge in cursor.batch():
                         self.__rdf_iterator.update(self.__rdf_task, advance=1)
 
                         self.__process_adb_edge(edge, e_col_uri)
 
+                    cursor.batch().clear()
                     if cursor.has_more():
                         cursor.fetch()
 
         # TODO: REVISIT
         # Not a fan of this at all...
+        # Unfortunatley required to preserve subgraph information
         if self.__graph_supports_quads:
             for v_col, _ in metagraph["vertexCollections"].items():
                 cursor = self.__fetch_adb_docs(v_col, export_options)
 
                 while not cursor.empty():
-                    for doc in cursor:
+                    for doc in cursor.batch():
                         term = self.__term_map[doc["_id"]]
 
                         if not isinstance(term, Literal):
                             sg = self.__subgraph_map.get(doc["_id"])
                             self.__unpack_adb_doc(doc, term, sg)
 
+                    cursor.batch().clear()
                     if cursor.has_more():
                         cursor.fetch()
 

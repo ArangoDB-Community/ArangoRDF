@@ -52,6 +52,9 @@ class Node:
 
 
 class Tree:
+    # TODO: Revisit recursive Tree structure, as it is not needed
+    # We only use `Tree` for being able to extract the depth of each node
+    # The structure itself is irrelevant
     def __init__(self, root: Node, submap: DefaultDict[str, Set[str]]) -> None:
         self.root = root
         self.submap = submap
