@@ -3734,7 +3734,7 @@ def test_adb_native_graph(name: str) -> None:
     doc_map: Dict[str, str] = {}
     adb_graph_namespace = f"{db._conn._url_prefixes[0]}/{name}#"
 
-    doc: dict[str, Any]
+    doc: Dict[str, Any]
     for v_col in adb_graph.vertex_collections():
         v_col_uri = URIRef(f"{adb_graph_namespace}{v_col}")
 
