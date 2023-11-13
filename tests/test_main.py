@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Any, Dict
 
 import pytest
 from farmhash import Fingerprint64 as FP64
@@ -35,7 +35,7 @@ def test_constructor() -> None:
 
     bad_controller = None
     with pytest.raises(TypeError):
-        ArangoRDF(db, bad_controller)
+        ArangoRDF(db, bad_controller)  # type: ignore
 
 
 @pytest.mark.parametrize(
@@ -1611,7 +1611,7 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
-        str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
+        str(o) for o in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "Ontology", "Person"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
@@ -1720,7 +1720,7 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
-        str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
+        str(o) for o in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "Ontology", "Person"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
@@ -1819,7 +1819,7 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
-        str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
+        str(o) for o in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "Ontology"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
@@ -1918,7 +1918,7 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
-        str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
+        str(o) for o in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "Ontology", "Person"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
@@ -2009,7 +2009,7 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
-        str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
+        str(o) for o in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "Ontology"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
@@ -2104,7 +2104,7 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
-        str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
+        str(o) for o in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "Ontology"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
@@ -2414,7 +2414,7 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
-        str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
+        str(o) for o in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Skill", "Person", "Website", "Ontology", "Property", "Class"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == datatype_statements
@@ -2600,7 +2600,7 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
     )
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES + identified_unique_nodes
     assert {
-        str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
+        str(o) for o in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Zenkey", "Arson", "Class", "Ontology", "Artist", "Property", "Human"}
 
     diff_1 = outersect_graphs(rdf_graph, rdf_graph_2)
@@ -3542,7 +3542,7 @@ def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
     assert len(rdf_graph_2) == len(rdf_graph) + META_GRAPH_CONTEXTUALIZE_STATEMENTS
     assert len(adb_mapping) == META_GRAPH_IDENTIFIED_RESOURCES
     assert {
-        str(l) for l in adb_mapping.objects(subject=None, predicate=None, unique=True)
+        str(o) for o in adb_mapping.objects(subject=None, predicate=None, unique=True)
     } == {"Class", "Property", "Ontology"}
 
     assert len(outersect_graphs(rdf_graph, rdf_graph_2)) == 0
@@ -3734,8 +3734,7 @@ def test_adb_native_graph(name: str) -> None:
     doc_map: Dict[str, str] = {}
     adb_graph_namespace = f"{db._conn._url_prefixes[0]}/{name}#"
 
-    doc: dict
-    edge: dict
+    doc: dict[str, Any]
     for v_col in adb_graph.vertex_collections():
         v_col_uri = URIRef(f"{adb_graph_namespace}{v_col}")
 

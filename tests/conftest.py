@@ -57,7 +57,7 @@ def pytest_configure(config: Any) -> None:
     print("Database: " + con["dbName"])
     print("----------------------------------------")
 
-    class NoTimeoutHTTPClient(DefaultHTTPClient):  # type: ignore
+    class NoTimeoutHTTPClient(DefaultHTTPClient):
         REQUEST_TIMEOUT = None
 
     global db
@@ -140,6 +140,7 @@ def pytest_exception_interact(node: Any, call: Any, report: Any) -> None:
 
             graph_name = params.get("name")
             if graph_name:
+                global db
                 db.delete_graph(graph_name, drop_collections=True, ignore_missing=True)
 
     except AttributeError:
@@ -163,6 +164,7 @@ def get_meta_graph() -> RDFConjunctiveGraph:
 
 
 def get_adb_graph_count(name: str) -> Tuple[int, int]:
+    global db
     adb_graph = db.graph(name)
 
     e_cols = {col["edge_collection"] for col in adb_graph.edge_definitions()}
@@ -181,6 +183,6 @@ def get_adb_graph_count(name: str) -> Tuple[int, int]:
     return (v_count, e_count)
 
 
-def outersect_graphs(rdf_graph_a: RDFGraph, rdf_graph_b: RDFGraph):
+def outersect_graphs(rdf_graph_a: RDFGraph, rdf_graph_b: RDFGraph) -> RDFGraph:
     assert rdf_graph_a and rdf_graph_b
     return rdf_graph_a - rdf_graph_b
