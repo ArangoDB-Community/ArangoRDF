@@ -1,0 +1,8 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ex: <http://example.com/> .
+
+ex:Jan a ex:Person .
+ex:Leo a ex:Person .
+ex:Jan ex:supervise ex:Leo .
+
+ex:supervise rdfs:subPropertyOf ex:administer .

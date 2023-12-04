@@ -1,18 +1,45 @@
+import logging
+import os
+import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, Tuple
 
 from arango import ArangoClient, DefaultHTTPClient
 from arango.database import StandardDatabase
+from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
+from rdflib import Graph as RDFGraph
+
+from arango_rdf import ArangoRDF
 
 db: StandardDatabase
 PROJECT_DIR = Path(__file__).parent.parent
+adbrdf: ArangoRDF
+
+META_GRAPH_SIZE = 684
+META_GRAPH_NON_LITERAL_STATEMENTS = 440
+META_GRAPH_DUPLICATE_LITERALS = 1
+META_GRAPH_LITERAL_STATEMENTS = (
+    META_GRAPH_SIZE - META_GRAPH_NON_LITERAL_STATEMENTS - META_GRAPH_DUPLICATE_LITERALS
+)
+META_GRAPH_CONTEXTUALIZE_STATEMENTS = 0
+META_GRAPH_ALL_RESOURCES = 137
+META_GRAPH_UNKNOWN_RESOURCES = 12
+META_GRAPH_IDENTIFIED_RESOURCES = 125
+META_GRAPH_CONTEXTS = {
+    "http://www.arangodb.com/",
+    "http://www.w3.org/2002/07/owl#",
+    "http://purl.org/dc/elements/1.1/",
+    "http://www.w3.org/2001/XMLSchema#",
+    "http://www.w3.org/2000/01/rdf-schema#",
+    "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+}
 
 
 def pytest_addoption(parser: Any) -> None:
     parser.addoption("--url", action="store", default="http://localhost:8529")
-    parser.addoption("--dbName", action="store", default="_system")
     parser.addoption("--username", action="store", default="root")
     parser.addoption("--password", action="store", default="")
+    parser.addoption("--dbName", action="store", default="_system")
 
 
 def pytest_configure(config: Any) -> None:
@@ -30,10 +57,132 @@ def pytest_configure(config: Any) -> None:
     print("Database: " + con["dbName"])
     print("----------------------------------------")
 
-    class NoTimeoutHTTPClient(DefaultHTTPClient):  # type: ignore
+    class NoTimeoutHTTPClient(DefaultHTTPClient):
         REQUEST_TIMEOUT = None
 
     global db
     db = ArangoClient(hosts=con["url"], http_client=NoTimeoutHTTPClient()).db(
         con["dbName"], con["username"], con["password"], verify=True
     )
+
+    global adbrdf
+    adbrdf = ArangoRDF(db, logging_lvl=logging.DEBUG)
+
+    if not db.has_graph("GameOfThrones"):
+        arango_restore(con, "tests/data/adb/got_dump")
+        db.create_graph(
+            "GameOfThrones",
+            edge_definitions=[
+                {
+                    "edge_collection": "ChildOf",
+                    "from_vertex_collections": ["Characters"],
+                    "to_vertex_collections": ["Characters"],
+                },
+            ],
+            orphan_collections=["Traits", "Locations"],
+        )
+
+    # if not db.has_graph("fraud-detection"):
+    #     arango_restore(con, "tests/data/adb/fraud_dump")
+    #     db.delete_collection("Class")
+    #     db.delete_collection("Relationship")
+    #     db.create_graph(
+    #         "fraud-detection",
+    #         edge_definitions=[
+    #             {
+    #                 "edge_collection": "accountHolder",
+    #                 "from_vertex_collections": ["customer"],
+    #                 "to_vertex_collections": ["account"],
+    #             },
+    #             {
+    #                 "edge_collection": "transaction",
+    #                 "from_vertex_collections": ["account"],
+    #                 "to_vertex_collections": ["account"],
+    #             },
+    #         ],
+    #         orphan_collections=["bank", "branch"],
+    #     )
+
+    # if db.has_graph("imdb") is False:
+    #     arango_restore(con, "tests/data/adb/imdb_dump")
+    #     db.create_graph(
+    #         "imdb",
+    #         edge_definitions=[
+    #             {
+    #                 "edge_collection": "Ratings",
+    #                 "from_vertex_collections": ["Users"],
+    #                 "to_vertex_collections": ["Movies"],
+    #             },
+    #         ],
+    #     )
+
+
+def arango_restore(con: Dict[str, Any], path_to_data: str) -> None:
+    restore_prefix = "./tools/" if os.getenv("GITHUB_ACTIONS") else ""
+    protocol = "http+ssl://" if "https://" in con["url"] else "tcp://"
+    url = protocol + con["url"].partition("://")[-1]
+
+    subprocess.check_call(
+        f'chmod -R 755 ./tools/arangorestore && {restore_prefix}arangorestore \
+            -c none --server.endpoint {url} --server.database {con["dbName"]} \
+                --server.username {con["username"]} \
+                    --server.password "{con["password"]}" \
+                        --input-directory "{PROJECT_DIR}/{path_to_data}"',
+        cwd=f"{PROJECT_DIR}/tests",
+        shell=True,
+    )
+
+
+def pytest_exception_interact(node: Any, call: Any, report: Any) -> None:
+    try:
+        if report.failed:
+            params: Dict[str, Any] = node.callspec.params
+
+            graph_name = params.get("name")
+            if graph_name:
+                global db
+                db.delete_graph(graph_name, drop_collections=True, ignore_missing=True)
+
+    except AttributeError:
+        print(node)
+        print(dir(node))
+        print("Could not delete graph")
+
+
+def get_rdf_graph(path: str) -> RDFGraph:
+    g = RDFConjunctiveGraph() if path.endswith(".trig") else RDFGraph()
+    g.parse(f"{PROJECT_DIR}/tests/data/rdf/{path}")
+    return g
+
+
+def get_meta_graph() -> RDFConjunctiveGraph:
+    g = RDFConjunctiveGraph()
+    for ns in os.listdir(f"{PROJECT_DIR}/arango_rdf/meta"):
+        g.parse(f"{PROJECT_DIR}/arango_rdf/meta/{ns}", format="trig")
+
+    return g
+
+
+def get_adb_graph_count(name: str) -> Tuple[int, int]:
+    global db
+    adb_graph = db.graph(name)
+
+    e_cols = {col["edge_collection"] for col in adb_graph.edge_definitions()}
+
+    v_count = 0
+    for v in db.graph(name).vertex_collections():
+        if v in e_cols:
+            continue
+
+        v_count += adb_graph.vertex_collection(v).count()
+
+    e_count = 0
+    for e_d in adb_graph.edge_definitions():
+        e_count += adb_graph.edge_collection(e_d["edge_collection"]).count()
+
+    return (v_count, e_count)
+
+
+def outersect_graphs(rdf_graph_a: RDFGraph, rdf_graph_b: RDFGraph) -> RDFGraph:
+    assert rdf_graph_a and rdf_graph_b
+    return rdf_graph_a - rdf_graph_b

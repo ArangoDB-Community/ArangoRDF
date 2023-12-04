@@ -1,0 +1,20 @@
+PREFIX : <http://example.com/>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+:Book a owl:Class .
+:Writer a owl:Class .
+
+:author a owl:ObjectProperty ;
+ rdfs:domain :Book ;
+ rdfs:range :Writer .
+
+:publicationYear a owl:DatatypeProperty ;
+ rdfs:domain :Book ;
+ rdfs:range xsd:integer .
+
+:GeorgeOrwell a Writer .
+
+:NineteenEightyFour a :Book ;
+ :author :GeorgeOrwell ;
+ :publicationYear 1948 .

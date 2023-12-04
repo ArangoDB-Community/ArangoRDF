@@ -1,0 +1,4 @@
+@prefix ex: <http://example.com/> .
+
+ex:Martin ex:mentorJoe ex:Joe.
+ex:mentorJoe ex:alias ex:teacher .

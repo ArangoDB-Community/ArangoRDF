@@ -1,0 +1,10 @@
+PREFIX dbpedia: <http://dbpedia.org/resource/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX ex: <http://example.org/Crimestories#>
+
+dbpedia:SherlockHolmes ex:supposes ex:StatementOfSherlock .
+
+ex:StatementOfSherlock a rdf:Statement ;
+ rdf:subject ex:Gardener ;
+ rdf:predicate ex:hasKilled ;
+ rdf:object ex:Butler .

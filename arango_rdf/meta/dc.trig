@@ -1,0 +1,28 @@
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+
+dc: {
+    <http://purl.org/dc/elements/1.1/> a owl:Ontology ; 
+          dc:title "The Dublin Core concepts vocabulary (DC)" .
+
+    dc:title a rdf:Property ;
+        rdfs:comment "A name given to the resource." ;
+        rdfs:isDefinedBy <http://purl.org/dc/terms/> ;
+        rdfs:label "Title" ;
+        rdfs:range rdfs:Literal .
+
+    dc:date a rdf:Property ;
+        dc:description "Date may be used to express temporal information at any level of granularity.  Recommended practice is to express the date, date/time, or period of time according to ISO 8601-1 [[ISO 8601-1](https://www.iso.org/iso-8601-date-and-time-format.html)] or a published profile of the ISO standard, such as the W3C Note on Date and Time Formats [[W3CDTF](https://www.w3.org/TR/NOTE-datetime)] or the Extended Date/Time Format Specification [[EDTF](http://www.loc.gov/standards/datetime/)].  If the full date is unknown, month and year (YYYY-MM) or just year (YYYY) may be used. Date ranges may be specified using ISO 8601 period of time specification in which start and end dates are separated by a '/' (slash) character.  Either the start or end date may be missing." ;
+        rdfs:comment "A point or period of time associated with an event in the lifecycle of the resource." ;
+        rdfs:isDefinedBy <http://purl.org/dc/terms/> ;
+        rdfs:label "Date" ;
+        rdfs:range rdfs:Literal .
+
+    dc:description a rdf:Property ;
+        dc:description "Description may include but is not limited to: an abstract, a table of contents, a graphical representation, or a free-text account of the resource." ;
+        rdfs:comment "An account of the resource." ;
+        rdfs:isDefinedBy <http://purl.org/dc/terms/> ;
+        rdfs:label "Description" .
+}

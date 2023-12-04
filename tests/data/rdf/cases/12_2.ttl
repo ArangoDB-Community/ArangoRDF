@@ -1,0 +1,10 @@
+@prefix ex: <http://example.com/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+# << ex:lara rdf:type ex:writer >> ex:owner ex:journal .
+
+[] a rdf:Statement;
+    rdf:subject ex:lara;
+    rdf:predicate rdf:type;
+    rdf:object ex:writer ;
+    ex:owner ex:journal .

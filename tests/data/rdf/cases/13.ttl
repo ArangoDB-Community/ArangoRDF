@@ -1,0 +1,18 @@
+@prefix ex: <http://example.com/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+# << << ex:steve ex:position ex:CEO >> ex:mentionedBy ex:book >> ex:source ex:journal .
+
+@prefix ex: <http://example.com/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+_:x a rdf:Statement;
+    rdf:subject ex:steve;
+    rdf:predicate ex:position;
+    rdf:object ex:CEO .
+
+[] a rdf:Statement;
+    rdf:subject _:x;
+    rdf:predicate ex:mentionedBy;
+    rdf:object ex:book;
+    ex:source ex:journal .
