@@ -55,8 +55,9 @@ adbrdf = ArangoRDF(db)
 g = Graph()
 g.parse("https://raw.githubusercontent.com/stardog-union/stardog-tutorials/master/music/beatles.ttl")
 
-# RDF to ArangoDB
-###################################################################################
+###################
+# RDF to ArangoDB #
+###################
 
 # 1.1: RDF-Topology Preserving Transformation (RPT)
 adbrdf.rdf_to_arangodb_by_rpt("Beatles", g, overwrite_graph=True)
@@ -77,8 +78,9 @@ adb_mapping = adbrdf.build_adb_mapping_for_pgt(g)
 print(adb_mapping.serialize())
 adbrdf.rdf_to_arangodb_by_pgt("Beatles", g, adb_mapping, contextualize_graph=True, overwrite_graph=True)
 
-# ArangoDB to RDF
-###################################################################################
+###################
+# ArangoDB to RDF #
+###################
 
 # Start from scratch!
 g = Graph()
