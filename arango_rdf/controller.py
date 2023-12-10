@@ -10,10 +10,7 @@ from .utils import Tree
 
 
 class ArangoRDFController(AbstractArangoRDFController):
-    """ArangoDB-RDF controller.
-
-    You can derive your own custom ArangoRDFController.
-    """
+    """ArangoDB-RDF controller. You can derive your own custom ArangoRDFController."""
 
     def __init__(self) -> None:
         self.db: StandardDatabase
@@ -42,28 +39,28 @@ class ArangoRDFController(AbstractArangoRDFController):
 
         The current identification process goes as follows:
         1) If an RDF Resource only has one `rdf:type` statement
-            (either by explicit definition or by domain/range inference),
-            then the local name of the single RDFS Class is used as the ArangoDB
-            Document Collection name. For example,
-            <http://example.com/Bob> <rdf:type> <http://example.com/Person>
-            would place the JSON Document for <http://example.com/Bob>
-            under the ArangoDB "Person" Document Collection.
+        (either by explicit definition or by domain/range inference),
+        then the local name of the single RDFS Class is used as the ArangoDB
+        Document Collection name. For example,
+        <http://example.com/Bob> <rdf:type> <http://example.com/Person>
+        would place the JSON Document for <http://example.com/Bob>
+        under the ArangoDB "Person" Document Collection.
 
         2) If an RDF Resource has multiple `rdf:type` statements
-            (either by explicit definition or by domain/range inference),
-            with some (or all) of the RDFS Classes of those statements
-            belonging in an `rdfs:subClassOf` Taxonomy, then the
-            local name of the "most specific" Class within the Taxonomy is
-            used (i.e the Class with the biggest depth). If there is a
-            tie between 2+ Classes, then the URIs are alphabetically
-            sorted & the first one is picked. Relies on **subclass_tree**.
+        (either by explicit definition or by domain/range inference),
+        with some (or all) of the RDFS Classes of those statements
+        belonging in an `rdfs:subClassOf` Taxonomy, then the
+        local name of the "most specific" Class within the Taxonomy is
+        used (i.e the Class with the biggest depth). If there is a
+        tie between 2+ Classes, then the URIs are alphabetically
+        sorted & the first one is picked. Relies on **subclass_tree**.
 
         3) If an RDF Resource has multiple `rdf:type` statements, with
-            none of the RDFS Classes of those statements belonging in an
-            `rdfs:subClassOf` Taxonomy, then the URIs are
-            alphabetically sorted & the first one is picked. The local
-            name of the selected URI will be designated as the Document
-            Collection for **rdf_resource**.
+        none of the RDFS Classes of those statements belonging in an
+        `rdfs:subClassOf` Taxonomy, then the URIs are
+        alphabetically sorted & the first one is picked. The local
+        name of the selected URI will be designated as the Document
+        Collection for **rdf_resource**.
 
         :param rdf_resource: The RDF Resource in question.
         :type rdf_resource: URIRef | BNode
