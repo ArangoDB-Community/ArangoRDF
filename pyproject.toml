@@ -26,6 +26,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Topic :: Documentation :: Sphinx",
     "Topic :: Utilities",
     "Typing :: Typed",
 ]
@@ -50,6 +51,8 @@ dev = [
     "pytest-cov>=2.0.0",
     "coveralls>=3.3.1",
     "types-setuptools",
+    "sphinx",
+    "sphinx_rtd_theme",
 ]
 
 [project.urls]
