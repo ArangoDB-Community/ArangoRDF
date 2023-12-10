@@ -48,11 +48,11 @@ from rdflib import Graph
 db = ArangoClient().db('_system', username='root', password='passwd')
 
 # Initialize the ArangoRDF client.
-arangordf = ArangoRDF(db)
+adbrdf = ArangoRDF(db)
 
 # Create a new RDF graph.
 rdf_graph = Graph()
-rdf_graph.parse("https://raw.githubusercontent.com/stardog-union/stardog-tutorials/master/music/beatles.ttl")
+rdf_graph.parse("https://raw.githubusercontent.com/stardog-union/stardog-tutorials/master/music/beatles.ttl", format="ttl")
 
 # RDF to ArangoDB
 adb_graph_rpt = adbrdf.rdf_to_arangodb_by_rpt("BeatlesRPT", rdf_graph, overwrite_graph=True)

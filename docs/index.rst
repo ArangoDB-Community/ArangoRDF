@@ -1,20 +1,34 @@
-.. ArangoRDF documentation master file, created by
-   sphinx-quickstart on Sat Dec  9 18:56:57 2023.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. image:: /static/adb_logo.png
+.. image:: /static/rdf_logo.png
 
-Welcome to ArangoRDF's documentation!
-=====================================
+|
+
+ArangoRDF
+-------------
+
+Welcome to the documentation for **ArangoRDF**, a Python adapter for ArangoDB_ & RDF_.
+
+Requirements
+=============
+
+- ArangoDB version 3.9+
+- Python version 3.8+
+
+Installation
+============
+
+.. code-block:: bash
+
+    ~$ pip install arango-rdf --upgrade
+
+Contents
+========
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+    :maxdepth: 1
 
+    overview
+    specs
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. _ArangoDB: https://www.arangodb.com
+.. _RDF: https://www.w3.org/RDF/
