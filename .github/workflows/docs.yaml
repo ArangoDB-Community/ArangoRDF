@@ -27,7 +27,7 @@ jobs:
         run: docker create --name adb -p 8529:8529 -e ARANGO_ROOT_PASSWORD= arangodb/arangodb
 
       - name: Start ArangoDB Docker container
-        run: docker start arango
+        run: docker start adb
 
       - name: Set up Python
         uses: actions/setup-python@v4
