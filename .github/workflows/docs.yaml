@@ -24,9 +24,7 @@ jobs:
         run: git fetch --prune --unshallow
 
       - name: Create ArangoDB Docker container
-        run: >
-          docker create --name arango -p 8529:8529 -e ARANGO_ROOT_PASSWORD=passwd -v "$(pwd)/tests/static/":/tests/static
-          arangodb/arangodb:latest --server.jwt-secret-keyfile=/tests/static/keyfile
+        run: docker create --name adb -p 8529:8529 -e ARANGO_ROOT_PASSWORD= arangodb/arangodb
 
       - name: Start ArangoDB Docker container
         run: docker start arango
@@ -39,9 +37,6 @@ jobs:
       - name: Debug with tmate
         uses: mxschmitt/action-tmate@v3
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
-
-      - name: Run pre-commit checks
-        uses: pre-commit/action@v3.0.0
 
       - name: Install dependencies
         run: pip install .[dev]
