@@ -2,12 +2,14 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Set, Tuple
 
 from arango import ArangoClient, DefaultHTTPClient
 from arango.database import StandardDatabase
+from rdflib import BNode
 from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
 from rdflib import Graph as RDFGraph
+from rdflib import Literal, URIRef
 
 from arango_rdf import ArangoRDF
 
@@ -22,11 +24,10 @@ META_GRAPH_LITERAL_STATEMENTS = (
     META_GRAPH_SIZE - META_GRAPH_NON_LITERAL_STATEMENTS - META_GRAPH_DUPLICATE_LITERALS
 )
 META_GRAPH_CONTEXTUALIZE_STATEMENTS = 0
-META_GRAPH_ALL_RESOURCES = 137
+META_GRAPH_ALL_RESOURCES = 136
 META_GRAPH_UNKNOWN_RESOURCES = 12
 META_GRAPH_IDENTIFIED_RESOURCES = 125
 META_GRAPH_CONTEXTS = {
-    "http://www.arangodb.com/",
     "http://www.w3.org/2002/07/owl#",
     "http://purl.org/dc/elements/1.1/",
     "http://www.w3.org/2001/XMLSchema#",
@@ -183,6 +184,50 @@ def get_adb_graph_count(name: str) -> Tuple[int, int]:
     return (v_count, e_count)
 
 
-def outersect_graphs(rdf_graph_a: RDFGraph, rdf_graph_b: RDFGraph) -> RDFGraph:
+def subtract_graphs(rdf_graph_a: RDFGraph, rdf_graph_b: RDFGraph) -> RDFGraph:
     assert rdf_graph_a and rdf_graph_b
     return rdf_graph_a - rdf_graph_b
+
+
+def get_uris(rdf_graph: RDFGraph, include_predicates: bool = False) -> Set[URIRef]:
+    global adbrdf
+
+    unique_uris = set()
+    for s, p, o in rdf_graph.triples((None, None, None)):
+        if isinstance(s, URIRef):
+            unique_uris.add(s)
+
+        if include_predicates and isinstance(p, URIRef):
+            if p != adbrdf.adb_col_uri:
+                unique_uris.add(p)
+
+        if isinstance(o, URIRef):
+            unique_uris.add(o)
+
+    return unique_uris
+
+
+def get_bnodes(rdf_graph: RDFGraph, include_predicates: bool = False) -> Set[BNode]:
+    unique_bnodes = set()
+    for s, p, o in rdf_graph.triples((None, None, None)):
+        if isinstance(s, BNode):
+            unique_bnodes.add(s)
+        if include_predicates and isinstance(p, BNode):
+            unique_bnodes.add(p)
+        if isinstance(o, BNode):
+            unique_bnodes.add(o)
+
+    return unique_bnodes
+
+
+def get_literals(rdf_graph: RDFGraph) -> Set[Literal]:
+    # literal_statements = set()
+    # for s,p,o in rdf_graph.triples((None, None, None)):
+    #     if isinstance(o, Literal):
+    #         literal_statements.add((s,p,o))
+    literals = set()
+    for _, _, o in rdf_graph.triples((None, None, None)):
+        if isinstance(o, Literal):
+            literals.add(o)
+
+    return literals

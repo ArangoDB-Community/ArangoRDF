@@ -11,7 +11,7 @@ ex:Graph1 {
     ex:Monica ex:name "Monica" .
     ex:Monica ex:homepage <http://www.Monicahompage.org> .
     ex:Monica ex:hasSkill ex:Management .
-    ex:Monica ex:dateOfBirth "1963-03-22"^^xsd:date .
+    ex:Monica ex:dateOfBirth "1963-03-22".
 }
 
 ex:Graph2 {
