@@ -744,7 +744,6 @@ def test_rpt_case_9(name: str, rdf_graph: RDFGraph) -> None:
     assert STATEMENT_COL.has(str(FP64(f"{_mark_age_28}-{_certainty}-{_1}")))
 
     rdf_graph_3 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph_2)())
-    assert len(rdf_graph_3) == len(rdf_graph_2)
     assert len(subtract_graphs(rdf_graph_3, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
 

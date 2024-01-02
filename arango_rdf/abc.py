@@ -22,10 +22,12 @@ class AbstractArangoRDF(ABC):
         name: str,
         rdf_graph: RDFGraph,
         contextualize_graph: bool,
+        use_hashed_literals_as_keys: bool,
+        simplify_reified_triples: bool,
         overwrite_graph: bool,
         use_async: bool,
         batch_size: Optional[int],
-        **import_options: Any,
+        **adb_import_kwargs: Any,
     ) -> ADBGraph:
         raise NotImplementedError  # pragma: no cover
 
@@ -37,7 +39,7 @@ class AbstractArangoRDF(ABC):
         overwrite_graph: bool,
         use_async: bool,
         batch_size: Optional[int],
-        **import_options: Any,
+        **adb_import_kwargs: Any,
     ) -> ADBGraph:
         raise NotImplementedError  # pragma: no cover
 
@@ -51,7 +53,7 @@ class AbstractArangoRDF(ABC):
         include_adb_v_col_statements: bool,
         include_adb_v_key_statements: bool,
         include_adb_e_key_statements: bool,
-        **export_options: Any,
+        **adb_export_kwargs: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
         raise NotImplementedError  # pragma: no cover
 
@@ -66,7 +68,7 @@ class AbstractArangoRDF(ABC):
         include_adb_v_col_statements: bool,
         include_adb_v_key_statements: bool,
         include_adb_e_key_statements: bool,
-        **export_options: Any,
+        **adb_export_kwargs: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
         raise NotImplementedError  # pragma: no cover
 
@@ -79,7 +81,7 @@ class AbstractArangoRDF(ABC):
         include_adb_v_col_statements: bool,
         include_adb_v_key_statements: bool,
         include_adb_e_key_statements: bool,
-        **export_options: Any,
+        **adb_export_kwargs: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
         raise NotImplementedError  # pragma: no cover
 
