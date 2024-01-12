@@ -2,5 +2,12 @@
 @prefix : <http://example.com/> .
 
 :bob adb:key "1" .
+:bob a :Person .
+
 :alice adb:key "2" .
+:alice a :Person .
+
 :john adb:key "3" .
+:john a :Person .
+
+:Person adb:key "Person" .

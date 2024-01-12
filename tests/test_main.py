@@ -3371,22 +3371,31 @@ def test_adb_native_graph(name: str) -> None:
     [("Key", get_rdf_graph("key.ttl"))],
 )
 def test_adb_key_uri(name: str, rdf_graph: RDFGraph) -> None:
-    adb_graph_rpt = adbrdf.rdf_to_arangodb_by_rpt(f"{name}_RPT", rdf_graph)
-    adb_graph_pgt = adbrdf.rdf_to_arangodb_by_pgt(f"{name}_PGT", rdf_graph)
+    adb_graph_rpt = adbrdf.rdf_to_arangodb_by_rpt(
+        f"{name}_RPT", rdf_graph, overwrite_graph=True
+    )
+    adb_graph_pgt = adbrdf.rdf_to_arangodb_by_pgt(
+        f"{name}_PGT", rdf_graph, overwrite_graph=True
+    )
 
     _bob = "1"
     _alice = "2"
     _john = "3"
+    _person = "Person"
 
     col = adb_graph_rpt.vertex_collection(f"{name}_RPT_URIRef")
     assert col.has(_bob)
     assert col.has(_alice)
     assert col.has(_john)
+    assert col.has(_person)
 
-    col = adb_graph_pgt.vertex_collection(f"{name}_PGT_UnknownResource")
+    col = adb_graph_pgt.vertex_collection("Person")
     assert col.has(_bob)
     assert col.has(_alice)
     assert col.has(_john)
+
+    col = adb_graph_pgt.vertex_collection("Class")
+    assert col.has(_person)
 
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(
         f"{name}_RPT", type(rdf_graph)(), include_adb_v_key_statements=True
@@ -3400,7 +3409,7 @@ def test_adb_key_uri(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     assert len(subtract_graphs(rdf_graph, rdf_graph_3)) == 0
-    assert len(subtract_graphs(rdf_graph_3, rdf_graph)) == 0
+    assert set(subtract_graphs(rdf_graph_3, rdf_graph).subjects()) == {RDF.type}
 
     db.delete_graph(f"{name}_RPT", drop_collections=True)
     db.delete_graph(f"{name}_PGT", drop_collections=True)
