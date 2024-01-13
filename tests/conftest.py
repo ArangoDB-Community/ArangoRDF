@@ -17,24 +17,6 @@ db: StandardDatabase
 PROJECT_DIR = Path(__file__).parent.parent
 adbrdf: ArangoRDF
 
-META_GRAPH_SIZE = 684
-META_GRAPH_NON_LITERAL_STATEMENTS = 440
-META_GRAPH_DUPLICATE_LITERALS = 1
-META_GRAPH_LITERAL_STATEMENTS = (
-    META_GRAPH_SIZE - META_GRAPH_NON_LITERAL_STATEMENTS - META_GRAPH_DUPLICATE_LITERALS
-)
-META_GRAPH_CONTEXTUALIZE_STATEMENTS = 0
-META_GRAPH_ALL_RESOURCES = 136
-META_GRAPH_UNKNOWN_RESOURCES = 12
-META_GRAPH_IDENTIFIED_RESOURCES = 125
-META_GRAPH_CONTEXTS = {
-    "http://www.w3.org/2002/07/owl#",
-    "http://purl.org/dc/elements/1.1/",
-    "http://www.w3.org/2001/XMLSchema#",
-    "http://www.w3.org/2000/01/rdf-schema#",
-    "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-}
-
 
 def pytest_addoption(parser: Any) -> None:
     parser.addoption("--url", action="store", default="http://localhost:8529")
@@ -221,13 +203,18 @@ def get_bnodes(rdf_graph: RDFGraph, include_predicates: bool = False) -> Set[BNo
 
 
 def get_literals(rdf_graph: RDFGraph) -> Set[Literal]:
-    # literal_statements = set()
-    # for s,p,o in rdf_graph.triples((None, None, None)):
-    #     if isinstance(o, Literal):
-    #         literal_statements.add((s,p,o))
     literals = set()
     for _, _, o in rdf_graph.triples((None, None, None)):
         if isinstance(o, Literal):
             literals.add(o)
 
     return literals
+
+
+def get_literal_statements(rdf_graph: RDFGraph) -> Set[Tuple[URIRef, URIRef, Literal]]:
+    literal_statements = set()
+    for s, p, o in rdf_graph.triples((None, None, None)):
+        if isinstance(o, Literal):
+            literal_statements.add((s, p, o))
+
+    return literal_statements

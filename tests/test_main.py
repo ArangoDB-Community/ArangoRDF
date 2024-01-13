@@ -9,18 +9,12 @@ from rdflib import Literal, URIRef
 
 from arango_rdf import ArangoRDF
 
-from .conftest import (  # META_GRAPH_NON_LITERAL_STATEMENTS,
-    META_GRAPH_ALL_RESOURCES,
-    META_GRAPH_CONTEXTS,
-    META_GRAPH_CONTEXTUALIZE_STATEMENTS,
-    META_GRAPH_IDENTIFIED_RESOURCES,
-    META_GRAPH_LITERAL_STATEMENTS,
-    META_GRAPH_SIZE,
-    META_GRAPH_UNKNOWN_RESOURCES,
+from .conftest import (
     adbrdf,
     db,
     get_adb_graph_count,
     get_bnodes,
+    get_literal_statements,
     get_literals,
     get_meta_graph,
     get_rdf_graph,
@@ -45,10 +39,10 @@ def test_constructor() -> None:
     [("Case_1_RPT", get_rdf_graph("cases/1.ttl"))],
 )
 def test_rpt_case_1(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = len(rdf_graph)
-    num_urirefs = len(get_uris(rdf_graph))
-    num_bnodes = len(get_bnodes(rdf_graph))
-    num_literals = len(get_literals(rdf_graph))
+    NUM_TRIPLES = len(rdf_graph)
+    NUM_URIREFS = len(get_uris(rdf_graph))
+    NUM_BNODES = len(get_bnodes(rdf_graph))
+    NUM_LITERALS = len(get_literals(rdf_graph))
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _person = adbrdf.rdf_id_to_adb_key("http://example.com/Person")
@@ -63,8 +57,8 @@ def test_rpt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_person)
@@ -79,7 +73,7 @@ def test_rpt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
     assert len(rdf_graph_2) == len(rdf_graph)
-    assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_2.all_nodes())
     assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
 
@@ -91,10 +85,10 @@ def test_rpt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_2_1_RPT", get_rdf_graph("cases/2_1.ttl"))],
 )
 def test_rpt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = len(rdf_graph)
-    num_urirefs = len(get_uris(rdf_graph))
-    num_bnodes = len(get_bnodes(rdf_graph))
-    num_literals = len(get_literals(rdf_graph))
+    NUM_TRIPLES = len(rdf_graph)
+    NUM_URIREFS = len(get_uris(rdf_graph))
+    NUM_BNODES = len(get_bnodes(rdf_graph))
+    NUM_LITERALS = len(get_literals(rdf_graph))
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _label = adbrdf.rdf_id_to_adb_key(str(RDFS.label))
@@ -113,8 +107,8 @@ def test_rpt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_person)
@@ -136,7 +130,7 @@ def test_rpt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
     assert len(rdf_graph_2) == len(rdf_graph)
-    assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_2.all_nodes())
     assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
 
@@ -148,10 +142,10 @@ def test_rpt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_2_2_RPT", get_rdf_graph("cases/2_2.ttl"))],
 )
 def test_rpt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = len(rdf_graph)
-    num_urirefs = len(get_uris(rdf_graph))
-    num_bnodes = len(get_bnodes(rdf_graph))
-    num_literals = len(get_literals(rdf_graph))
+    NUM_TRIPLES = len(rdf_graph)
+    NUM_URIREFS = len(get_uris(rdf_graph))
+    NUM_BNODES = len(get_bnodes(rdf_graph))
+    NUM_LITERALS = len(get_literals(rdf_graph))
 
     _martin = adbrdf.rdf_id_to_adb_key("http://example.com/Martin")
     _mentorJoe = adbrdf.rdf_id_to_adb_key("http://example.com/mentorJoe")
@@ -166,8 +160,8 @@ def test_rpt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_martin)
@@ -182,7 +176,7 @@ def test_rpt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
     assert len(rdf_graph_2) == len(rdf_graph)
-    assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_2.all_nodes())
     assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
 
@@ -194,10 +188,10 @@ def test_rpt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_2_3_RPT", get_rdf_graph("cases/2_3.ttl"))],
 )
 def test_rpt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = len(rdf_graph)
-    num_urirefs = len(get_uris(rdf_graph))
-    num_bnodes = len(get_bnodes(rdf_graph))
-    num_literals = len(get_literals(rdf_graph))
+    NUM_TRIPLES = len(rdf_graph)
+    NUM_URIREFS = len(get_uris(rdf_graph))
+    NUM_BNODES = len(get_bnodes(rdf_graph))
+    NUM_LITERALS = len(get_literals(rdf_graph))
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _subPropertyOf = adbrdf.rdf_id_to_adb_key(str(RDFS.subPropertyOf))
@@ -214,8 +208,8 @@ def test_rpt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_person)
@@ -232,7 +226,7 @@ def test_rpt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
     assert len(rdf_graph_2) == len(rdf_graph)
-    assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_2.all_nodes())
     assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
 
@@ -244,10 +238,10 @@ def test_rpt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_2_4_RPT", get_rdf_graph("cases/2_4.ttl"))],
 )
 def test_rpt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = len(rdf_graph)
-    num_urirefs = len(get_uris(rdf_graph))
-    num_bnodes = len(get_bnodes(rdf_graph))
-    num_literals = len(get_literals(rdf_graph))
+    NUM_TRIPLES = len(rdf_graph)
+    NUM_URIREFS = len(get_uris(rdf_graph))
+    NUM_BNODES = len(get_bnodes(rdf_graph))
+    NUM_LITERALS = len(get_literals(rdf_graph))
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _relation = adbrdf.rdf_id_to_adb_key("http://example.com/relation")
@@ -262,8 +256,8 @@ def test_rpt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_tom)
@@ -278,7 +272,7 @@ def test_rpt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
     assert len(rdf_graph_2) == len(rdf_graph)
-    assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_2.all_nodes())
     assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
 
@@ -290,10 +284,10 @@ def test_rpt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_3_1_RPT", get_rdf_graph("cases/3_1.ttl"))],
 )
 def test_rpt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = len(rdf_graph)
-    num_urirefs = len(get_uris(rdf_graph))
-    num_bnodes = len(get_bnodes(rdf_graph))
-    num_literals = len(get_literals(rdf_graph))
+    NUM_TRIPLES = len(rdf_graph)
+    NUM_URIREFS = len(get_uris(rdf_graph))
+    NUM_BNODES = len(get_bnodes(rdf_graph))
+    NUM_LITERALS = len(get_literals(rdf_graph))
 
     _xsd_integer = "http://www.w3.org/2001/XMLSchema#integer"
     _book = adbrdf.rdf_id_to_adb_key("http://example.com/book")
@@ -313,8 +307,8 @@ def test_rpt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_book)
@@ -336,7 +330,7 @@ def test_rpt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
     assert len(rdf_graph_2) == len(rdf_graph)
-    assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_2.all_nodes())
     assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
 
@@ -348,10 +342,10 @@ def test_rpt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_3_2_RPT", get_rdf_graph("cases/3_2.ttl"))],
 )
 def test_rpt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = len(rdf_graph)
-    num_urirefs = len(get_uris(rdf_graph))
-    num_bnodes = len(get_bnodes(rdf_graph))
-    num_literals = len(get_literals(rdf_graph))
+    NUM_TRIPLES = len(rdf_graph)
+    NUM_URIREFS = len(get_uris(rdf_graph))
+    NUM_BNODES = len(get_bnodes(rdf_graph))
+    NUM_LITERALS = len(get_literals(rdf_graph))
 
     _book = adbrdf.rdf_id_to_adb_key("http://example.com/book")
     _title = adbrdf.rdf_id_to_adb_key("http://example.com/title")
@@ -366,8 +360,8 @@ def test_rpt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_book)
@@ -385,7 +379,7 @@ def test_rpt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), batch_size=1)
 
     assert len(rdf_graph_2) == len(rdf_graph)
-    assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_2.all_nodes())
     assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
 
@@ -397,10 +391,10 @@ def test_rpt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_4_RPT", get_rdf_graph("cases/4.ttl"))],
 )
 def test_rpt_case_4(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = len(rdf_graph)
-    num_urirefs = len(get_uris(rdf_graph))
-    num_bnodes = len(get_bnodes(rdf_graph))
-    num_literals = len(get_literals(rdf_graph))
+    NUM_TRIPLES = len(rdf_graph)
+    NUM_URIREFS = len(get_uris(rdf_graph))
+    NUM_BNODES = len(get_bnodes(rdf_graph))
+    NUM_LITERALS = len(get_literals(rdf_graph))
 
     list1 = URIRef("http://example.com/List1")
     contents = URIRef("http://example.com/contents")
@@ -428,8 +422,8 @@ def test_rpt_case_4(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_list1)
@@ -451,7 +445,7 @@ def test_rpt_case_4(name: str, rdf_graph: RDFGraph) -> None:
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
     assert len(rdf_graph_2) == len(rdf_graph)
-    assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_2.all_nodes())
 
     bnode_4 = rdf_graph_2.value(list1, contents)
     bnode_5 = rdf_graph_2.value(bnode_4, RDF.rest)
@@ -469,10 +463,10 @@ def test_rpt_case_4(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_5_RPT", get_rdf_graph("cases/5.ttl"))],
 )
 def test_rpt_case_5(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = len(rdf_graph)
-    num_urirefs = len(get_uris(rdf_graph))
-    num_bnodes = len(get_bnodes(rdf_graph))
-    num_literals = len(get_literals(rdf_graph))
+    NUM_TRIPLES = len(rdf_graph)
+    NUM_URIREFS = len(get_uris(rdf_graph))
+    NUM_BNODES = len(get_bnodes(rdf_graph))
+    NUM_LITERALS = len(get_literals(rdf_graph))
 
     bob = URIRef("http://example.com/bob")
     nationality = URIRef("http://example.com/nationality")
@@ -491,8 +485,8 @@ def test_rpt_case_5(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_bob)
@@ -507,7 +501,7 @@ def test_rpt_case_5(name: str, rdf_graph: RDFGraph) -> None:
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
     assert len(rdf_graph_2) == len(rdf_graph)
-    assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_2.all_nodes())
     bnode_2 = rdf_graph_2.value(bob, nationality)
     assert (bnode_2, country, Literal("Canada")) in rdf_graph_2
 
@@ -519,10 +513,10 @@ def test_rpt_case_5(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_6_RPT", get_rdf_graph("cases/6.trig"))],
 )
 def test_rpt_case_6(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = len(rdf_graph)
-    num_urirefs = len(get_uris(rdf_graph))
-    num_bnodes = len(get_bnodes(rdf_graph))
-    num_literals = len(get_literals(rdf_graph))
+    NUM_TRIPLES = len(rdf_graph)
+    NUM_URIREFS = len(get_uris(rdf_graph))
+    NUM_BNODES = len(get_bnodes(rdf_graph))
+    NUM_LITERALS = len(get_literals(rdf_graph))
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _subClassOf = adbrdf.rdf_id_to_adb_key(str(RDFS.subClassOf))
@@ -543,8 +537,8 @@ def test_rpt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     STATEMENT_COL = adb_graph.vertex_collection(f"{name}_Statement")
     e1 = STATEMENT_COL.get(str(FP64(f"{_monica}-{_type}-{_entity}")))
@@ -558,7 +552,7 @@ def test_rpt_case_6(name: str, rdf_graph: RDFGraph) -> None:
 
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
     assert len(rdf_graph_2) == len(rdf_graph)
-    assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_2.all_nodes())
     assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
 
@@ -570,10 +564,10 @@ def test_rpt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_7_RPT", get_rdf_graph("cases/7.ttl"))],
 )
 def test_rpt_case_7(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = len(rdf_graph)
-    num_urirefs = len(get_uris(rdf_graph))
-    num_bnodes = len(get_bnodes(rdf_graph))
-    num_literals = len(get_literals(rdf_graph))
+    NUM_TRIPLES = len(rdf_graph)
+    NUM_URIREFS = len(get_uris(rdf_graph))
+    NUM_BNODES = len(get_bnodes(rdf_graph))
+    NUM_LITERALS = len(get_literals(rdf_graph))
 
     adbrdf.rdf_to_arangodb_by_rpt(
         name,
@@ -582,13 +576,13 @@ def test_rpt_case_7(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
     assert len(rdf_graph_2) == len(rdf_graph)
-    assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_2.all_nodes())
     assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
 
@@ -600,10 +594,10 @@ def test_rpt_case_7(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_8_RPT", get_rdf_graph("cases/8.ttl"))],
 )
 def test_rpt_case_8(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = 2
-    num_urirefs = 2
-    num_bnodes = 0
-    num_literals = 1
+    NUM_TRIPLES = 2
+    NUM_URIREFS = 2
+    NUM_BNODES = 0
+    NUM_LITERALS = 1
 
     alice = URIRef("http://example.com/alice")
     bob = URIRef("http://example.com/bob")
@@ -629,8 +623,8 @@ def test_rpt_case_8(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_alice)
@@ -678,10 +672,10 @@ def test_rpt_case_8(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_9_RPT", get_rdf_graph("cases/9.ttl"))],
 )
 def test_rpt_case_9(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = 2
-    num_urirefs = 1
-    num_bnodes = 0
-    num_literals = 2
+    NUM_TRIPLES = 2
+    NUM_URIREFS = 1
+    NUM_BNODES = 0
+    NUM_LITERALS = 2
 
     mark = URIRef("http://example.com/mark")
     age = URIRef("http://example.com/age")
@@ -705,8 +699,8 @@ def test_rpt_case_9(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_mark)
@@ -755,10 +749,10 @@ def test_rpt_case_9(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_10_RPT", get_rdf_graph("cases/10.ttl"))],
 )
 def test_rpt_case_10(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = 2
-    num_urirefs = 3
-    num_bnodes = 0
-    num_literals = 0
+    NUM_TRIPLES = 2
+    NUM_URIREFS = 3
+    NUM_BNODES = 0
+    NUM_LITERALS = 0
 
     alice = URIRef("http://example.com/alice")
     bobshomepage = URIRef("http://example.com/bobshomepage")
@@ -781,8 +775,8 @@ def test_rpt_case_10(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_alice)
@@ -812,10 +806,10 @@ def test_rpt_case_10(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_11_1_RPT", get_rdf_graph("cases/11_1.ttl"))],
 )
 def test_rpt_case_11_1(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = 2
-    num_urirefs = 3
-    num_bnodes = 0
-    num_literals = 0
+    NUM_TRIPLES = 2
+    NUM_URIREFS = 3
+    NUM_BNODES = 0
+    NUM_LITERALS = 0
 
     alice = URIRef("http://example.com/alice")
     bobshomepage = URIRef("http://example.com/bobshomepage")
@@ -838,8 +832,8 @@ def test_rpt_case_11_1(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_alice)
@@ -869,10 +863,10 @@ def test_rpt_case_11_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_11_2_RPT", get_rdf_graph("cases/11_2.ttl"))],
 )
 def test_rpt_case_11_2(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = 3
-    num_urirefs = 3
-    num_bnodes = 0
-    num_literals = 1
+    NUM_TRIPLES = 3
+    NUM_URIREFS = 3
+    NUM_BNODES = 0
+    NUM_LITERALS = 1
 
     alice = URIRef("http://example.com/alice")
     friend = URIRef("http://example.com/friend")
@@ -898,8 +892,8 @@ def test_rpt_case_11_2(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_alice)
@@ -928,10 +922,10 @@ def test_rpt_case_11_2(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_12_1_RPT", get_rdf_graph("cases/12_1.ttl"))],
 )
 def test_rpt_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = 2
-    num_urirefs = 3
-    num_bnodes = 0
-    num_literals = 0
+    NUM_TRIPLES = 2
+    NUM_URIREFS = 3
+    NUM_BNODES = 0
+    NUM_LITERALS = 0
 
     mainpage = URIRef("http://example.com/mainPage")
     writer = URIRef("http://example.com/writer")
@@ -953,8 +947,8 @@ def test_rpt_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_alice)
@@ -984,10 +978,10 @@ def test_rpt_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_12_2_RPT", get_rdf_graph("cases/12_2.ttl"))],
 )
 def test_rpt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = 2
-    num_urirefs = 3
-    num_bnodes = 0
-    num_literals = 0
+    NUM_TRIPLES = 2
+    NUM_URIREFS = 3
+    NUM_BNODES = 0
+    NUM_LITERALS = 0
 
     lara = URIRef("http://example.com/lara")
     writer = URIRef("http://example.com/writer")
@@ -1009,8 +1003,8 @@ def test_rpt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_lara)
@@ -1038,10 +1032,10 @@ def test_rpt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_13_RPT", get_rdf_graph("cases/13.ttl"))],
 )
 def test_rpt_case_13(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = 3
-    num_urirefs = 4
-    num_bnodes = 0
-    num_literals = 0
+    NUM_TRIPLES = 3
+    NUM_URIREFS = 4
+    NUM_BNODES = 0
+    NUM_LITERALS = 0
 
     steve = URIRef("http://example.com/steve")
     position = URIRef("http://example.com/position")
@@ -1072,8 +1066,8 @@ def test_rpt_case_13(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_steve)
@@ -1135,10 +1129,10 @@ def test_rpt_case_13(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_14_1_RPT", get_rdf_graph("cases/14_1.ttl"))],
 )
 def test_rpt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = 2
-    num_urirefs = 1
-    num_bnodes = 0
-    num_literals = 2
+    NUM_TRIPLES = 2
+    NUM_URIREFS = 1
+    NUM_BNODES = 0
+    NUM_LITERALS = 2
 
     college_page = URIRef("http://example.com/college_page")
     subject = URIRef("http://example.com/subject")
@@ -1157,8 +1151,8 @@ def test_rpt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_college_page)
@@ -1184,10 +1178,10 @@ def test_rpt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_14_2_RPT", get_rdf_graph("cases/14_2.ttl"))],
 )
 def test_rpt_case_14_2(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = 4
-    num_urirefs = 2
-    num_bnodes = 0
-    num_literals = 2
+    NUM_TRIPLES = 4
+    NUM_URIREFS = 2
+    NUM_BNODES = 0
+    NUM_LITERALS = 2
 
     mary = URIRef("http://example.com/Mary")
     likes = URIRef("http://example.com/likes")
@@ -1217,8 +1211,8 @@ def test_rpt_case_14_2(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_mary)
@@ -1261,10 +1255,10 @@ def test_rpt_case_14_2(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_15_RPT", get_rdf_graph("cases/15.ttl"))],
 )
 def test_rpt_case_15(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = 4
-    num_urirefs = 2
-    num_bnodes = 0
-    num_literals = 2
+    NUM_TRIPLES = 4
+    NUM_URIREFS = 2
+    NUM_BNODES = 0
+    NUM_LITERALS = 2
 
     mary = URIRef("http://example.com/Mary")
     likes = URIRef("http://example.com/likes")
@@ -1296,8 +1290,8 @@ def test_rpt_case_15(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_mary)
@@ -1338,10 +1332,10 @@ def test_rpt_case_15(name: str, rdf_graph: RDFGraph) -> None:
     [("Meta_RPT", get_meta_graph())],
 )
 def test_rpt_meta(name: str, rdf_graph: RDFGraph) -> None:
-    num_triples = len(rdf_graph)
-    num_urirefs = len(get_uris(rdf_graph))
-    num_bnodes = len(get_bnodes(rdf_graph))
-    num_literals = len(get_literals(rdf_graph))
+    NUM_TRIPLES = len(rdf_graph)
+    NUM_URIREFS = len(get_uris(rdf_graph))
+    NUM_BNODES = len(get_bnodes(rdf_graph))
+    NUM_LITERALS = len(get_literals(rdf_graph))
 
     adbrdf.rdf_to_arangodb_by_rpt(
         name,
@@ -1351,40 +1345,54 @@ def test_rpt_meta(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
     assert len(rdf_graph_2) == len(rdf_graph)
-    assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_2.all_nodes())
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_2.all_nodes())
     assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
 
     db.delete_graph(name, drop_collections=True)
 
-    num_triples = META_GRAPH_SIZE + META_GRAPH_CONTEXTUALIZE_STATEMENTS
-    num_urirefs = META_GRAPH_ALL_RESOURCES
-    num_bnodes = 0
-    num_literals = META_GRAPH_LITERAL_STATEMENTS
-
     adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph_2,
         contextualize_graph=True,
         overwrite_graph=True,
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == num_urirefs + num_bnodes + num_literals
-    assert e_count == num_triples
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
 
     rdf_graph_3 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
 
-    assert len(rdf_graph_3) == len(rdf_graph)
-    assert num_urirefs + num_bnodes + num_literals == len(rdf_graph_3.all_nodes())
-    assert len(subtract_graphs(rdf_graph, rdf_graph_3)) == 0
-    assert len(subtract_graphs(rdf_graph_3, rdf_graph)) == 0
+    assert len(rdf_graph_3) == len(rdf_graph_2)
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_3.all_nodes())
+    assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
+    assert len(subtract_graphs(rdf_graph_3, rdf_graph_2)) == 0
+
+    rdf_graph_3 = adbrdf.load_meta_ontology(rdf_graph_3)
+    adbrdf.rdf_to_arangodb_by_rpt(
+        name,
+        rdf_graph_3,
+        contextualize_graph=True,
+        overwrite_graph=True,
+    )
+
+    v_count, e_count = get_adb_graph_count(name)
+    assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
+    assert e_count == NUM_TRIPLES
+
+    rdf_graph_4 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
+
+    assert len(rdf_graph_4) == len(rdf_graph_3)
+    assert NUM_URIREFS + NUM_BNODES + NUM_LITERALS == len(rdf_graph_4.all_nodes())
+    assert len(subtract_graphs(rdf_graph_3, rdf_graph_4)) == 0
+    assert len(subtract_graphs(rdf_graph_4, rdf_graph_3)) == 0
 
     db.delete_graph(name, drop_collections=True)
 
@@ -1393,9 +1401,9 @@ def test_rpt_meta(name: str, rdf_graph: RDFGraph) -> None:
     "name, rdf_graph",
     [("Case_1_PGT", get_rdf_graph("cases/1.ttl"))],
 )
-def test_pgt_case_1_a(name: str, rdf_graph: RDFGraph) -> None:
-    non_literal_statements = len(rdf_graph) - len(get_literals(rdf_graph))
-    unique_nodes = len(
+def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
+    NON_LITERAL_STATEMENTS = len(rdf_graph) - len(get_literal_statements(rdf_graph))
+    UNIQUE_NODES = len(
         get_uris(rdf_graph, include_predicates=True)
         | get_bnodes(rdf_graph, include_predicates=True)
     )
@@ -1407,8 +1415,8 @@ def test_pgt_case_1_a(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _person = adbrdf.rdf_id_to_adb_key("http://example.com/Person")
@@ -1458,8 +1466,8 @@ def test_pgt_case_1_a(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_2_1_PGT", get_rdf_graph("cases/2_1.ttl"))],
 )
 def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
-    non_literal_statements = len(rdf_graph) - len(get_literals(rdf_graph))
-    unique_nodes = len(
+    NON_LITERAL_STATEMENTS = len(rdf_graph) - len(get_literal_statements(rdf_graph))
+    UNIQUE_NODES = len(
         get_uris(rdf_graph, include_predicates=True)
         | get_bnodes(rdf_graph, include_predicates=True)
     )
@@ -1471,8 +1479,8 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _label = adbrdf.rdf_id_to_adb_key(str(RDFS.label))
@@ -1524,8 +1532,8 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_2_2_PGT", get_rdf_graph("cases/2_2.ttl"))],
 )
 def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
-    non_literal_statements = len(rdf_graph) - len(get_literals(rdf_graph))
-    unique_nodes = len(
+    NON_LITERAL_STATEMENTS = len(rdf_graph) - len(get_literal_statements(rdf_graph))
+    UNIQUE_NODES = len(
         get_uris(rdf_graph, include_predicates=True)
         | get_bnodes(rdf_graph, include_predicates=True)
     )
@@ -1533,8 +1541,8 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, overwrite_graph=True)
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     _alias = adbrdf.rdf_id_to_adb_key("http://example.com/alias")
     _mentorJoe = adbrdf.rdf_id_to_adb_key("http://example.com/mentorJoe")
@@ -1577,8 +1585,8 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_2_3_PGT", get_rdf_graph("cases/2_3.ttl"))],
 )
 def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
-    non_literal_statements = len(rdf_graph) - len(get_literals(rdf_graph))
-    unique_nodes = len(
+    NON_LITERAL_STATEMENTS = len(rdf_graph) - len(get_literal_statements(rdf_graph))
+    UNIQUE_NODES = len(
         get_uris(rdf_graph, include_predicates=True)
         | get_bnodes(rdf_graph, include_predicates=True)
     )
@@ -1586,8 +1594,8 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, overwrite_graph=True)
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _subPropertyOf = adbrdf.rdf_id_to_adb_key(str(RDFS.subPropertyOf))
@@ -1633,8 +1641,8 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_2_4_PGT", get_rdf_graph("cases/2_4.ttl"))],
 )
 def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
-    non_literal_statements = len(rdf_graph) - len(get_literals(rdf_graph))
-    unique_nodes = len(
+    NON_LITERAL_STATEMENTS = len(rdf_graph) - len(get_literal_statements(rdf_graph))
+    UNIQUE_NODES = len(
         get_uris(rdf_graph, include_predicates=True)
         | get_bnodes(rdf_graph, include_predicates=True)
     )
@@ -1643,8 +1651,8 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, overwrite_graph=True)
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _relation = adbrdf.rdf_id_to_adb_key("http://example.com/relation")
@@ -1687,8 +1695,8 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_3_1_PGT", get_rdf_graph("cases/3_1.ttl"))],
 )
 def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
-    non_literal_statements = len(rdf_graph) - len(get_literals(rdf_graph))
-    unique_nodes = len(
+    NON_LITERAL_STATEMENTS = len(rdf_graph) - len(get_literal_statements(rdf_graph))
+    UNIQUE_NODES = len(
         get_uris(rdf_graph, include_predicates=True)
         | get_bnodes(rdf_graph, include_predicates=True)
     )
@@ -1697,8 +1705,8 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, overwrite_graph=True)
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     _book = adbrdf.rdf_id_to_adb_key("http://example.com/book")
     _index = adbrdf.rdf_id_to_adb_key("http://example.com/index")
@@ -1741,8 +1749,8 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_3_2_PGT", get_rdf_graph("cases/3_2.ttl"))],
 )
 def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
-    non_literal_statements = len(rdf_graph) - len(get_literals(rdf_graph))
-    unique_nodes = len(
+    NON_LITERAL_STATEMENTS = len(rdf_graph) - len(get_literal_statements(rdf_graph))
+    UNIQUE_NODES = len(
         get_uris(rdf_graph, include_predicates=True)
         | get_bnodes(rdf_graph, include_predicates=True)
     )
@@ -1751,8 +1759,8 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, overwrite_graph=True)
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     _book = adbrdf.rdf_id_to_adb_key("http://example.com/book")
 
@@ -1874,8 +1882,8 @@ def test_pgt_case_5(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_6_PGT", get_rdf_graph("cases/6.trig"))],
 )
 def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
-    non_literal_statements = len(rdf_graph) - len(get_literals(rdf_graph))
-    unique_nodes = len(
+    NON_LITERAL_STATEMENTS = len(rdf_graph) - len(get_literal_statements(rdf_graph))
+    UNIQUE_NODES = len(
         get_uris(rdf_graph, include_predicates=True)
         | get_bnodes(rdf_graph, include_predicates=True)
     )
@@ -1887,8 +1895,8 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _subClassOf = adbrdf.rdf_id_to_adb_key(str(RDFS.subClassOf))
@@ -1948,8 +1956,8 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_7_PGT", get_rdf_graph("cases/7.ttl"))],
 )
 def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
-    non_literal_statements = len(rdf_graph) - len(get_literals(rdf_graph))
-    unique_nodes = len(
+    NON_LITERAL_STATEMENTS = len(rdf_graph) - len(get_literal_statements(rdf_graph))
+    UNIQUE_NODES = len(
         get_uris(rdf_graph, include_predicates=True)
         | get_bnodes(rdf_graph, include_predicates=True)
     )
@@ -1969,8 +1977,8 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _alice = adbrdf.rdf_id_to_adb_key("http://example.com/alice")
@@ -2056,8 +2064,8 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_8_PGT", get_rdf_graph("cases/8.ttl"))],
 )
 def test_pgt_case_8(name: str, rdf_graph: RDFGraph) -> None:
-    unique_nodes = 4
-    non_literal_statements = 1
+    UNIQUE_NODES = 4
+    NON_LITERAL_STATEMENTS = 1
 
     alice = URIRef("http://example.com/alice")
     bob = URIRef("http://example.com/bob")
@@ -2083,8 +2091,8 @@ def test_pgt_case_8(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     col = adb_graph.vertex_collection(f"{name}_UnknownResource")
     assert col.has(_alice)
@@ -2154,8 +2162,8 @@ def test_pgt_case_9(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_10_PGT", get_rdf_graph("cases/10.ttl"))],
 )
 def test_pgt_case_10(name: str, rdf_graph: RDFGraph) -> None:
-    unique_nodes = 5
-    non_literal_statements = 2
+    UNIQUE_NODES = 5
+    NON_LITERAL_STATEMENTS = 2
 
     alice = URIRef("http://example.com/alice")
     bobshomepage = URIRef("http://example.com/bobshomepage")
@@ -2179,8 +2187,8 @@ def test_pgt_case_10(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     col = adb_graph.vertex_collection(f"{name}_UnknownResource")
     assert col.has(_bobshomepage)
@@ -2246,8 +2254,8 @@ def test_pgt_case_10(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_11_1_PGT", get_rdf_graph("cases/11_1.ttl"))],
 )
 def test_pgt_case_11_1(name: str, rdf_graph: RDFGraph) -> None:
-    unique_nodes = 5
-    non_literal_statements = 2
+    UNIQUE_NODES = 5
+    NON_LITERAL_STATEMENTS = 2
 
     alice = URIRef("http://example.com/alice")
     bobshomepage = URIRef("http://example.com/bobshomepage")
@@ -2271,8 +2279,8 @@ def test_pgt_case_11_1(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     col = adb_graph.vertex_collection(f"{name}_UnknownResource")
     assert col.has(_bobshomepage)
@@ -2338,8 +2346,8 @@ def test_pgt_case_11_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_11_2_PGT", get_rdf_graph("cases/11_2.ttl"))],
 )
 def test_pgt_case_11_2(name: str, rdf_graph: RDFGraph) -> None:
-    unique_nodes = 6
-    non_literal_statements = 2
+    UNIQUE_NODES = 6
+    NON_LITERAL_STATEMENTS = 2
 
     alice = URIRef("http://example.com/alice")
     friend = URIRef("http://example.com/friend")
@@ -2365,8 +2373,8 @@ def test_pgt_case_11_2(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     col = adb_graph.vertex_collection(f"{name}_UnknownResource")
     assert col.has(_alice)
@@ -2433,8 +2441,8 @@ def test_pgt_case_11_2(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_12_1_PGT", get_rdf_graph("cases/12_1.ttl"))],
 )
 def test_pgt_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
-    unique_nodes = 5
-    non_literal_statements = 2
+    UNIQUE_NODES = 5
+    NON_LITERAL_STATEMENTS = 2
 
     mainpage = URIRef("http://example.com/mainPage")
     writer = URIRef("http://example.com/writer")
@@ -2457,8 +2465,8 @@ def test_pgt_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     col = adb_graph.vertex_collection(f"{name}_UnknownResource")
     assert col.has(_alice)
@@ -2527,8 +2535,8 @@ def test_pgt_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_12_2_PGT", get_rdf_graph("cases/12_2.ttl"))],
 )
 def test_pgt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
-    unique_nodes = 5
-    non_literal_statements = 2
+    UNIQUE_NODES = 5
+    NON_LITERAL_STATEMENTS = 2
 
     lara = URIRef("http://example.com/lara")
     writer = URIRef("http://example.com/writer")
@@ -2551,8 +2559,8 @@ def test_pgt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     col = adb_graph.vertex_collection("writer")
     assert col.has(_lara)
@@ -2620,8 +2628,8 @@ def test_pgt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_13_PGT", get_rdf_graph("cases/13.ttl"))],
 )
 def test_pgt_case_13(name: str, rdf_graph: RDFGraph) -> None:
-    unique_nodes = 7
-    non_literal_statements = 3
+    UNIQUE_NODES = 7
+    NON_LITERAL_STATEMENTS = 3
 
     steve = URIRef("http://example.com/steve")
     position = URIRef("http://example.com/position")
@@ -2653,8 +2661,8 @@ def test_pgt_case_13(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     col = adb_graph.vertex_collection(f"{name}_UnknownResource")
     assert col.has(_steve)
@@ -2734,8 +2742,8 @@ def test_pgt_case_13(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_14_1_PGT", get_rdf_graph("cases/14_1.ttl"))],
 )
 def test_pgt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
-    non_literal_statements = len(rdf_graph) - len(get_literals(rdf_graph))
-    unique_nodes = len(
+    NON_LITERAL_STATEMENTS = len(rdf_graph) - len(get_literal_statements(rdf_graph))
+    UNIQUE_NODES = len(
         get_uris(rdf_graph, include_predicates=True)
         | get_bnodes(rdf_graph, include_predicates=True)
     )
@@ -2755,8 +2763,8 @@ def test_pgt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     col = adb_graph.vertex_collection(f"{name}_UnknownResource")
     assert col.has(_college_page)
@@ -2800,8 +2808,8 @@ def test_pgt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_14_2_PGT", get_rdf_graph("cases/14_2.ttl"))],
 )
 def test_pgt_case_14_2(name: str, rdf_graph: RDFGraph) -> None:
-    unique_nodes = 4
-    non_literal_statements = 2
+    UNIQUE_NODES = 4
+    NON_LITERAL_STATEMENTS = 2
 
     mary = URIRef("http://example.com/Mary")
     likes = URIRef("http://example.com/likes")
@@ -2830,8 +2838,8 @@ def test_pgt_case_14_2(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     col = adb_graph.vertex_collection(f"{name}_UnknownResource")
     assert col.has(_mary)
@@ -2907,8 +2915,8 @@ def test_pgt_case_14_2(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_15_PGT", get_rdf_graph("cases/15.ttl"))],
 )
 def test_pgt_case_15(name: str, rdf_graph: RDFGraph) -> None:
-    unique_nodes = 5
-    non_literal_statements = 2
+    UNIQUE_NODES = 5
+    NON_LITERAL_STATEMENTS = 2
 
     mary = URIRef("http://example.com/Mary")
     likes = URIRef("http://example.com/likes")
@@ -2939,8 +2947,8 @@ def test_pgt_case_15(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
 
     col = adb_graph.vertex_collection(f"{name}_UnknownResource")
     assert col.has(_mary)
@@ -3017,43 +3025,115 @@ def test_pgt_case_15(name: str, rdf_graph: RDFGraph) -> None:
     [("Meta_PGT", get_meta_graph())],
 )
 def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
-    assert {str(sg.identifier) for sg in rdf_graph.contexts()} == META_GRAPH_CONTEXTS
+    META_GRAPH_CONTEXTS = {
+        "http://www.arangodb.com/",
+        "http://www.w3.org/2002/07/owl#",
+        "http://purl.org/dc/elements/1.1/",
+        "http://www.w3.org/2001/XMLSchema#",
+        "http://www.w3.org/2000/01/rdf-schema#",
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    }
 
-    unique_nodes = len(get_uris(rdf_graph, include_predicates=True))
-    non_literal_statements = len(rdf_graph) - len(get_literals(rdf_graph))
+    NON_LITERAL_STATEMENTS = len(rdf_graph) - len(get_literal_statements(rdf_graph))
+    UNIQUE_NODES = len(
+        get_uris(rdf_graph, include_predicates=True)
+        | get_bnodes(rdf_graph, include_predicates=True)
+    )
+
+    META_GRAPH_UNKNOWN_RESOURCES = 14
+
+    assert {str(sg.identifier) for sg in rdf_graph.contexts()} == META_GRAPH_CONTEXTS
 
     adbrdf.rdf_to_arangodb_by_pgt(
         name,
         rdf_graph,
-        contextualize_graph=True,
+        contextualize_graph=False,
         overwrite_graph=True,
     )
 
     v_count, e_count = get_adb_graph_count(name)
-    assert v_count == unique_nodes
-    assert e_count == non_literal_statements
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
     assert (
         db.collection(f"{name}_UnknownResource").count() == META_GRAPH_UNKNOWN_RESOURCES
     )
 
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(
-        name, type(rdf_graph)(), include_adb_col_statements=True
-    )
-    adb_col_statements = adbrdf.extract_adb_col_statements(
-        rdf_graph_2, keep_adb_col_statements_in_rdf_graph=False
+        name, type(rdf_graph)(), include_adb_v_col_statements=True
     )
 
-    assert len(rdf_graph_2) == len(rdf_graph) + META_GRAPH_CONTEXTUALIZE_STATEMENTS
-    assert len(adb_col_statements) == META_GRAPH_IDENTIFIED_RESOURCES
-    assert {
-        str(o)
-        for o in adb_col_statements.objects(subject=None, predicate=None, unique=True)
-    } == {"Class", "Property", "Ontology"}
+    # Meta Ontology Contexts (i.e RDF, RDFS, OWL, DC, ArangoDB)
+    for context in rdf_graph.contexts():
+        assert (
+            len(rdf_graph.get_context(context.identifier))
+            == len(rdf_graph_2.get_context(context.identifier))
+            > 0
+        )
+
+    # BNode Context
+    rdf_graph_contexts = {str(sg.identifier) for sg in rdf_graph.contexts()}
+    rdf_graph_2_contexts = {str(sg.identifier) for sg in rdf_graph_2.contexts()}
+    context_diff = rdf_graph_2_contexts - rdf_graph_contexts
+    assert len(context_diff) == 1
+    bnode_context = rdf_graph_2.get_context(BNode(context_diff.pop()))
+
+    assert len(bnode_context) == UNIQUE_NODES
+    adb_col_statements = adbrdf.extract_adb_col_statements(rdf_graph_2)
+    assert len(bnode_context) == 0
+
+    assert len(rdf_graph_2) == len(rdf_graph)
+    assert len(adb_col_statements) == UNIQUE_NODES
+    cols = {str(o) for o in adb_col_statements.objects(subject=None, predicate=None)}
+    assert cols == {"Class", "Property", "Ontology", f"{name}_UnknownResource"}
 
     assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
-    diff = subtract_graphs(rdf_graph_2, rdf_graph)
-    assert len(diff) == META_GRAPH_CONTEXTUALIZE_STATEMENTS
-    assert {str(sg.identifier) for sg in rdf_graph_2.contexts()} == META_GRAPH_CONTEXTS
+    assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
+
+    adbrdf.rdf_to_arangodb_by_pgt(
+        name,
+        rdf_graph_2,
+        contextualize_graph=True,
+        overwrite_graph=True,
+    )
+
+    v_count, e_count = get_adb_graph_count(name)
+    assert v_count == UNIQUE_NODES
+    assert e_count == NON_LITERAL_STATEMENTS
+    assert (
+        db.collection(f"{name}_UnknownResource").count() == META_GRAPH_UNKNOWN_RESOURCES
+    )
+
+    rdf_graph_3 = adbrdf.arangodb_graph_to_rdf(
+        name, type(rdf_graph_2)(), include_adb_v_col_statements=True
+    )
+
+    # Meta Ontology Contexts (i.e RDF, RDFS, OWL, DC, ArangoDB)
+    for context in rdf_graph.contexts():
+        assert (
+            len(rdf_graph.get_context(context.identifier))
+            == len(rdf_graph_3.get_context(context.identifier))
+            > 0
+        )
+
+    # BNode Context
+    rdf_graph_3_contexts = {str(sg.identifier) for sg in rdf_graph_3.contexts()}
+    context_diff = rdf_graph_3_contexts - rdf_graph_contexts
+    assert len(context_diff) == 1
+    bnode_context = rdf_graph_3.get_context(BNode(context_diff.pop()))
+
+    assert len(bnode_context) == UNIQUE_NODES
+    adb_col_statements_2 = adbrdf.extract_adb_col_statements(rdf_graph_3)
+    assert len(bnode_context) == 0
+
+    assert len(rdf_graph_3) == len(rdf_graph_2)
+    assert len(adb_col_statements_2) == UNIQUE_NODES
+    cols = {str(o) for o in adb_col_statements_2.objects(subject=None, predicate=None)}
+    assert cols == {"Class", "Property", "Ontology", f"{name}_UnknownResource"}
+
+    assert len(subtract_graphs(adb_col_statements, adb_col_statements_2)) == 0
+    assert len(subtract_graphs(adb_col_statements_2, adb_col_statements)) == 0
+    assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
+    assert len(subtract_graphs(rdf_graph_3, rdf_graph_2)) == 0
 
     db.delete_graph(name, drop_collections=True)
 

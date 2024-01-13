@@ -211,8 +211,10 @@ class ArangoRDF(AbstractArangoRDF):
         self.__rdf_graph = rdf_graph
         self.__graph_supports_quads = isinstance(self.__rdf_graph, RDFConjunctiveGraph)
 
-        self.__adb_col_statements = RDFGraph()
         self.__graph_ns = f"{self.db._conn._url_prefixes[0]}/{name}#"
+        self.__rdf_graph.bind("adb", self.__adb_ns)
+        self.__rdf_graph.bind(name, self.__graph_ns)
+
         self.__list_conversion = list_conversion_mode
         self.__infer_type_from_adb_v_col = infer_type_from_adb_v_col
         self.__include_adb_v_col_statements = include_adb_v_col_statements
@@ -300,12 +302,8 @@ class ArangoRDF(AbstractArangoRDF):
                 e_col_uri,
             )
 
-        rdf_graph = self.__rdf_graph + self.__adb_col_statements
-        rdf_graph.bind("adb", self.__adb_ns)
-        rdf_graph.bind(name, self.__graph_ns)
-
         logger.info(f"Created RDF '{name}' Graph")
-        return rdf_graph
+        return self.__rdf_graph
 
     def arangodb_collections_to_rdf(
         self,
@@ -597,6 +595,37 @@ class ArangoRDF(AbstractArangoRDF):
         bar_progress_task = bar_progress.add_task(name, total=rdf_graph_size)
         spinner_progress = get_import_spinner_progress("    ")
 
+        # TODO: Revisit
+        # if simplify_reified_triples:
+        # Extract all RDF statements whose predicate is in **reified_triple_blacklist**
+        # and store them in a separate RDF Graph.
+        # This is done to ensure that the ArangoDB Graph is not polluted with
+        # reified triple statements that are not meant to be stored as ArangoDB Edges.
+        # sparql = """
+        #     SELECT ?subject ?stmtSubject ?stmtPredicate ?stmtObject
+        #     WHERE {
+        #         ?subject rdf:type rdf:Statement .
+        #         ?subject rdf:subject ?stmtSubject .
+        #         ?subject rdf:predicate ?stmtPredicate .
+        #         ?subject rdf:object ?stmtObject .
+        #     }
+        # """
+
+        # reified_triple_key_map = {}
+        # self.__reified_subject_set = set()
+        # for reified_subject, s, p, o in rdf_graph.query(sparql):
+        #     self.__reified_subject_set.add(reified_subject)
+
+        #     rdf_graph.remove((reified_subject, RDF.type, RDF.Statement))
+        #     rdf_graph.remove((reified_subject, RDF.subject, s))
+        #     rdf_graph.remove((reified_subject, RDF.predicate, p))
+        #     rdf_graph.remove((reified_subject, RDF.object, o))
+        #     rdf_graph.add((s, p, o))
+
+        #     reified_triple_key_map[(s,p,o)] = self.rdf_id_to_adb_key(
+        #         str(reified_subject), reified_subject
+        #     )
+
         with Live(Group(bar_progress, spinner_progress)):
             for i, (s, p, o, *sg) in enumerate(statements((None, None, None)), 1):
                 bar_progress.advance(bar_progress_task)
@@ -613,7 +642,11 @@ class ArangoRDF(AbstractArangoRDF):
 
                 sg_str = self.__get_subgraph_str(sg)
                 self.__rpt_process_statement(
-                    s_meta, p, o_meta, sg_str, reified_triple_key
+                    s_meta,
+                    p,
+                    o_meta,
+                    sg_str,
+                    reified_triple_key,  # reified_triple_key_map.get((s,p,o))
                 )
 
                 # NOTE: Graph Contextualization is an experimental work-in-progress
@@ -1264,11 +1297,10 @@ class ArangoRDF(AbstractArangoRDF):
             self.__add_to_rdf_graph(term, RDF.type, v_col_uri)
 
         if self.__include_adb_v_col_statements:
-            self.__add_adb_col_statement(term, v_col)
+            self.__add_to_rdf_graph(term, self.adb_col_uri, Literal(v_col))
 
         if self.__include_adb_v_key_statements:
-            key = Literal(adb_v["_key"])
-            self.__add_to_rdf_graph(term, self.adb_key_uri, key)
+            self.__add_to_rdf_graph(term, self.adb_key_uri, Literal(adb_v["_key"]))
 
         return term
 
@@ -1616,7 +1648,7 @@ class ArangoRDF(AbstractArangoRDF):
         if (
             self.__simplify_reified_triples
             and (t, RDF.type, RDF.Statement) in self.__rdf_graph
-        ):
+        ):  # t in self.__reified_subject_set:
             t_col = self.__STATEMENT_COL
 
         elif type(t) is URIRef:
@@ -2226,7 +2258,9 @@ class ArangoRDF(AbstractArangoRDF):
         all_v_cols: Set[str] = set()
         non_orphan_v_cols: Set[str] = set()
 
-        for col in self.__adb_col_statements.objects(None, self.adb_col_uri, True):
+        for col in self.__adb_col_statements.objects(
+            None, self.adb_col_uri, unique=True
+        ):
             all_v_cols.add(str(col))
 
         adb_col_colblacklist = ["Statement", "List"]  # TODO: REVISIT
@@ -2362,105 +2396,6 @@ class ArangoRDF(AbstractArangoRDF):
 
         if _sg:
             self.__adb_docs[col][key]["_sub_graph_uri"] = _sg
-
-    def __infer_and_introspect_dr(
-        self,
-        p: URIRef,
-        p_key: str,
-        dr_meta: List[Tuple[RDFTerm, str, str, str, str]],
-        sg_str: str,
-        is_pgt: bool,
-    ) -> None:
-        """A helper method shared accross RDF to ArangoDB RPT & PGT to provide
-        Domain/Range (DR) Inference & Introspection.
-
-        DR Inference: Generate `RDF:type` statements for RDF Resources via the
-            `RDFS:Domain` & `RDFS:Range` statements of RDF Predicates.
-
-        DR Introspection: Generate `RDFS:Domain` & `RDFS:Range` statements for
-            RDF Predicates via the `RDF:type` statements of RDF Resources.
-
-        Uses the following instance variables:
-        - self.__type_map: A dictionary mapping the "natural" & "synthetic"
-            `RDF.Type` statements of every RDF Resource.
-            See `ArangoRDF.__combine_type_map_and_dr_map()` for more info.
-
-        - self.__predicate_scope: A dictionary mapping the Domain & Range
-            values of RDF Predicates. See `ArangoRDF.__build_predicate_scope()`
-            for more info.
-
-        :param p: The RDF Predicate Object.
-        :type p: URIRef
-        :param p_key: The ArangoDB Key of the RDF Predicate Object.
-        :type p_key: str
-        :param dr_meta: The Domain & Range Metadata associated to the
-            current (s,p,o) statement.
-        :type dr_meta: List[Tuple[URIRef | BNode | Literal, str, str, str]]
-        :param sg_str: The string representation of the Sub Graph URI
-            of the statement associated to the current predicate **p**.
-        :type sg_str: str
-        :param is_pgt: A flag to identify if this method call originates
-            from an PGT process or not.
-        :type is_pgt: bool
-        """
-        TYPE_COL = "type" if is_pgt else self.__STATEMENT_COL
-        CLASS_COL = "Class" if is_pgt else self.__URIREF_COL
-        P_COL = "Property" if is_pgt else self.__URIREF_COL
-
-        dr_map = {
-            "domain": (self.__rdfs_domain_str, self.__rdfs_domain_key),
-            "range": (self.__rdfs_range_str, self.__rdfs_range_key),
-        }
-
-        for t, t_col, t_key, t_label, dr_label in dr_meta:
-            if isinstance(t, Literal):
-                continue
-
-            DR_COL = dr_label if is_pgt else self.__STATEMENT_COL
-
-            # Domain/Range Inference
-            # TODO: REVISIT CONDITIONS FOR INFERENCE
-            # t_has_no_type_statement = len(type_map[t]) == 0
-            t_has_no_type_statement = (t, RDF.type, None) not in self.__rdf_graph
-            if t_has_no_type_statement:
-                for _, class_key in self.__predicate_scope[p][dr_label]:
-                    key = self.__hash(f"{t_key}-{self.__rdf_type_key}-{class_key}")
-                    self.__add_adb_edge(
-                        col=TYPE_COL,
-                        key=key,
-                        _from=f"{t_col}/{t_key}",
-                        _to=f"{CLASS_COL}/{class_key}",
-                        _uri=self.__rdf_type_str,
-                        _label="type",
-                        _sg=sg_str,
-                    )
-
-                if is_pgt:
-                    self.__e_col_map["type"]["from"].add(t_col)
-                    self.__e_col_map["type"]["to"].add("Class")
-
-            # Domain/Range Introspection
-            # TODO: REVISIT CONDITIONS FOR INTROSPECTION
-            # p_dr_not_in_graph = (p, RDFS[dr_label], None) not in self.__rdf_graph
-            # p_dr_not_in_meta_graph = (p, RDFS[dr_label], None) not in self.meta_graph
-            p_already_has_dr = dr_label in self.__predicate_scope[p]
-            p_used_in_meta_graph = (None, p, None) in self.__meta_graph
-            if self.__type_map[t] and not p_already_has_dr and not p_used_in_meta_graph:
-                dr_str, dr_key = dr_map[dr_label]
-
-                for class_str in self.__type_map[t]:
-                    # TODO: optimize class_key
-                    class_key = self.rdf_id_to_adb_key(class_str)
-                    key = self.__hash(f"{p_key}-{dr_key}-{class_key}")
-                    self.__add_adb_edge(
-                        col=DR_COL,
-                        key=key,
-                        _from=f"{P_COL}/{p_key}",
-                        _to=f"{CLASS_COL}/{class_key}",
-                        _uri=dr_str,
-                        _label=dr_label,
-                        _sg=sg_str,
-                    )
 
     def __build_explicit_type_map(self) -> TypeMap:
         """An RPT/PGT helper method used to build a dictionary mapping
@@ -2861,6 +2796,128 @@ class ArangoRDF(AbstractArangoRDF):
         dr_meta = [(*s_meta, "domain"), (*o_meta, "range")]
         self.__infer_and_introspect_dr(p, p_key, dr_meta, sg_str, is_pgt)
 
+    def __infer_and_introspect_dr(
+        self,
+        p: URIRef,
+        p_key: str,
+        dr_meta: List[Tuple[RDFTerm, str, str, str, str]],
+        sg_str: str,
+        is_pgt: bool,
+    ) -> None:
+        """A helper method shared accross RDF to ArangoDB RPT & PGT to provide
+        Domain/Range (DR) Inference & Introspection.
+
+        DR Inference: Generate `RDF:type` statements for RDF Resources via the
+            `RDFS:Domain` & `RDFS:Range` statements of RDF Predicates.
+
+        DR Introspection: Generate `RDFS:Domain` & `RDFS:Range` statements for
+            RDF Predicates via the `RDF:type` statements of RDF Resources.
+
+        Uses the following instance variables:
+        - self.__type_map: A dictionary mapping the "natural" & "synthetic"
+            `RDF.Type` statements of every RDF Resource.
+            See `ArangoRDF.__combine_type_map_and_dr_map()` for more info.
+
+        - self.__predicate_scope: A dictionary mapping the Domain & Range
+            values of RDF Predicates. See `ArangoRDF.__build_predicate_scope()`
+            for more info.
+
+        :param p: The RDF Predicate Object.
+        :type p: URIRef
+        :param p_key: The ArangoDB Key of the RDF Predicate Object.
+        :type p_key: str
+        :param dr_meta: The Domain & Range Metadata associated to the
+            current (s,p,o) statement.
+        :type dr_meta: List[Tuple[URIRef | BNode | Literal, str, str, str]]
+        :param sg_str: The string representation of the Sub Graph URI
+            of the statement associated to the current predicate **p**.
+        :type sg_str: str
+        :param is_pgt: A flag to identify if this method call originates
+            from an PGT process or not.
+        :type is_pgt: bool
+        """
+        TYPE_COL = "type" if is_pgt else self.__STATEMENT_COL
+        CLASS_COL = "Class" if is_pgt else self.__URIREF_COL
+        P_COL = "Property" if is_pgt else self.__URIREF_COL
+
+        dr_map = {
+            "domain": (self.__rdfs_domain_str, self.__rdfs_domain_key),
+            "range": (self.__rdfs_range_str, self.__rdfs_range_key),
+        }
+
+        for t, t_col, t_key, t_label, dr_label in dr_meta:
+            if isinstance(t, Literal):
+                continue
+
+            DR_COL = dr_label if is_pgt else self.__STATEMENT_COL
+
+            # Domain/Range Inference
+            # TODO: REVISIT CONDITIONS FOR INFERENCE
+            # t_has_no_type_statement = len(type_map[t]) == 0
+            t_has_no_type_statement = (t, RDF.type, None) not in self.__rdf_graph
+            if t_has_no_type_statement:
+                for _, class_key in self.__predicate_scope[p][dr_label]:
+                    key = self.__hash(f"{t_key}-{self.__rdf_type_key}-{class_key}")
+                    self.__add_adb_edge(
+                        col=TYPE_COL,
+                        key=key,
+                        _from=f"{t_col}/{t_key}",
+                        _to=f"{CLASS_COL}/{class_key}",
+                        _uri=self.__rdf_type_str,
+                        _label="type",
+                        _sg=sg_str,
+                    )
+
+                if is_pgt:
+                    self.__e_col_map["type"]["from"].add(t_col)
+                    self.__e_col_map["type"]["to"].add("Class")
+
+            # Domain/Range Introspection
+            # TODO: REVISIT CONDITIONS FOR INTROSPECTION
+            # p_dr_not_in_graph = (p, RDFS[dr_label], None) not in self.__rdf_graph
+            # p_dr_not_in_meta_graph = (p, RDFS[dr_label], None) not in self.meta_graph
+            p_already_has_dr = dr_label in self.__predicate_scope[p]
+            p_used_in_meta_graph = (None, p, None) in self.__meta_graph
+            if self.__type_map[t] and not p_already_has_dr and not p_used_in_meta_graph:
+                dr_str, dr_key = dr_map[dr_label]
+
+                for class_str in self.__type_map[t]:
+                    # TODO: optimize class_key
+                    class_key = self.rdf_id_to_adb_key(class_str)
+                    key = self.__hash(f"{p_key}-{dr_key}-{class_key}")
+                    self.__add_adb_edge(
+                        col=DR_COL,
+                        key=key,
+                        _from=f"{P_COL}/{p_key}",
+                        _to=f"{CLASS_COL}/{class_key}",
+                        _uri=dr_str,
+                        _label=dr_label,
+                        _sg=sg_str,
+                    )
+
+    def __add_adb_col_statement(
+        self,
+        subject: RDFTerm,
+        adb_col: str,
+        overwrite: bool = False,
+    ) -> None:
+        """Add a statement to **self.__adb_col_statements** of the form
+        (subject, URIRef("http://www.arangodb.com/collection"), Literal(adb_col)) .
+
+        :param subject: The RDF Subject.
+        :type subject: URIRef | BNode
+        :param adb_col: The ArangoDB Collection name.
+        :type adb_col: str
+        :param overwrite: If True, delete any existing statements of
+            the form (s, URIRef("http://www.arangodb.com/collection"), None).
+            Defaults to False.
+        :type overwrite: bool
+        """
+        if overwrite:
+            self.__adb_col_statements.remove((subject, self.adb_col_uri, None))
+
+        self.__adb_col_statements.add((subject, self.adb_col_uri, Literal(adb_col)))
+
     #############################
     # Private: ArangoDB <-> RDF #
     #############################
@@ -2893,26 +2950,3 @@ class ArangoRDF(AbstractArangoRDF):
             rdf_graph.remove(triple)
 
         return extract_graph
-
-    def __add_adb_col_statement(
-        self,
-        subject: RDFTerm,
-        adb_col: str,
-        overwrite: bool = False,
-    ) -> None:
-        """Add a statement to **self.__adb_col_statements** of the form
-        (subject, URIRef("http://www.arangodb.com/collection"), Literal(adb_col)) .
-
-        :param subject: The RDF Subject.
-        :type subject: URIRef | BNode
-        :param adb_col: The ArangoDB Collection name.
-        :type adb_col: str
-        :param overwrite: If True, delete any existing statements of
-            the form (s, URIRef("http://www.arangodb.com/collection"), None).
-            Defaults to False.
-        :type overwrite: bool
-        """
-        if overwrite:
-            self.__adb_col_statements.remove((subject, self.adb_col_uri, None))
-
-        self.__adb_col_statements.add((subject, self.adb_col_uri, Literal(adb_col)))
