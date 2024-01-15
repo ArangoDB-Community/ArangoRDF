@@ -947,7 +947,36 @@ class ArangoRDF(AbstractArangoRDF):
         if adb_key := self.__adb_key_statements.value(rdf_term, self.adb_key_uri):
             return str(adb_key)
 
-        return self.__hash(rdf_id)
+        return self.hash(rdf_id)
+
+    def hash(self, rdf_id: str) -> str:
+        """RDF -> ArangoDB: Hash an RDF Resource ID string into an ArangoDB Key via
+        some hashing function.
+
+        Current hashing function used: FarmHash
+
+        List of hashing functions tested & benchmarked:
+        - Built-in hash() function
+        - Hashlib MD5
+        - xxHash
+        - MurmurHash
+        - CityHash
+        - FarmHash
+
+        :param rdf_id: The string representation of an RDF Resource
+        :type rdf_id: str
+        :return: The ArangoDB _key equivalent of **rdf_id**
+        :rtype: str
+        """
+
+        # hash(rdf_id) # NOTE: not platform/session independent!
+        # hashlib.md5(rdf_id.encode()).hexdigest()
+        # xxhash.xxh64(rdf_id.encode()).hexdigest()
+        # mmh3.hash64(rdf_id, signed=False)[0]
+        # cityhash.CityHash64(item)
+        # farmhash.Fingerprint64(rdf_id)
+
+        return str(farmhash.Fingerprint64(rdf_id))
 
     def rdf_id_to_adb_label(self, rdf_id: str) -> str:
         """Return the suffix of an RDF URI. The suffix can (1)
@@ -1659,7 +1688,7 @@ class ArangoRDF(AbstractArangoRDF):
         p_label = self.rdf_id_to_adb_label(p_str)
 
         reified_triple_key = self.__reified_triple_key_map.get((s, p, o))
-        e_key = reified_triple_key or self.__hash(f"{s_key}-{p_key}-{o_key}")
+        e_key = reified_triple_key or self.hash(f"{s_key}-{p_key}-{o_key}")
 
         self.__add_adb_edge(
             col=self.__STATEMENT_COL,
@@ -1915,7 +1944,7 @@ class ArangoRDF(AbstractArangoRDF):
         p, _, p_key, p_label = p_meta
 
         reified_triple_key = self.__reified_triple_key_map.get((s, p, o))
-        e_key = reified_triple_key or self.__hash(f"{s_key}-{p_key}-{o_key}")
+        e_key = reified_triple_key or self.hash(f"{s_key}-{p_key}-{o_key}")
 
         self.__add_adb_edge(
             p_label,  # local name of predicate URI is used as the collection name
@@ -2287,35 +2316,6 @@ class ArangoRDF(AbstractArangoRDF):
 
         sg: RDFGraph = possible_sg[0]
         return str(sg.identifier)
-
-    def __hash(self, rdf_id: str) -> str:
-        """RDF -> ArangoDB: Hash an RDF Resource ID string into an ArangoDB Key via
-        some hashing function.
-
-        Current hashing function used: FarmHash
-
-        List of hashing functions tested & benchmarked:
-        - Built-in hash() function
-        - Hashlib MD5
-        - xxHash
-        - MurmurHash
-        - CityHash
-        - FarmHash
-
-        :param rdf_id: The string representation of an RDF Resource
-        :type rdf_id: str
-        :return: The ArangoDB _key equivalent of **rdf_id**
-        :rtype: str
-        """
-
-        # hash(rdf_id) # NOTE: not platform/session independent!
-        # hashlib.md5(rdf_id.encode()).hexdigest()
-        # xxhash.xxh64(rdf_id.encode()).hexdigest()
-        # mmh3.hash64(rdf_id, signed=False)[0]
-        # cityhash.CityHash64(item)
-        # farmhash.Fingerprint64(rdf_id)
-
-        return str(farmhash.Fingerprint64(rdf_id))
 
     def __add_adb_edge(
         self,
@@ -2776,7 +2776,7 @@ class ArangoRDF(AbstractArangoRDF):
 
             self.__add_adb_edge(
                 col=edge_col,
-                key=self.__hash(edge_key),
+                key=self.hash(edge_key),
                 _from=f"{_from_col}/{p_key}",
                 _to=f"{_to_col}/{self.__rdf_property_key}",
                 _uri=self.__rdf_type_str,
@@ -2849,7 +2849,7 @@ class ArangoRDF(AbstractArangoRDF):
             t_has_no_type_statement = (t, RDF.type, None) not in self.__rdf_graph
             if t_has_no_type_statement:
                 for _, class_key in self.__predicate_scope[p][dr_label]:
-                    key = self.__hash(f"{t_key}-{self.__rdf_type_key}-{class_key}")
+                    key = self.hash(f"{t_key}-{self.__rdf_type_key}-{class_key}")
                     self.__add_adb_edge(
                         col=TYPE_COL,
                         key=key,
@@ -2876,7 +2876,7 @@ class ArangoRDF(AbstractArangoRDF):
                 for class_str in self.__type_map[t]:
                     # TODO: optimize class_key
                     class_key = self.rdf_id_to_adb_key(class_str)
-                    key = self.__hash(f"{p_key}-{dr_key}-{class_key}")
+                    key = self.hash(f"{p_key}-{dr_key}-{class_key}")
                     self.__add_adb_edge(
                         col=DR_COL,
                         key=key,
