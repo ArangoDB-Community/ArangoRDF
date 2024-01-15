@@ -1,4 +1,3 @@
-import logging
 import os
 import subprocess
 from pathlib import Path
@@ -14,8 +13,8 @@ from rdflib import Literal, URIRef
 from arango_rdf import ArangoRDF
 
 db: StandardDatabase
-PROJECT_DIR = Path(__file__).parent.parent
 adbrdf: ArangoRDF
+PROJECT_DIR = Path(__file__).parent.parent
 
 
 def pytest_addoption(parser: Any) -> None:
@@ -49,7 +48,7 @@ def pytest_configure(config: Any) -> None:
     )
 
     global adbrdf
-    adbrdf = ArangoRDF(db, logging_lvl=logging.DEBUG)
+    adbrdf = ArangoRDF(db)
 
     if not db.has_graph("GameOfThrones"):
         arango_restore(con, "tests/data/adb/got_dump")
