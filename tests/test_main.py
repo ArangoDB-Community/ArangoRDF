@@ -618,7 +618,7 @@ def test_rpt_case_8(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -694,7 +694,7 @@ def test_rpt_case_9(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -770,7 +770,7 @@ def test_rpt_case_10(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -827,7 +827,7 @@ def test_rpt_case_11_1(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -887,7 +887,7 @@ def test_rpt_case_11_2(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -942,7 +942,7 @@ def test_rpt_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -998,7 +998,7 @@ def test_rpt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -1061,7 +1061,7 @@ def test_rpt_case_13(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -1146,7 +1146,7 @@ def test_rpt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -1206,7 +1206,7 @@ def test_rpt_case_14_2(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -1285,7 +1285,7 @@ def test_rpt_case_15(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -2086,7 +2086,7 @@ def test_pgt_case_8(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -2182,7 +2182,7 @@ def test_pgt_case_10(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -2274,7 +2274,7 @@ def test_pgt_case_11_1(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -2368,7 +2368,7 @@ def test_pgt_case_11_2(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -2460,7 +2460,7 @@ def test_pgt_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -2554,7 +2554,7 @@ def test_pgt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -2656,7 +2656,7 @@ def test_pgt_case_13(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -2758,7 +2758,7 @@ def test_pgt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -2833,7 +2833,7 @@ def test_pgt_case_14_2(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -2942,7 +2942,7 @@ def test_pgt_case_15(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -3370,7 +3370,7 @@ def test_adb_native_graph(name: str) -> None:
                 assert (edge, adbrdf.adb_key_uri, Literal(doc["_key"])) in rdf_graph
 
     ####################################################
-    adbrdf.rdf_to_arangodb_by_rpt(name, rdf_graph, overwrite_graph=True)
+    adbrdf.rdf_to_arangodb_by_rpt(name, rdf_graph + RDFGraph(), overwrite_graph=True)
 
     key_uri_triples = len({o for _, p, o in rdf_graph if p == adbrdf.adb_key_uri})
     rdf_star_triples = (

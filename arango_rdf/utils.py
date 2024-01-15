@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import DefaultDict, Dict, List, Set
+from typing import Any, DefaultDict, Dict, List, Set
 
 from rich.progress import (
     BarColumn,
@@ -19,6 +19,10 @@ formatter = logging.Formatter(
 )
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+
+
+def empty_func(*args: Any, **kwargs: Any) -> None:
+    pass
 
 
 def get_export_spinner_progress(text: str) -> Progress:
