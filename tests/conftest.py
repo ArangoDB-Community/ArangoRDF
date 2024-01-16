@@ -21,7 +21,7 @@ PROJECT_DIR = Path(__file__).parent.parent
 def pytest_addoption(parser: Any) -> None:
     parser.addoption("--url", action="store", default="http://localhost:8529")
     parser.addoption("--username", action="store", default="root")
-    parser.addoption("--password", action="store", default="test")
+    parser.addoption("--password", action="store", default="")
     parser.addoption("--dbName", action="store", default="_system")
 
 
