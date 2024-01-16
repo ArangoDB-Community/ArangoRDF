@@ -1349,11 +1349,13 @@ def test_rpt_case_15_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_15_2_RPT", get_rdf_graph("cases/15_2.ttl"))],
 )
 def test_rpt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
-    NUM_TRIPLES = 3
-    NUM_URIREFS = 2
+    NUM_TRIPLES = 4
+    NUM_URIREFS = 3
     NUM_BNODES = 0
     NUM_LITERALS = 1
 
+    foo = URIRef("http://example.com/foo")
+    bar = URIRef("http://example.com/bar")
     mary = URIRef("http://example.com/Mary")
     likes = URIRef("http://example.com/likes")
     matt = URIRef("http://example.com/Matt")
@@ -1362,6 +1364,8 @@ def test_rpt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
         "0.5", datatype=URIRef("http://www.w3.org/2001/XMLSchema#double")
     )
 
+    _foo = adbrdf.rdf_id_to_adb_key(str(foo))
+    _bar = adbrdf.rdf_id_to_adb_key(str(bar))
     _mary = adbrdf.rdf_id_to_adb_key(str(mary))
     _likes = adbrdf.rdf_id_to_adb_key(str(likes))
     _matt = adbrdf.rdf_id_to_adb_key(str(matt))
@@ -1381,6 +1385,7 @@ def test_rpt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_mary)
     assert URIREF_COL.has(_matt)
+    assert URIREF_COL.has(_bar)
 
     LITERAL_COL = adb_graph.vertex_collection(f"{name}_Literal")
     assert LITERAL_COL.has(_certainty_val)
@@ -1390,6 +1395,7 @@ def test_rpt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
     assert STATEMENT_COL.has(
         adbrdf.hash(f"{_mary_likes_matt_1}-{_certainty}-{_certainty_val}")
     )
+    assert STATEMENT_COL.has(adbrdf.hash(f"{_mary_likes_matt_1}-{_foo}-{_bar}"))
     assert STATEMENT_COL.has(_mary_likes_matt_2)
 
     v_count, e_count = get_adb_graph_count(name)
@@ -1402,6 +1408,7 @@ def test_rpt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
     assert (statement_1, RDF.predicate, likes) in rdf_graph_2
     assert (statement_1, RDF.object, matt) in rdf_graph_2
     assert (statement_1, certainty, certainty_val) in rdf_graph_2
+    assert (statement_1, foo, bar) in rdf_graph_2
     # NOTE: ASSERTION BELOW IS FLAKY
     # See `self.__rdf_graph.remove((subject, predicate, object))`
     # in `ArangoRDF__process_adb_edge`
@@ -3410,9 +3417,11 @@ def test_pgt_case_15_1(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_15_2_PGT", get_rdf_graph("cases/15_2.ttl"))],
 )
 def test_pgt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
-    UNIQUE_NODES = 4
-    NON_LITERAL_STATEMENTS = 2
+    UNIQUE_NODES = 6
+    NON_LITERAL_STATEMENTS = 3
 
+    foo = URIRef("http://example.com/foo")
+    bar = URIRef("http://example.com/bar")
     mary = URIRef("http://example.com/Mary")
     likes = URIRef("http://example.com/likes")
     matt = URIRef("http://example.com/Matt")
@@ -3421,6 +3430,8 @@ def test_pgt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
         "0.5", datatype=URIRef("http://www.w3.org/2001/XMLSchema#double")
     )
 
+    _foo = adbrdf.rdf_id_to_adb_key(str(foo))
+    _bar = adbrdf.rdf_id_to_adb_key(str(bar))
     _mary = adbrdf.rdf_id_to_adb_key(str(mary))
     _matt = adbrdf.rdf_id_to_adb_key(str(matt))
     _certainty = adbrdf.rdf_id_to_adb_key(str(certainty))
@@ -3449,6 +3460,9 @@ def test_pgt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
     assert col.get(_mary_likes_matt_1)["certainty"] == 0.5
     assert col.has(_mary_likes_matt_2)
 
+    col = adb_graph.edge_collection("foo")
+    assert col.has(adbrdf.hash(f"{_mary_likes_matt_1}-{_foo}-{_bar}"))
+
     v_count, e_count = get_adb_graph_count(name)
     assert v_count == UNIQUE_NODES
     assert e_count == NON_LITERAL_STATEMENTS
@@ -3460,7 +3474,11 @@ def test_pgt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
     assert (statement_1, RDF.predicate, likes) in rdf_graph_2
     assert (statement_1, RDF.object, matt) in rdf_graph_2
     assert (statement_1, certainty, certainty_val) in rdf_graph_2
-    assert (mary, likes, matt) in rdf_graph_2
+    assert (statement_1, foo, bar) in rdf_graph_2
+    # NOTE: ASSERTION BELOW IS FLAKY
+    # See `self.__rdf_graph.remove((subject, predicate, object))`
+    # in `ArangoRDF__process_adb_edge`
+    assert (mary, likes, matt) in rdf_graph_2, "Flaky assertion"
     assert len(rdf_graph_2) == len(rdf_graph)
 
     adb_key_statements = RDFGraph()

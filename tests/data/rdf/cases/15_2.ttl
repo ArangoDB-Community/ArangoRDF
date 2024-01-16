@@ -9,6 +9,7 @@
     rdf:subject ex:Mary;
     rdf:predicate ex:likes;
     rdf:object ex:Matt;
-    ex:certainty "0.5"^^xsd:double .
+    ex:certainty "0.5"^^xsd:double ;
+    ex:foo ex:bar .
 
 ex:Mary ex:likes ex:Matt .
