@@ -597,8 +597,8 @@ class ArangoRDF(AbstractArangoRDF):
         self.__reified_subject_predicate_map = {}
         if simplify_reified_triples:
             self.__parse_reified_triples(
-                lambda s, p, o, sg, reified_triple_key: self.__rpt_process_subject_predicate_object(
-                    s, p, o, sg, reified_triple_key, contextualize_statement_func
+                lambda s, p, o, sg, k: self.__rpt_process_subject_predicate_object(
+                    s, p, o, sg, k, contextualize_statement_func
                 )
             )
 
@@ -872,8 +872,8 @@ class ArangoRDF(AbstractArangoRDF):
         self.__reified_subject_predicate_map = {}
         if simplify_reified_triples:
             self.__parse_reified_triples(
-                lambda s, p, o, sg, reified_triple_key: self.__pgt_process_subject_predicate_object(
-                    s, p, o, sg, reified_triple_key, contextualize_statement_func
+                lambda s, p, o, sg, k: self.__pgt_process_subject_predicate_object(
+                    s, p, o, sg, k, contextualize_statement_func
                 )
             )
 
@@ -1382,6 +1382,9 @@ class ArangoRDF(AbstractArangoRDF):
             p = self.__uri_map.get(k, URIRef(f"{self.__graph_ns}{k}"))
             self.__adb_val_to_rdf_val(term, p, val, sg)
 
+            # if self.__include_adb_v_col_statements:
+            #     self.__add_to_rdf_graph(p, self.adb_col_uri, Literal("Property"))
+
     def __add_to_rdf_graph(
         self, s: RDFTerm, p: URIRef, o: RDFTerm, sg: Optional[URIRef] = None
     ) -> None:
@@ -1476,7 +1479,10 @@ class ArangoRDF(AbstractArangoRDF):
         self.__add_to_rdf_graph(edge_uri, RDF.object, o, sg)
 
         if self.__include_adb_e_key_statements:
-            self.__add_to_rdf_graph(edge_uri, self.adb_key_uri, Literal(edge_key), sg)
+            self.__add_to_rdf_graph(edge_uri, self.adb_key_uri, Literal(edge_key))
+
+        # if self.__include_adb_v_col_statements:
+        #     self.__add_to_rdf_graph(p, self.adb_col_uri, Literal("Property"))
 
     def __adb_val_to_rdf_val(
         self, s: RDFTerm, p: URIRef, val: Any, sg: Optional[URIRef] = None
