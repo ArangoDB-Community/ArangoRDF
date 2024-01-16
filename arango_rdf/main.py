@@ -1248,7 +1248,7 @@ class ArangoRDF(AbstractArangoRDF):
         term = self.__adb_doc_to_rdf_term(adb_v)
         self.__term_map[adb_v["_id"]] = term
 
-        if isinstance(term, Literal):
+        if type(term) is Literal:
             return term
 
         sg = URIRef(adb_v.get("_sub_graph_uri", "")) or None
@@ -1852,7 +1852,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         if prev_val is None:
             doc[key] = val
-        elif isinstance(prev_val, list):
+        elif type(prev_val) is list:
             prev_val.append(val)
         else:
             doc[key] = [prev_val, val]
@@ -1984,7 +1984,7 @@ class ArangoRDF(AbstractArangoRDF):
         if type(o) is Literal or self.__pgt_object_is_head_of_rdf_list(o):
             return
 
-        s, s_col, s_key, _ = s_meta
+        _, s_col, s_key, _ = s_meta
         p, _, p_key, p_label = p_meta
 
         e_key = reified_triple_key or self.hash(f"{s_key}-{p_key}-{o_key}")
@@ -2245,7 +2245,7 @@ class ArangoRDF(AbstractArangoRDF):
             # It is possible for the Container Membership Property
             # to be re-used in multiple statements (e.g rdf:li),
             # hence the reason why `value` can be a list or a single element.
-            value_as_list = value if isinstance(value, list) else [value]
+            value_as_list = value if type(value) is list else [value]
             for o in value_as_list:
                 self.__pgt_process_rdf_list_object(doc, s_meta, p_meta, o, sg)
 
@@ -2389,10 +2389,10 @@ class ArangoRDF(AbstractArangoRDF):
         sg = possible_sg[0]
         sg_identifier = sg.identifier if isinstance(sg, RDFGraph) else sg
 
-        if isinstance(sg_identifier, URIRef):
+        if type(sg_identifier) is URIRef:
             return str(sg_identifier)
 
-        if isinstance(sg_identifier, BNode):
+        if type(sg_identifier) is BNode:
             return ""  # TODO: Revisit
 
         raise ValueError("Sub Graph Identifier is not a URIRef or BNode.")
@@ -2918,7 +2918,7 @@ class ArangoRDF(AbstractArangoRDF):
         }
 
         for t, t_col, t_key, t_label, dr_label in dr_meta:
-            if isinstance(t, Literal):
+            if type(t) is Literal:
                 continue
 
             DR_COL = dr_label if is_pgt else self.__STATEMENT_COL
