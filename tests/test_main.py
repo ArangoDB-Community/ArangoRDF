@@ -1072,6 +1072,7 @@ def test_rpt_case_13(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph + RDFGraph(),
         overwrite_graph=True,
+        batch_size=1,
     )
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
@@ -1091,7 +1092,7 @@ def test_rpt_case_13(name: str, rdf_graph: RDFGraph) -> None:
     assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
     assert e_count == NUM_TRIPLES
 
-    rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
+    rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), batch_size=1)
 
     statement_1 = rdf_graph_2.value(predicate=RDF.predicate, object=position)
     assert (statement_1, RDF.subject, steve) in rdf_graph_2
@@ -1141,17 +1142,21 @@ def test_rpt_case_13(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_14_1_RPT", get_rdf_graph("cases/14_1.ttl"))],
 )
 def test_rpt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
-    NUM_TRIPLES = 2
-    NUM_URIREFS = 1
+    NUM_TRIPLES = 3
+    NUM_URIREFS = 2
     NUM_BNODES = 0
     NUM_LITERALS = 2
 
     college_page = URIRef("http://example.com/college_page")
+    college_page_2 = URIRef("http://example.com/college_page_2")
+    link = URIRef("http://example.com/link")
     subject = URIRef("http://example.com/subject")
     info_page = Literal("Info_Page")
     aau_page = Literal("aau_page")
 
     _college_page = adbrdf.rdf_id_to_adb_key(str(college_page))
+    _college_page_2 = adbrdf.rdf_id_to_adb_key(str(college_page_2))
+    _link = adbrdf.rdf_id_to_adb_key(str(link))
     _subject = adbrdf.rdf_id_to_adb_key(str(subject))
     _info_page = adbrdf.rdf_id_to_adb_key(str(info_page))
     _aau_page = adbrdf.rdf_id_to_adb_key(str(aau_page))
@@ -1160,10 +1165,12 @@ def test_rpt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph + RDFGraph(),
         overwrite_graph=True,
+        batch_size=1,
     )
 
     URIREF_COL = adb_graph.vertex_collection(f"{name}_URIRef")
     assert URIREF_COL.has(_college_page)
+    assert URIREF_COL.has(_college_page_2)
 
     LITERAL_COL = adb_graph.vertex_collection(f"{name}_Literal")
     assert LITERAL_COL.has(_info_page)
@@ -1172,6 +1179,7 @@ def test_rpt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
     STATEMENT_COL = adb_graph.edge_collection(f"{name}_Statement")
     assert STATEMENT_COL.has(adbrdf.hash(f"{_college_page}-{_subject}-{_info_page}"))
     assert STATEMENT_COL.has(adbrdf.hash(f"{_college_page}-{_subject}-{_aau_page}"))
+    assert STATEMENT_COL.has(adbrdf.hash(f"{_college_page}-{_link}-{_college_page_2}"))
 
     v_count, e_count = get_adb_graph_count(name)
     assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
@@ -2986,9 +2994,7 @@ def test_pgt_case_13(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name,
-        rdf_graph + RDFGraph(),
-        overwrite_graph=True,
+        name, rdf_graph + RDFGraph(), overwrite_graph=True, batch_size=1
     )
 
     col = adb_graph.vertex_collection(f"{name}_UnknownResource")
@@ -3012,7 +3018,7 @@ def test_pgt_case_13(name: str, rdf_graph: RDFGraph) -> None:
     assert v_count == UNIQUE_NODES
     assert e_count == NON_LITERAL_STATEMENTS
 
-    rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
+    rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)(), batch_size=1)
 
     statement_1 = rdf_graph_2.value(predicate=RDF.predicate, object=position)
     assert (statement_1, RDF.subject, steve) in rdf_graph_2
@@ -3093,22 +3099,31 @@ def test_pgt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     college_page = URIRef("http://example.com/college_page")
+    college_page_2 = URIRef("http://example.com/college_page_2")
+    link = URIRef("http://example.com/link")
     subject = URIRef("http://example.com/subject")
     info_page = Literal("Info_Page")
     aau_page = Literal("aau_page")
 
     _college_page = adbrdf.rdf_id_to_adb_key(str(college_page))
+    _college_page_2 = adbrdf.rdf_id_to_adb_key(str(college_page_2))
+    _link = adbrdf.rdf_id_to_adb_key(str(link))
     _subject = adbrdf.rdf_id_to_adb_key(str(subject))
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
         rdf_graph + RDFGraph(),
         overwrite_graph=True,
+        batch_size=1,
     )
 
     col = adb_graph.vertex_collection(f"{name}_UnknownResource")
     assert col.has(_college_page)
+    assert col.has(_college_page_2)
     assert set(col.get(_college_page)["subject"]) == {"Info_Page", "aau_page"}
+
+    col = adb_graph.vertex_collection("link")
+    assert col.has(adbrdf.hash(f"{_college_page}-{_link}-{_college_page_2}"))
 
     col = adb_graph.vertex_collection("Property")
     assert col.has(_subject)
