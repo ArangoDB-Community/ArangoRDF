@@ -1800,18 +1800,18 @@ class ArangoRDF(AbstractArangoRDF):
         # """
 
         # TODO: Revisit FILTER clauses
-        query = """
-            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        query = f"""
+            PREFIX rdf: <{RDF}>
 
             SELECT ?subject ?predicate
-            WHERE {
+            WHERE {{
                 ?subject ?predicate ?object .
                 FILTER isLiteral(?object)
-                FILTER NOT EXISTS { ?subject rdf:first ?anyObject }
-                FILTER NOT EXISTS { ?subject rdf:rest ?anyObject }
-                FILTER (!regex(str(?predicate), "^http://www.w3.org/1999/02/22-rdf-syntax-ns#_[0-9]+$"))
-                FILTER (!regex(str(?predicate), "^http://www.w3.org/1999/02/22-rdf-syntax-ns#li$"))
-            }
+                FILTER NOT EXISTS {{ ?subject rdf:first ?anyObject }}
+                FILTER NOT EXISTS {{ ?subject rdf:rest ?anyObject }}
+                FILTER (!regex(str(?predicate), "^{RDF}_[0-9]+$"))
+                FILTER (!regex(str(?predicate), "^{RDF}li$"))
+            }}
             GROUP BY ?subject ?predicate
         """
 
