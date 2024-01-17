@@ -52,7 +52,7 @@ def test_rpt_case_1(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -102,7 +102,7 @@ def test_rpt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -155,7 +155,7 @@ def test_rpt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -203,7 +203,7 @@ def test_rpt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -253,7 +253,7 @@ def test_rpt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -304,7 +304,7 @@ def test_rpt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -357,7 +357,7 @@ def test_rpt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -419,7 +419,7 @@ def test_rpt_case_4(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -481,7 +481,7 @@ def test_rpt_case_5(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -533,7 +533,7 @@ def test_rpt_case_6(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        get_rdf_graph("cases/6.trig"),
         overwrite_graph=True,
     )
 
@@ -1142,7 +1142,7 @@ def test_rpt_case_13(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_14_1_RPT", get_rdf_graph("cases/14_1.ttl"))],
 )
 def test_rpt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
-    NUM_TRIPLES = 3
+    NUM_TRIPLES = 4
     NUM_URIREFS = 2
     NUM_BNODES = 0
     NUM_LITERALS = 2
@@ -1425,16 +1425,16 @@ def test_rpt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_15_3_RPT", get_rdf_graph("cases/15_3.trig"))],
 )
 def test_rpt_case_15_3(name: str, rdf_graph: RDFGraph) -> None:
-    NUM_TRIPLES = 6
-    NUM_URIREFS = 2
-    NUM_BNODES = 0
-    NUM_LITERALS = 3
-
     # Reified Triple Simplification modifies the source graph,
     # so we must make a copy of the graph to test against
     rdf_graph_copy = RDFConjunctiveGraph()
     for quad in rdf_graph.quads((None, None, None, None)):
         rdf_graph_copy.add(quad)
+
+    NUM_TRIPLES = 6
+    NUM_URIREFS = 2
+    NUM_BNODES = 0
+    NUM_LITERALS = 3
 
     graph1 = "http://example.com/Graph1"
     graph2 = "http://example.com/Graph2"
@@ -1553,7 +1553,7 @@ def test_rpt_meta(name: str, rdf_graph: RDFGraph) -> None:
 
     adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph,
+        get_meta_graph(),
         contextualize_graph=False,
         overwrite_graph=True,
     )
@@ -1573,7 +1573,7 @@ def test_rpt_meta(name: str, rdf_graph: RDFGraph) -> None:
 
     adbrdf.rdf_to_arangodb_by_rpt(
         name,
-        rdf_graph_2,
+        rdf_graph,
         contextualize_graph=True,
         overwrite_graph=True,
     )
@@ -1624,7 +1624,7 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -1691,7 +1691,7 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -1759,7 +1759,9 @@ def test_pgt_case_2_2(name: str, rdf_graph: RDFGraph) -> None:
         | get_bnodes(rdf_graph, include_predicates=True)
     )
 
-    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, overwrite_graph=True)
+    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
+        name, rdf_graph + RDFGraph(), overwrite_graph=True
+    )
 
     _alias = adbrdf.rdf_id_to_adb_key("http://example.com/alias")
     _mentorJoe = adbrdf.rdf_id_to_adb_key("http://example.com/mentorJoe")
@@ -1812,7 +1814,9 @@ def test_pgt_case_2_3(name: str, rdf_graph: RDFGraph) -> None:
         | get_bnodes(rdf_graph, include_predicates=True)
     )
 
-    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, overwrite_graph=True)
+    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
+        name, rdf_graph + RDFGraph(), overwrite_graph=True
+    )
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _subPropertyOf = adbrdf.rdf_id_to_adb_key(str(RDFS.subPropertyOf))
@@ -1869,7 +1873,9 @@ def test_pgt_case_2_4(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     # RDF to ArangoDB
-    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, overwrite_graph=True)
+    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
+        name, rdf_graph + RDFGraph(), overwrite_graph=True
+    )
 
     _type = adbrdf.rdf_id_to_adb_key(str(RDF.type))
     _relation = adbrdf.rdf_id_to_adb_key("http://example.com/relation")
@@ -1923,7 +1929,9 @@ def test_pgt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     # RDF to ArangoDB
-    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, overwrite_graph=True)
+    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
+        name, rdf_graph + RDFGraph(), overwrite_graph=True
+    )
 
     _book = adbrdf.rdf_id_to_adb_key("http://example.com/book")
     _index = adbrdf.rdf_id_to_adb_key("http://example.com/index")
@@ -1986,7 +1994,9 @@ def test_pgt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
     )
 
     # RDF to ArangoDB
-    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, overwrite_graph=True)
+    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
+        name, rdf_graph + RDFGraph(), overwrite_graph=True
+    )
 
     _book = adbrdf.rdf_id_to_adb_key("http://example.com/book")
 
@@ -2026,7 +2036,7 @@ def test_pgt_case_4(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -2093,7 +2103,7 @@ def test_pgt_case_5(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -2137,7 +2147,7 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        get_rdf_graph("cases/6.trig"),
         overwrite_graph=True,
     )
 
@@ -2398,7 +2408,10 @@ def test_pgt_case_8(name: str, rdf_graph: RDFGraph) -> None:
     assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph_3, overwrite_graph=True, simplify_reified_triples=False
+        name,
+        rdf_graph_3 + RDFGraph(),
+        overwrite_graph=True,
+        simplify_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -2516,7 +2529,10 @@ def test_pgt_case_10(name: str, rdf_graph: RDFGraph) -> None:
     assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph_3, overwrite_graph=True, simplify_reified_triples=False
+        name,
+        rdf_graph_3 + RDFGraph(),
+        overwrite_graph=True,
+        simplify_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -2622,7 +2638,10 @@ def test_pgt_case_11_1(name: str, rdf_graph: RDFGraph) -> None:
     assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph_3, overwrite_graph=True, simplify_reified_triples=False
+        name,
+        rdf_graph_3 + RDFGraph(),
+        overwrite_graph=True,
+        simplify_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -2731,7 +2750,10 @@ def test_pgt_case_11_2(name: str, rdf_graph: RDFGraph) -> None:
     assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph_3, overwrite_graph=True, simplify_reified_triples=False
+        name,
+        rdf_graph_3 + RDFGraph(),
+        overwrite_graph=True,
+        simplify_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -2838,7 +2860,10 @@ def test_pgt_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
     assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph_3, overwrite_graph=True, simplify_reified_triples=False
+        name,
+        rdf_graph_3 + RDFGraph(),
+        overwrite_graph=True,
+        simplify_reified_triples=False,
     )
 
     assert not adb_graph.has_vertex_collection("Statement")
@@ -2946,7 +2971,10 @@ def test_pgt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
     assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph_3, overwrite_graph=True, simplify_reified_triples=False
+        name,
+        rdf_graph_3 + RDFGraph(),
+        overwrite_graph=True,
+        simplify_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -3071,7 +3099,10 @@ def test_pgt_case_13(name: str, rdf_graph: RDFGraph) -> None:
     assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph_3, overwrite_graph=True, simplify_reified_triples=False
+        name,
+        rdf_graph_3 + RDFGraph(),
+        overwrite_graph=True,
+        simplify_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -3270,7 +3301,10 @@ def test_pgt_case_14_2(name: str, rdf_graph: RDFGraph) -> None:
     assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph_3, overwrite_graph=True, simplify_reified_triples=False
+        name,
+        rdf_graph_3 + RDFGraph(),
+        overwrite_graph=True,
+        simplify_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -3393,7 +3427,10 @@ def test_pgt_case_15_1(name: str, rdf_graph: RDFGraph) -> None:
     assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph_3, overwrite_graph=True, simplify_reified_triples=False
+        name,
+        rdf_graph_3 + RDFGraph(),
+        overwrite_graph=True,
+        simplify_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -3512,7 +3549,10 @@ def test_pgt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
     assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph_3, overwrite_graph=True, simplify_reified_triples=False
+        name,
+        rdf_graph_3 + RDFGraph(),
+        overwrite_graph=True,
+        simplify_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -3542,14 +3582,14 @@ def test_pgt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
     [("Case_15_3_PGT", get_rdf_graph("cases/15_3.trig"))],
 )
 def test_pgt_case_15_3(name: str, rdf_graph: RDFGraph) -> None:
-    UNIQUE_NODES = 4
-    NON_LITERAL_STATEMENTS = 3
-
     # Reified Triple Simplification modifies the source graph,
     # so we must make a copy of the graph to test against
     rdf_graph_copy = RDFConjunctiveGraph()
     for quad in rdf_graph.quads((None, None, None, None)):
         rdf_graph_copy.add(quad)
+
+    UNIQUE_NODES = 4
+    NON_LITERAL_STATEMENTS = 3
 
     graph1 = "http://example.com/Graph1"
     graph2 = "http://example.com/Graph2"
@@ -3669,8 +3709,12 @@ def test_pgt_case_15_3(name: str, rdf_graph: RDFGraph) -> None:
     assert len(subtract_graphs(rdf_graph_3, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
 
+    rdf_graph_3_copy = RDFConjunctiveGraph()
+    for quad in rdf_graph_3.quads((None, None, None, None)):
+        rdf_graph_3_copy.add(quad)
+
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph_3, overwrite_graph=True, simplify_reified_triples=False
+        name, rdf_graph_3_copy, overwrite_graph=True, simplify_reified_triples=False
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -3721,7 +3765,7 @@ def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
 
     adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        get_meta_graph(),
         contextualize_graph=False,
         overwrite_graph=True,
     )
@@ -3766,7 +3810,7 @@ def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
 
     adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph_2,
+        get_meta_graph(),
         contextualize_graph=True,
         overwrite_graph=True,
     )
@@ -3820,7 +3864,7 @@ def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
 def test_pgt_collection(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -3888,7 +3932,7 @@ def test_pgt_collection(name: str, rdf_graph: RDFGraph) -> None:
 def test_pgt_container(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph,
+        rdf_graph + RDFGraph(),
         overwrite_graph=True,
     )
 
@@ -3907,8 +3951,18 @@ def test_pgt_container(name: str, rdf_graph: RDFGraph) -> None:
         18,
     ]
     assert "planets" not in doc
-
     assert adb_graph.edge_collection("planets").count() == 4
+
+    def flatten(li: List[Any]) -> List[Any]:
+        return [
+            item
+            for sublist in li
+            for item in (flatten(sublist) if isinstance(sublist, list) else [sublist])
+        ]
+
+    assert "more_numbers" in doc
+    assert len(doc["more_numbers"]) == 2
+    assert set(flatten(doc["more_numbers"])) == {1, 2, 3, 4, 5}
 
     # ArangoDB to RDF
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(
@@ -3920,11 +3974,13 @@ def test_pgt_container(name: str, rdf_graph: RDFGraph) -> None:
     doc = URIRef("http://example.com/Doc")
     planets = URIRef("http://example.com/planets")
     numbers = URIRef("http://example.com/numbers")
+    more_numbers = URIRef("http://example.com/more_numbers")
 
     assert (doc, numbers, None) in rdf_graph_2
     assert (doc, planets, None) in rdf_graph_2
+    assert (doc, more_numbers, None) in rdf_graph_2
     # TODO: Revisit magic number
-    assert len(rdf_graph_2) == 42
+    assert len(rdf_graph_2) == 51
 
     db.delete_graph(name, drop_collections=True)
 
@@ -4154,10 +4210,10 @@ def test_adb_native_graph(
 )
 def test_adb_key_uri(name: str, rdf_graph: RDFGraph) -> None:
     adb_graph_rpt = adbrdf.rdf_to_arangodb_by_rpt(
-        f"{name}_RPT", rdf_graph, overwrite_graph=True
+        f"{name}_RPT", rdf_graph + RDFGraph(), overwrite_graph=True
     )
     adb_graph_pgt = adbrdf.rdf_to_arangodb_by_pgt(
-        f"{name}_PGT", rdf_graph, overwrite_graph=True
+        f"{name}_PGT", rdf_graph + RDFGraph(), overwrite_graph=True
     )
 
     _bob = "1"
