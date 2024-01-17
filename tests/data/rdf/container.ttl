@@ -66,3 +66,17 @@ ex:Doc ex:planets [
         ]
     ]
 ] .
+
+ex:Doc ex:more_numbers [
+    rdf:li 1;
+    rdf:li [
+        rdf:li 2;
+        rdf:li [
+            rdf:li 3;
+            rdf:li [
+                rdf:li 4;
+                rdf:li 5
+            ]
+        ]
+    ]
+] .
