@@ -1402,6 +1402,7 @@ def test_rpt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
     assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
     assert e_count == NUM_TRIPLES
 
+    # breakpoint()
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
     statement_1 = rdf_graph_2.value(predicate=certainty, object=certainty_val)
     assert (statement_1, RDF.subject, mary) in rdf_graph_2
@@ -1409,6 +1410,7 @@ def test_rpt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
     assert (statement_1, RDF.object, matt) in rdf_graph_2
     assert (statement_1, certainty, certainty_val) in rdf_graph_2
     assert (statement_1, foo, bar) in rdf_graph_2
+    # breakpoint()
     # NOTE: ASSERTION BELOW IS FLAKY
     # See `self.__rdf_graph.remove((subject, predicate, object))`
     # in `ArangoRDF__process_adb_edge`
@@ -3151,6 +3153,8 @@ def test_pgt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
     assert (college_page, subject, None) in rdf_graph_3
     assert (None, RDF.first, info_page) in rdf_graph_3
     assert (None, RDF.first, aau_page) in rdf_graph_3
+    assert (college_page_2, subject, info_page) in rdf_graph_3
+    assert (college_page, link, college_page_2) in rdf_graph_3
 
     rdf_graph_4 = adbrdf.arangodb_graph_to_rdf(
         name, type(rdf_graph)(), list_conversion_mode="container"
@@ -3160,6 +3164,8 @@ def test_pgt_case_14_1(name: str, rdf_graph: RDFGraph) -> None:
     assert (bnode, None, aau_page) in rdf_graph_4
     assert (bnode, URIRef(f"{RDF}_1"), None) in rdf_graph_4
     assert (bnode, URIRef(f"{RDF}_2"), None) in rdf_graph_4
+    assert (college_page_2, subject, info_page) in rdf_graph_3
+    assert (college_page, link, college_page_2) in rdf_graph_4
 
     with pytest.raises(ValueError):
         adbrdf.arangodb_graph_to_rdf(
