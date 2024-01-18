@@ -4012,19 +4012,20 @@ def test_adb_doc_with_dict_property(name: str) -> None:
         rdf_graph, keep_adb_col_statements_in_rdf_graph=False
     )
 
-    adb_graph_namespace = f"{db._conn._url_prefixes[0]}/{name}#"
-    test_doc = URIRef(f"{adb_graph_namespace}1")
+    test_doc_namespace = f"{db._conn._url_prefixes[0]}/{name}/TestDoc"
+    test_doc = URIRef(f"{test_doc_namespace}#1")
 
     assert len(adb_col_statements) == 1
-    assert (test_doc, URIRef(f"{adb_graph_namespace}val"), None) in rdf_graph
-    assert (None, URIRef(f"{adb_graph_namespace}sub_val_1"), Literal(1)) in rdf_graph
-    assert (None, URIRef(f"{adb_graph_namespace}sub_val_2"), None) in rdf_graph
-    assert (None, URIRef(f"{adb_graph_namespace}sub_val_3"), Literal(3)) in rdf_graph
-    assert (None, URIRef(f"{adb_graph_namespace}sub_val_4"), None) in rdf_graph
+    assert (test_doc, None, None) in rdf_graph
+    assert (test_doc, URIRef(f"{test_doc_namespace}#val"), None) in rdf_graph
+    assert (None, URIRef(f"{test_doc_namespace}#sub_val_1"), None) in rdf_graph
+    assert (None, URIRef(f"{test_doc_namespace}#sub_val_2"), None) in rdf_graph
+    assert (None, URIRef(f"{test_doc_namespace}#sub_val_3"), Literal(3)) in rdf_graph
+    assert (None, URIRef(f"{test_doc_namespace}#sub_val_4"), None) in rdf_graph
     assert (None, RDF.first, Literal(4)) in rdf_graph
-    assert (None, URIRef(f"{adb_graph_namespace}sub_val_5"), None) in rdf_graph
-    assert (None, URIRef(f"{adb_graph_namespace}sub_val_6"), Literal(6)) in rdf_graph
-    assert (None, URIRef(f"{adb_graph_namespace}sub_val_7"), Literal(7)) in rdf_graph
+    assert (None, URIRef(f"{test_doc_namespace}#sub_val_5"), None) in rdf_graph
+    assert (None, URIRef(f"{test_doc_namespace}#sub_val_6"), Literal(6)) in rdf_graph
+    assert (None, URIRef(f"{test_doc_namespace}#sub_val_7"), Literal(7)) in rdf_graph
     # TODO: Revisit magic number
     assert len(rdf_graph) == 14
 
@@ -4087,22 +4088,19 @@ def test_adb_native_graph(
         rdf_graph, keep_adb_key_statements_in_rdf_graph=False
     )
 
-    doc_map: Dict[str, str] = {}
-    adb_graph_namespace = f"{db._conn._url_prefixes[0]}/{name}#"
+    adb_graph_namespace = f"{db._conn._url_prefixes[0]}/{name}"
 
     doc: Dict[str, Any]
     for v_col in adb_graph.vertex_collections():
-        v_col_uri = URIRef(f"{adb_graph_namespace}{v_col}")
+        v_col_uri = URIRef(f"{adb_graph_namespace}/{v_col}")
 
         for doc in db.collection(v_col):
-            doc_map[doc["_id"]] = doc["_key"]
-
-            term = URIRef(f"{adb_graph_namespace}{doc['_key']}")
+            term = URIRef(f"{adb_graph_namespace}/{v_col}#{doc['_key']}")
             assert (term, RDF.type, v_col_uri) in rdf_graph
 
             for k, _ in doc.items():
                 if k not in ["_key", "_id", "_rev"]:
-                    property = URIRef(f"{adb_graph_namespace}{k}")
+                    property = URIRef(f"{adb_graph_namespace}/{v_col}#{k}")
                     assert (term, property, None) in rdf_graph
 
             assert (term, adbrdf.adb_col_uri, Literal(v_col)) in adb_col_statements
@@ -4114,18 +4112,20 @@ def test_adb_native_graph(
 
     for e_d in adb_graph.edge_definitions():
         e_col = e_d["edge_collection"]
-        e_col_uri = URIRef(f"{adb_graph_namespace}{e_col}")
+        e_col_uri = URIRef(f"{adb_graph_namespace}/{e_col}")
 
         for doc in db.collection(e_col):
-            subject = URIRef(f"{adb_graph_namespace}{doc_map[doc['_from']]}")
-            object = URIRef(f"{adb_graph_namespace}{doc_map[doc['_to']]}")
+            from_v_col, from_v_key = doc["_from"].split("/")
+            to_v_col, to_v_key = doc["_to"].split("/")
+            subject = URIRef(f"{adb_graph_namespace}/{from_v_col}#{from_v_key}")
+            object = URIRef(f"{adb_graph_namespace}/{to_v_col}#{to_v_key}")
 
             edge_has_metadata = False
-            edge = URIRef(f"{adb_graph_namespace}{doc['_key']}")
+            edge = URIRef(f"{adb_graph_namespace}/{e_col}#{doc['_key']}")
             for k, _ in doc.items():
                 if k not in ["_key", "_id", "_rev", "_from", "_to"]:
                     edge_has_metadata = True
-                    property = URIRef(f"{adb_graph_namespace}{k}")
+                    property = URIRef(f"{adb_graph_namespace}/{e_col}#{k}")
                     assert (edge, property, None) in rdf_graph
 
             if edge_has_metadata:

@@ -227,9 +227,9 @@ class ArangoRDF(AbstractArangoRDF):
         self.__rdf_graph = rdf_graph
         self.__graph_supports_quads = isinstance(self.__rdf_graph, RDFConjunctiveGraph)
 
-        self.__graph_ns = f"{self.db._conn._url_prefixes[0]}/{name}#"
+        self.__graph_ns = f"{self.db._conn._url_prefixes[0]}/{name}"
         self.__rdf_graph.bind("adb", self.__adb_ns)
-        self.__rdf_graph.bind(name, self.__graph_ns)
+        self.__rdf_graph.bind(name, f"{self.__graph_ns}/")
 
         self.__list_conversion = list_conversion_mode
         self.__infer_type_from_adb_v_col = infer_type_from_adb_v_col
@@ -281,7 +281,9 @@ class ArangoRDF(AbstractArangoRDF):
 
             logger.debug(f"Preparing '{v_col}' vertices")
 
-            v_col_uri = URIRef(f"{self.__graph_ns}{v_col}")
+            v_col_namespace = f"{self.__graph_ns}/{v_col}"
+            v_col_uri = URIRef(v_col_namespace)
+            self.__rdf_graph.bind(v_col, f"{v_col_namespace}#")
 
             # 1. Fetch ArangoDB vertices
             v_col_cursor, v_col_size = self.__fetch_adb_docs(v_col)
@@ -303,7 +305,9 @@ class ArangoRDF(AbstractArangoRDF):
         for e_col in adb_e_cols:
             logger.debug(f"Preparing '{e_col}' edges")
 
-            e_col_uri = URIRef(f"{self.__graph_ns}{e_col}")
+            e_col_namespace = f"{self.__graph_ns}/{e_col}"
+            e_col_uri = URIRef(e_col_namespace)
+            self.__rdf_graph.bind(e_col, f"{e_col_namespace}#")
 
             # 1. Fetch ArangoDB edges
             e_col_cursor, e_col_size = self.__fetch_adb_docs(e_col)
@@ -1251,14 +1255,14 @@ class ArangoRDF(AbstractArangoRDF):
         :return: The RDF representation of the ArangoDB vertex.
         :rtype: URIRef | BNode | Literal
         """
-        term = self.__adb_doc_to_rdf_term(adb_v)
+        term = self.__adb_doc_to_rdf_term(adb_v, v_col)
         self.__term_map[adb_v["_id"]] = term
 
         if type(term) is Literal:
             return term
 
         sg = URIRef(adb_v.get("_sub_graph_uri", "")) or None
-        self.__unpack_adb_doc(adb_v, term, sg)
+        self.__unpack_adb_doc(adb_v, v_col, term, sg)
 
         if self.__infer_type_from_adb_v_col:
             self.__add_to_rdf_graph(term, RDF.type, v_col_uri)
@@ -1290,7 +1294,6 @@ class ArangoRDF(AbstractArangoRDF):
         :param adb_e: The ArangoDB Edge
         :type adb_e: Json
         :param e_col: The ArangoDB Collection name of **adb_e**.
-            Currently not used.
         :type e_col: str
         :param e_col_uri: The URIRef associated to the ArangoDB Collection
             of **adb_e**. Used if **adb_e** does not have a `_uri` attribute.
@@ -1303,17 +1306,18 @@ class ArangoRDF(AbstractArangoRDF):
         """
         _from: str = adb_e["_from"]
         _to: str = adb_e["_to"]
+        _uri = adb_e.get("_uri", "")
 
         subject = self.__term_map.get(_from) or self.__process_missing_adb_doc(_from)
-        predicate = URIRef(adb_e.get("_uri", "")) or e_col_uri
+        predicate = URIRef(_uri) or e_col_uri
         object = self.__term_map.get(_to) or self.__process_missing_adb_doc(_to)
         sg = URIRef(adb_e.get("_sub_graph_uri", "")) or None
 
         # TODO: Revisit when rdflib introduces RDF-star support
         # edge_uri = (subject, predicate, object, sg)
-        edge_uri = URIRef(f"{self.__graph_ns}{adb_e['_key']}")
+        edge_uri = URIRef(f"{_uri or e_col_uri}#{adb_e['_key']}")
 
-        self.__unpack_adb_doc(adb_e, edge_uri, sg)
+        self.__unpack_adb_doc(adb_e, e_col, edge_uri, sg)
 
         edge_has_property_data = len(adb_e.keys() - self.adb_key_blacklist) != 0
         if (
@@ -1334,11 +1338,13 @@ class ArangoRDF(AbstractArangoRDF):
 
         return edge_uri
 
-    def __adb_doc_to_rdf_term(self, doc: Json) -> RDFTerm:
+    def __adb_doc_to_rdf_term(self, doc: Json, col: str) -> RDFTerm:
         """ArangoDB -> RDF: Converts an ArangoDB Document into an RDF Term.
 
         :param doc: An arbitrary ArangoDB document.
         :type doc: Dict[str, Any]
+        :param col: The ArangoDB Collection name of **doc**.
+        :type col: str
         :return: The RDF Term representing the ArangoDB document
         :rtype: URIRef | BNode | Literal
         """
@@ -1349,7 +1355,7 @@ class ArangoRDF(AbstractArangoRDF):
         }
 
         rdf_type = doc.get("_rdftype", "URIRef")  # Default to URIRef
-        val = doc.get(key_map[rdf_type], f"{self.__graph_ns}{doc['_key']}")
+        val = doc.get(key_map[rdf_type], f"{self.__graph_ns}/{col}#{doc['_key']}")
 
         if rdf_type == "URIRef":
             return URIRef(val)
@@ -1370,12 +1376,16 @@ class ArangoRDF(AbstractArangoRDF):
         else:  # pragma: no cover
             raise ValueError(f"Unrecognized type '{rdf_type}' ({doc})")
 
-    def __unpack_adb_doc(self, doc: Json, term: RDFTerm, sg: Optional[URIRef]) -> None:
+    def __unpack_adb_doc(
+        self, doc: Json, col: str, term: RDFTerm, sg: Optional[URIRef]
+    ) -> None:
         """ArangoDB -> RDF: Transfer ArangoDB Document Properties of **doc**
         into the RDF Graph, as statements.
 
         :param doc: The ArangoDB Document
         :type doc: Dict[str, Any]
+        :param col: The ArangoDB Collection name of **doc**.
+        :type col: str
         :param term: The RDF representation of **doc**
         :type term: URIRef | BNode | Literal
         :param sg: The Sub Graph URI of **doc**, if any.
@@ -1385,8 +1395,8 @@ class ArangoRDF(AbstractArangoRDF):
         """
         for k in doc.keys() - self.adb_key_blacklist:
             val = doc[k]
-            p = self.__uri_map.get(k, URIRef(f"{self.__graph_ns}{k}"))
-            self.__adb_val_to_rdf_val(term, p, val, sg)
+            p = self.__uri_map.get(k, URIRef(f"{self.__graph_ns}/{col}#{k}"))
+            self.__adb_val_to_rdf_val(col, term, p, val, sg)
 
             # if self.__include_adb_v_col_statements:
             #     self.__add_to_rdf_graph(p, self.adb_col_uri, Literal("Property"))
@@ -1491,7 +1501,7 @@ class ArangoRDF(AbstractArangoRDF):
         #     self.__add_to_rdf_graph(p, self.adb_col_uri, Literal("Property"))
 
     def __adb_val_to_rdf_val(
-        self, s: RDFTerm, p: URIRef, val: Any, sg: Optional[URIRef] = None
+        self, col: str, s: RDFTerm, p: URIRef, val: Any, sg: Optional[URIRef] = None
     ) -> None:
         """ArangoDB -> RDF: Insert an arbitrary ArangoDB Document Property
         value into the RDF Graph.
@@ -1502,6 +1512,8 @@ class ArangoRDF(AbstractArangoRDF):
         Otherwise, the ArangoDB Document Property is treated as
         a Literal in the context of RDF.
 
+        :param col: The ArangoDB Collection name of **s**.
+        :type col: str
         :param s: The RDF Subject of the to-be-inserted RDF Statement.
         :type s: URIRef | BNode
         :param p: The RDF Predicate of the to-be-inserted RDF Statement.
@@ -1523,7 +1535,7 @@ class ArangoRDF(AbstractArangoRDF):
 
                 rest: RDFTerm
                 for i, v in enumerate(val):
-                    self.__adb_val_to_rdf_val(node, RDF.first, v)
+                    self.__adb_val_to_rdf_val(col, node, RDF.first, v)
 
                     rest = RDF.nil if i == len(val) - 1 else BNode()
                     self.__add_to_rdf_graph(node, RDF.rest, rest, sg)
@@ -1535,11 +1547,11 @@ class ArangoRDF(AbstractArangoRDF):
 
                 for i, v in enumerate(val, 1):
                     _n = URIRef(f"{RDF}_{i}")
-                    self.__adb_val_to_rdf_val(bnode, _n, v, sg)
+                    self.__adb_val_to_rdf_val(col, bnode, _n, v, sg)
 
             elif self.__list_conversion == "static":
                 for v in val:
-                    self.__adb_val_to_rdf_val(s, p, v, sg)
+                    self.__adb_val_to_rdf_val(col, s, p, v, sg)
 
             else:
                 raise ValueError("Invalid **list_conversion_mode** value")
@@ -1549,8 +1561,8 @@ class ArangoRDF(AbstractArangoRDF):
             self.__add_to_rdf_graph(s, p, bnode, sg)
 
             for k, v in val.items():
-                p = self.__uri_map.get(k, URIRef(f"{self.__graph_ns}{k}"))
-                self.__adb_val_to_rdf_val(bnode, p, v, sg)
+                p = self.__uri_map.get(k, URIRef(f"{self.__graph_ns}/{col}#{k}"))
+                self.__adb_val_to_rdf_val(col, bnode, p, v, sg)
 
         else:
             # TODO: Datatype? Lang? Not yet sure how to handle this...
