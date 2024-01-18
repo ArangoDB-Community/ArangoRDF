@@ -607,8 +607,14 @@ class ArangoRDF(AbstractArangoRDF):
         # NOTE: Graph Contextualization is an experimental work-in-progress
         contextualize_statement_func = empty_func
         if contextualize_graph:
-            self.__prepare_graph_for_contextualization(is_pgt=False)
             contextualize_statement_func = self.__rpt_contextualize_statement
+
+            self.__rdf_graph = self.load_meta_ontology(self.__rdf_graph)
+            self.__explicit_type_map = self.__build_explicit_type_map()
+            self.__subclass_tree = self.__build_subclass_tree()
+            self.__predicate_scope = self.__build_predicate_scope()
+            self.__domain_range_map = self.__build_domain_range_map()
+            self.__type_map = self.__combine_type_map_and_dr_map()
 
         self.__reified_subject_predicate_map = {}
         if simplify_reified_triples:
@@ -642,6 +648,8 @@ class ArangoRDF(AbstractArangoRDF):
         self,
         name: str,
         rdf_graph: RDFGraph,
+        adb_col_statements: Optional[RDFGraph] = None,
+        write_adb_col_statements: bool = True,
         contextualize_graph: bool = False,
         simplify_reified_triples: bool = True,
         overwrite_graph: bool = False,
@@ -777,6 +785,17 @@ class ArangoRDF(AbstractArangoRDF):
             currently support RDF graphs of type `rdflib.graph.Dataset`.
             Apologies for the inconvenience.
         :type: rdf_graph: rdflib.graph.Graph
+        :param adb_col_statements: An optional RDF Graph containing
+            ArangoDB Collection statements of the form
+            (adb_vertex http://arangodb/collection "adb_v_col") and
+            If specified, will be used to determine the ArangoDB Collection
+            mapping of RDF Resources within **rdf_graph**. Defaults to None.
+        :type adb_col_statements: rdflib.graph.Graph | None
+        :param write_adb_col_statements: If set to True, will write the ArangoDB
+            Collection statements of the form
+            (adb_vertex http://arangodb/collection "adb_v_col")
+            into **adb_col_statements**. Defaults to True.
+        :type write_adb_col_statements: bool
         :param contextualize_graph: A work-in-progress flag that seeks
             to enhance the Terminology Box of **rdf_graph** by providing
             the following features:
@@ -822,6 +841,20 @@ class ArangoRDF(AbstractArangoRDF):
             """
             raise TypeError(m)
 
+        if (None, self.adb_col_uri, None) in rdf_graph:
+            m = """
+                Invalid RDF Graph: ArangoRDF does not yet
+                support RDF Graphs with the following statement:
+                (None, self.adb_col_uri, None) .
+                Please consider using `ArangoRDF.extract_adb_col_statements`
+                to remove this statement from the RDF Graph, and then
+                re-run this method with the **adb_col_statements** parameter.
+            """
+            raise ValueError(m)
+
+        if overwrite_graph:
+            self.db.delete_graph(name, ignore_missing=True, drop_collections=True)
+
         self.__rdf_graph = rdf_graph
         self.__adb_key_statements = self.extract_adb_key_statements(rdf_graph)
 
@@ -842,9 +875,6 @@ class ArangoRDF(AbstractArangoRDF):
         # Builds the ArangoDB Edge Definitions of the (soon to be) ArangoDB Graph
         self.__e_col_map = defaultdict(lambda: defaultdict(set))
 
-        if overwrite_graph:
-            self.db.delete_graph(name, ignore_missing=True, drop_collections=True)
-
         rdf_graph_size = len(rdf_graph)
         batch_size = batch_size or rdf_graph_size
 
@@ -864,20 +894,25 @@ class ArangoRDF(AbstractArangoRDF):
 
         self.__pgt_remove_blacklisted_statements()
 
+        self.__adb_col_statements = adb_col_statements or RDFGraph()
+        if write_adb_col_statements:
+            self.__adb_col_statements = self.write_adb_col_statements(
+                rdf_graph, self.__adb_col_statements, contextualize_graph
+            )
+
         # NOTE: Graph Contextualization is an experimental work-in-progress
         contextualize_statement_func = empty_func
         if contextualize_graph:
-            self.__prepare_graph_for_contextualization(is_pgt=True)
             contextualize_statement_func = self.__pgt_contextualize_statement
 
-        # self.__adb_col_statements = self.extract_adb_col_statements(rdf_graph)
-        # if write_adb_col_statements:
-        #     self.__adb_col_statements = self.write_adb_col_statements(rdf_graph)
+            self.__type_map = self.__combine_type_map_and_dr_map()
 
-        elif (None, self.adb_col_uri, None) not in rdf_graph:
-            self.__adb_col_statements = self.write_adb_col_statements(rdf_graph)
-        else:
-            self.__adb_col_statements = self.extract_adb_col_statements(rdf_graph)
+            self.__e_col_map["type"]["from"].add("Property")
+            self.__e_col_map["type"]["from"].add("Class")
+            self.__e_col_map["type"]["to"].add("Class")
+            for label in ["domain", "range"]:
+                self.__e_col_map[label]["from"].add("Property")
+                self.__e_col_map[label]["to"].add("Class")
 
         self.__reified_subject_predicate_map = {}
         if simplify_reified_triples:
@@ -991,71 +1026,97 @@ class ArangoRDF(AbstractArangoRDF):
         """
         return re.split("/|#|:", rdf_id)[-1] or rdf_id
 
-    def write_adb_col_statements(self, rdf_graph: RDFGraph) -> RDFGraph:
-        """Returns an RDF Graph containing ArangoDB Collection Mapping statements
-        for all RDF Resources within **rdf_graph**.
+    def write_adb_col_statements(
+        self,
+        rdf_graph: RDFGraph,
+        adb_col_statements: Optional[RDFGraph] = None,
+        contextualize_graph: bool = False,
+    ) -> RDFGraph:
+        """Returns an RDF Graph to map RDF Resources to their respective
+        ArangoDB Collection.
 
         The PGT Algorithm relies on the ArangoDB Collection Mapping Process to
         identify the ArangoDB Collection of every RDF Resource. Using this method prior
-        to running `ArangoRDF.rdf_to_arangodb_by_pgt()` allows users to see the
-        (RDF Resource)-to-(ArangoDB Collection) mapping of all of their (identifiable)
-        RDF Resources. See the `ArangoRDF.rdf_to_arangodb_by_pgt()` docstring
+        to running `ArangoRDF.rdf_to_arangodb_by_pgt()` allows you to visualize and
+        modify the mapping. See the `ArangoRDF.rdf_to_arangodb_by_pgt()` documentation
         for an explanation on the ArangoDB Collection Mapping Process.
 
         A common use case would look like this:
-        ```
-        from rdflib import Graph
-        from arango_rdf import ArangoRDF
 
-        adbrdf = ArangoRDF(db)
+        .. code-block:: python
+            from rdflib import Graph
+            from arango_rdf import ArangoRDF
 
-        g = Graph()
-        g.parse(...)
-        g.add(...)
+            adbrdf = ArangoRDF(db)
 
-        adb_col_statements = adbrdf.write_adb_col_statements(g)
-        adbrdf.rdf_to_arangodb_by_pgt('PGTGraph', g + adb_col_statements)
-        ```
+            g = Graph()
+            g.parse(...)
+            g.add(...)
+
+            adb_col_statements = adbrdf.write_adb_col_statements(g)
+            adb_col_statements.serialize(...)
+            adb_col_statements.add(...)
+            adb_col_statements.remove(...)
+
+            adbrdf.rdf_to_arangodb_by_pgt(
+                'MyGraph', rdf_graph=g, adb_col_statements=adb_col_statements
+            )
 
         NOTE: Running this method prior to `ArangoRDF.rdf_to_arangodb_by_pgt`
         is unnecessary if the user is not interested in
         viewing/modifying the ADB Mapping.
 
         For example, the `adb_col_statements` may look like this:
-        -----------------------------------------
-        @prefix adb: <http://www.arangodb.com/> .
 
-        <http://example.com/bob> adb:collection "Person" .
-        <http://example.com/alex> adb:collection "Person" .
-        <http://example.com/name> adb:collection "Property" .
-        <http://example.com/Person> adb:collection "Class" .
-        <http://example.com/charlie> adb:collection "Dog" .
-        -----------------------------------------
+        .. code-block::
+            @prefix adb: <http://www.arangodb.com/> .
+
+            <http://example.com/bob> adb:collection "Person" .
+            <http://example.com/alex> adb:collection "Person" .
+            <http://example.com/name> adb:collection "Property" .
+            <http://example.com/Person> adb:collection "Class" .
+            <http://example.com/charlie> adb:collection "Dog" .
 
         NOTE: There can only be 1 `adb:collection` statement
         associated to each RDF Resource.
 
         :param rdf_graph: The RDF Graph object.
         :type rdf_graph: rdflib.graph.Graph
-        :param overwrite_existing_adb_col_statements: If set to True, will overwrite
-            any existing `adb:collection` statements within **rdf_graph**.
+        :param adb_col_statements: An existing RDF Graph containing
+            `adb:collection` statements. If not provided, a new RDF Graph
+            will be created. Defaults to None.
+            NOTE: The ArangoDB Collection Mapping Process
+            heavily relies on mapping certain RDF Resources to the
+            "Class" and "Property" ArangoDB Collections. Therefore
+            it is currently not possible to overwrite any RDF Resources
+            that belong to these two collections.
+        :type adb_col_statements: rdflib.graph.Graph | None
+        :param contextualize_graph: A work-in-progress flag that seeks
+            to enhance the Terminology Box of **rdf_graph**. See
+            `ArangoRDF.rdf_to_arangodb_by_pgt()` for more details.
             Defaults to False.
-        :type overwrite_existing_adb_col_statements: bool
+        :type contextualize_graph: bool
+        :type adb_col_statements: Optional[rdflib.graph.Graph]
         """
-        self.__adb_col_statements = RDFGraph()
+        self.__adb_col_statements = adb_col_statements or RDFGraph()
         self.__adb_col_statements.bind("adb", self.__adb_ns)
+        self.__contextualize_graph = contextualize_graph
 
         self.__rdf_graph = rdf_graph
         self.__cntrl.rdf_graph = rdf_graph
 
         # 1. RDF.type statements
-        self.__explicit_type_map = self.__build_explicit_type_map()
+        self.__explicit_type_map = self.__build_explicit_type_map(
+            self.__add_adb_col_statement
+        )
 
         # 2. RDF.subClassOf Statements
-        self.__subclass_tree = self.__build_subclass_tree()
+        self.__subclass_tree = self.__build_subclass_tree(self.__add_adb_col_statement)
 
         # 3. Domain & Range Statements
-        self.__predicate_scope = self.__build_predicate_scope()
+        self.__predicate_scope = self.__build_predicate_scope(
+            self.__add_adb_col_statement
+        )
         self.__domain_range_map = self.__build_domain_range_map()
 
         # 4. Finalize **adb_col_statements**
@@ -1097,8 +1158,6 @@ class ArangoRDF(AbstractArangoRDF):
         3)  <RDF.type> <RDF.type> <RDF.Property>
         4)  <RDFS.domain> <RDF.type> <RDF.Property>
         5)  <RDFS.range> <RDF.type> <RDF.Property>
-        6) <adb:collection> <RDF.type> <RDF.Property>
-        7) <adb:key> <RDF.type> <RDF.Property>
 
         :param rdf_graph: The RDF Graph, soon to be converted into an ArangoDB Graph.
         :type rdf_graph: rdflib.graph.Graph
@@ -1110,8 +1169,6 @@ class ArangoRDF(AbstractArangoRDF):
             (RDF.type, RDF.type, RDF.Property),
             (RDFS.domain, RDF.type, RDF.Property),
             (RDFS.range, RDF.type, RDF.Property),
-            (self.adb_col_uri, RDF.type, RDF.Property),
-            (self.adb_key_uri, RDF.type, RDF.Property),
         ]
 
         for t in base_ontology:
@@ -2513,7 +2570,9 @@ class ArangoRDF(AbstractArangoRDF):
         if _sg:
             self.__adb_docs[col][key]["_sub_graph_uri"] = _sg
 
-    def __build_explicit_type_map(self) -> TypeMap:
+    def __build_explicit_type_map(
+        self, adb_adb_col_statement: Callable[..., None] = empty_func
+    ) -> TypeMap:
         """RDF -> ArangoDB: Build a dictionary mapping the
         (subject rdf:type object) relationships within the RDF Graph.
 
@@ -2550,12 +2609,12 @@ class ArangoRDF(AbstractArangoRDF):
         # RDF Type Statements
         for s, o, *_ in self.__rdf_graph[: RDF.type :]:
             explicit_type_map[s].add(str(o))
-            self.__add_adb_col_statement(o, "Class", True)
+            adb_adb_col_statement(o, "Class", True)
 
         # RDF Predicates
         for p in self.__rdf_graph.predicates(unique=True):
             explicit_type_map[p].add(self.__rdf_property_str)
-            self.__add_adb_col_statement(p, "Property", True)
+            adb_adb_col_statement(p, "Property", True)
 
         # RDF Type Statements (Reified)
         for s in self.__rdf_graph[: RDF.predicate : RDF.type]:
@@ -2563,7 +2622,7 @@ class ArangoRDF(AbstractArangoRDF):
             reified_o: URIRef = self.__rdf_graph.value(s, RDF.object)
 
             explicit_type_map[reified_s].add(str(reified_o))
-            self.__add_adb_col_statement(
+            adb_adb_col_statement(
                 reified_o,
                 "Class",
                 True,
@@ -2572,7 +2631,7 @@ class ArangoRDF(AbstractArangoRDF):
         # RDF Predicates (Reified)
         for s, o, *_ in self.__rdf_graph[: RDF.predicate :]:
             explicit_type_map[o].add(self.__rdf_property_str)
-            self.__add_adb_col_statement(
+            adb_adb_col_statement(
                 o,
                 "Property",
                 True,
@@ -2580,7 +2639,9 @@ class ArangoRDF(AbstractArangoRDF):
 
         return explicit_type_map
 
-    def __build_subclass_tree(self) -> Tree:
+    def __build_subclass_tree(
+        self, adb_adb_col_statement: Callable[..., None] = empty_func
+    ) -> Tree:
         """RDF -> ArangoDB: Build a Tree Data Structure
         representing the `rdfs:subClassOf` Taxonomy of the RDF Graph.
 
@@ -2633,8 +2694,8 @@ class ArangoRDF(AbstractArangoRDF):
         for s, o, *_ in subclass_graph[: RDFS.subClassOf :]:
             subclass_map[str(o)].add(str(s))
 
-            self.__add_adb_col_statement(s, "Class", True)
-            self.__add_adb_col_statement(o, "Class", True)
+            adb_adb_col_statement(s, "Class", True)
+            adb_adb_col_statement(o, "Class", True)
 
         # RDF SubClassOf Statements (Reified)
         for s in subclass_graph[: RDF.predicate : RDFS.subClassOf]:
@@ -2642,8 +2703,8 @@ class ArangoRDF(AbstractArangoRDF):
             reified_o: URIRef = self.__rdf_graph.value(s, RDF.object)
 
             subclass_map[str(reified_o)].add(str(reified_s))
-            self.__add_adb_col_statement(reified_s, "Class", True)
-            self.__add_adb_col_statement(reified_o, "Class", True)
+            adb_adb_col_statement(reified_s, "Class", True)
+            adb_adb_col_statement(reified_o, "Class", True)
 
         # Connect any 'parent' URIs (i.e URIs that aren't a subclass of another URI)
         # to the RDFS Class URI (prevents having multiple subClassOf taxonomies)
@@ -2653,9 +2714,14 @@ class ArangoRDF(AbstractArangoRDF):
                 # TODO: Consider using OWL:Thing instead of RDFS:Class
                 subclass_map[self.__rdfs_class_str].add(key)
 
+        # if root_node not in subclass_map:
+        #     subclass_map[self.__rdfs_resource_str].add(self.__rdfs_class_str)
+
         return Tree(root=root_node, submap=subclass_map)
 
-    def __build_predicate_scope(self) -> PredicateScope:
+    def __build_predicate_scope(
+        self, adb_adb_col_statement: Callable[..., None] = empty_func
+    ) -> PredicateScope:
         """RDF -> ArangoDB: Build a dictionary mapping
         the Domain & Range values of RDF Predicates within `self.__rdf_graph`.
 
@@ -2706,8 +2772,8 @@ class ArangoRDF(AbstractArangoRDF):
                     class_key = self.rdf_id_to_adb_key(class_str)
                     predicate_scope[p][label].add((class_str, class_key))
 
-                self.__add_adb_col_statement(p, "Property", True)
-                self.__add_adb_col_statement(c, "Class", True)
+                adb_adb_col_statement(p, "Property", True)
+                adb_adb_col_statement(c, "Class", True)
 
         # RDFS Domain & Range (Reified)
         for label in ["domain", "range"]:
@@ -2722,8 +2788,8 @@ class ArangoRDF(AbstractArangoRDF):
                     class_key = self.rdf_id_to_adb_key(class_str)
                     predicate_scope[reified_s][label].add((class_str, class_key))
 
-                self.__add_adb_col_statement(reified_s, "Property", True)
-                self.__add_adb_col_statement(reified_o, "Class", True)
+                adb_adb_col_statement(reified_s, "Property", True)
+                adb_adb_col_statement(reified_o, "Class", True)
 
         return predicate_scope
 
@@ -2851,35 +2917,6 @@ class ArangoRDF(AbstractArangoRDF):
 
             spinner_progress.stop_task(spinner_progress_task)
             spinner_progress.update(spinner_progress_task, visible=False)
-
-    def __prepare_graph_for_contextualization(self, is_pgt: bool) -> None:
-        """RDF -> ArangoDB: Prepare the RDF Graph for contextualization.
-
-        This method is called before the contextualization process
-        begins, and it is responsible for:
-        - Loading the base ontology into the RDF Graph.
-        - Building the `self.__type_map` dictionary.
-        - Building the `self.__explicit_type_map` dictionary.
-        - Building the `self.__subclass_tree` Tree.
-        - Building the `self.__domain_range_map` dictionary.
-        - Building the `self.__predicate_scope` dictionary.
-        - Building the `self.__adb_col_statements` graph.
-
-        :param is_pgt: A flag to identify if this method call originates
-            from an PGT process or not.
-        :type is_pgt: bool
-        """
-        self.load_base_ontology(self.__rdf_graph)
-        self.__adb_col_statements = self.write_adb_col_statements(self.__rdf_graph)
-        self.__type_map = self.__combine_type_map_and_dr_map()
-
-        if is_pgt:
-            self.__e_col_map["type"]["from"].add("Property")
-            self.__e_col_map["type"]["from"].add("Class")
-            self.__e_col_map["type"]["to"].add("Class")
-            for label in ["domain", "range"]:
-                self.__e_col_map[label]["from"].add("Property")
-                self.__e_col_map[label]["to"].add("Class")
 
     def __contextualize_statement(
         self,
@@ -3048,6 +3085,9 @@ class ArangoRDF(AbstractArangoRDF):
         """
         if overwrite:
             self.__adb_col_statements.remove((subject, self.adb_col_uri, None))
+
+        elif (subject, self.adb_col_uri, None) in self.__adb_col_statements:
+            return
 
         self.__adb_col_statements.add((subject, self.adb_col_uri, Literal(adb_col)))
 

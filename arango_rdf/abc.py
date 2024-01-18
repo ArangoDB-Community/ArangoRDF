@@ -35,6 +35,8 @@ class AbstractArangoRDF(ABC):
         self,
         name: str,
         rdf_graph: RDFGraph,
+        adb_col_statements: Optional[RDFGraph],
+        write_adb_col_statements: bool,
         contextualize_graph: bool,
         simplify_reified_triples: bool,
         overwrite_graph: bool,
