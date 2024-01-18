@@ -27,3 +27,4 @@
 :john a :Singer .
 :john a :Writer .
 :john a :Guitarist .
+:john adb:collection "Artist" .

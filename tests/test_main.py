@@ -2223,17 +2223,13 @@ def test_pgt_case_7(name: str, rdf_graph: RDFGraph) -> None:
         | get_bnodes(rdf_graph, include_predicates=True)
     )
 
-    adb_col_statements_1 = adbrdf.write_adb_col_statements(rdf_graph)
-    adb_col_statements_1.remove(
-        (URIRef("http://example.com/john"), adbrdf.adb_col_uri, None)
-    )
-    adb_col_statements_1.add(
-        (URIRef("http://example.com/john"), adbrdf.adb_col_uri, Literal("Artist"))
-    )
+    adb_col_statements_1 = adbrdf.extract_adb_col_statements(rdf_graph)
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph + adb_col_statements_1,
+        rdf_graph,
+        adb_col_statements=adb_col_statements_1,
+        write_adb_col_statements=True,  # default
         overwrite_graph=True,
     )
 
@@ -4184,7 +4180,9 @@ def test_adb_native_graph(
 
     adbrdf.rdf_to_arangodb_by_pgt(
         name,
-        rdf_graph + adb_col_statements + adb_key_statements,
+        rdf_graph + adb_key_statements,
+        adb_col_statements=adb_col_statements,
+        write_adb_col_statements=False,
         overwrite_graph=True,
     )
 
