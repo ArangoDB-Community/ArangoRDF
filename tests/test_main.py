@@ -799,7 +799,6 @@ def test_rpt_case_10(name: str, rdf_graph: RDFGraph) -> None:
     assert e_count == NUM_TRIPLES
 
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
-
     statement = rdf_graph_2.value(predicate=RDF.type, object=RDF.Statement)
     assert (statement, RDF.subject, mainpage) in rdf_graph_2
     assert (statement, RDF.predicate, writer) in rdf_graph_2
@@ -1038,9 +1037,9 @@ def test_rpt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
 
 @pytest.mark.parametrize(
     "name, rdf_graph",
-    [("Case_13_RPT", get_rdf_graph("cases/13.ttl"))],
+    [("Case_13_1_RPT", get_rdf_graph("cases/13_1.ttl"))],
 )
-def test_rpt_case_13(name: str, rdf_graph: RDFGraph) -> None:
+def test_rpt_case_13_1(name: str, rdf_graph: RDFGraph) -> None:
     NUM_TRIPLES = 3
     NUM_URIREFS = 4
     NUM_BNODES = 0
@@ -1402,7 +1401,6 @@ def test_rpt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
     assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
     assert e_count == NUM_TRIPLES
 
-    # breakpoint()
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(name, type(rdf_graph)())
     statement_1 = rdf_graph_2.value(predicate=certainty, object=certainty_val)
     assert (statement_1, RDF.subject, mary) in rdf_graph_2
@@ -1410,7 +1408,6 @@ def test_rpt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
     assert (statement_1, RDF.object, matt) in rdf_graph_2
     assert (statement_1, certainty, certainty_val) in rdf_graph_2
     assert (statement_1, foo, bar) in rdf_graph_2
-    # breakpoint()
     # NOTE: ASSERTION BELOW IS FLAKY
     # See `self.__rdf_graph.remove((subject, predicate, object))`
     # in `ArangoRDF__process_adb_edge`
@@ -1422,9 +1419,9 @@ def test_rpt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
 
 @pytest.mark.parametrize(
     "name, rdf_graph",
-    [("Case_15_3_RPT", get_rdf_graph("cases/15_3.trig"))],
+    [("Case_15_4_RPT", get_rdf_graph("cases/15_4.trig"))],
 )
-def test_rpt_case_15_3(name: str, rdf_graph: RDFGraph) -> None:
+def test_rpt_case_15_4(name: str, rdf_graph: RDFGraph) -> None:
     # Reified Triple Simplification modifies the source graph,
     # so we must make a copy of the graph to test against
     rdf_graph_copy = RDFConjunctiveGraph()
@@ -3001,9 +2998,9 @@ def test_pgt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
 
 @pytest.mark.parametrize(
     "name, rdf_graph",
-    [("Case_13_PGT", get_rdf_graph("cases/13.ttl"))],
+    [("Case_13_1_PGT", get_rdf_graph("cases/13_1.ttl"))],
 )
-def test_pgt_case_13(name: str, rdf_graph: RDFGraph) -> None:
+def test_pgt_case_13_1(name: str, rdf_graph: RDFGraph) -> None:
     UNIQUE_NODES = 7
     NON_LITERAL_STATEMENTS = 3
 
@@ -3579,9 +3576,9 @@ def test_pgt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
 
 @pytest.mark.parametrize(
     "name, rdf_graph",
-    [("Case_15_3_PGT", get_rdf_graph("cases/15_3.trig"))],
+    [("Case_15_4_PGT", get_rdf_graph("cases/15_4.trig"))],
 )
-def test_pgt_case_15_3(name: str, rdf_graph: RDFGraph) -> None:
+def test_pgt_case_15_4(name: str, rdf_graph: RDFGraph) -> None:
     # Reified Triple Simplification modifies the source graph,
     # so we must make a copy of the graph to test against
     rdf_graph_copy = RDFConjunctiveGraph()
