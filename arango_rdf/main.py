@@ -611,7 +611,7 @@ class ArangoRDF(AbstractArangoRDF):
             self.__rdf_graph = self.__load_meta_ontology(self.__rdf_graph)
 
             with get_spinner_progress("(RDF → ADB): Graph Contextualization") as rp:
-                rp.add_task("graph contextualization")
+                rp.add_task("")
 
                 self.__explicit_type_map = self.__build_explicit_type_map()
                 self.__subclass_tree = self.__build_subclass_tree()
@@ -637,7 +637,7 @@ class ArangoRDF(AbstractArangoRDF):
         )
 
         bar_progress = get_bar_progress("(RDF → ADB): RPT", "#BF23C4")
-        bar_progress_task = bar_progress.add_task(name, total=rdf_graph_size)
+        bar_progress_task = bar_progress.add_task("", total=rdf_graph_size)
         spinner_progress = get_import_spinner_progress("    ")
 
         with Live(Group(bar_progress, spinner_progress)):
@@ -939,7 +939,7 @@ class ArangoRDF(AbstractArangoRDF):
         batch_size = batch_size or rdf_graph_size
 
         bar_progress = get_bar_progress("(RDF → ADB): PGT", "#08479E")
-        bar_progress_task = bar_progress.add_task(name, total=rdf_graph_size)
+        bar_progress_task = bar_progress.add_task("", total=rdf_graph_size)
         spinner_progress = get_import_spinner_progress("    ")
 
         with Live(Group(bar_progress, spinner_progress)):
@@ -1055,7 +1055,7 @@ class ArangoRDF(AbstractArangoRDF):
         self.__cntrl.rdf_graph = rdf_graph
 
         with get_spinner_progress("(RDF → ADB): Write Col Statements") as rp:
-            rp.add_task("adb:collection")
+            rp.add_task("")
 
             # 1. RDF.type statements
             self.__explicit_type_map = self.__build_explicit_type_map(
@@ -1220,7 +1220,7 @@ class ArangoRDF(AbstractArangoRDF):
         col_size: int = self.__db.collection(col).count()
 
         with get_spinner_progress(f"(ADB → RDF): Export '{col}' ({col_size})") as p:
-            p.add_task(col)
+            p.add_task("")
 
             cursor: Cursor = self.__db.aql.execute(
                 f"FOR doc IN @@col RETURN {aql_return_value}",
@@ -1256,7 +1256,7 @@ class ArangoRDF(AbstractArangoRDF):
         """
 
         progress = get_bar_progress(f"(ADB → RDF): '{col}'", progress_color)
-        progress_task_id = progress.add_task(col, total=col_size)
+        progress_task_id = progress.add_task("", total=col_size)
 
         with Live(Group(progress)):
             while not cursor.empty():
@@ -1928,14 +1928,11 @@ class ArangoRDF(AbstractArangoRDF):
 
         data = self.__rdf_graph.query(query)
 
-        m = "(RDF → ADB): PGT [RDF Literals]"
-        bar_progress = get_bar_progress(m, "#EF7D00")
-        bar_progress_task = bar_progress.add_task(m, total=len(data) - 1)
+        bar_progress = get_bar_progress("(RDF → ADB): PGT [RDF Literals]", "#EF7D00")
+        bar_progress_task = bar_progress.add_task("", total=len(data) - 1)
 
         with Live(Group(bar_progress)):
             for s, p in self.__rdf_graph.query(query):
-                bar_progress.advance(bar_progress_task)
-
                 s_meta = self.__pgt_get_term_metadata(s)
                 self.__pgt_process_rdf_term(s_meta)
 
@@ -1951,6 +1948,8 @@ class ArangoRDF(AbstractArangoRDF):
                     pgt_contextualize_statement_func(s_meta, p_meta, o_meta, sg_str)
 
                     self.__rdf_graph.remove((s, p, o))
+
+                bar_progress.advance(bar_progress_task)
 
     def __pgt_process_subject_predicate_object(
         self,
@@ -2287,9 +2286,7 @@ class ArangoRDF(AbstractArangoRDF):
         I know, it's hacky.
         """
         list_heads = self.__rdf_list_heads.items()
-        bar_progress_task = bar_progress.add_task(
-            "Processing RDF Lists", total=len(list_heads)
-        )
+        bar_progress_task = bar_progress.add_task("", total=len(list_heads))
 
         for s, s_dict in list_heads:
             s_meta = self.__pgt_get_term_metadata(s)
@@ -2604,21 +2601,19 @@ class ArangoRDF(AbstractArangoRDF):
 
         m = "(RDF → ADB): Flatten Reified Triples [Prep]"
         bar_progress = get_bar_progress(m, "#FFFFFF")
-        bar_progress_task = bar_progress.add_task(m, total=len(data))
+        bar_progress_task = bar_progress.add_task("", total=len(data))
 
         with Live(Group(bar_progress)):
             for reified_subject, _, p, *_ in data:
-                bar_progress.advance(bar_progress_task)
                 self.__reified_subject_predicate_map[reified_subject] = p
+                bar_progress.advance(bar_progress_task)
 
         m = "(RDF → ADB): Flatten Reified Triples"
         bar_progress = get_bar_progress(m, "#FFFFFF")
-        bar_progress_task = bar_progress.add_task(m, total=len(data))
+        bar_progress_task = bar_progress.add_task("", total=len(data))
 
         with Live(Group(bar_progress)):
             for reified_subject, s, p, o, *sg in data:
-                bar_progress.advance(bar_progress_task)
-
                 reified_triple_key = self.rdf_id_to_adb_key(
                     str(reified_subject), reified_subject
                 )
@@ -2631,6 +2626,8 @@ class ArangoRDF(AbstractArangoRDF):
                 self.__rdf_graph.remove((reified_subject, RDF.subject, s))
                 self.__rdf_graph.remove((reified_subject, RDF.predicate, p))
                 self.__rdf_graph.remove((reified_subject, RDF.object, o))
+
+                bar_progress.advance(bar_progress_task)
 
     def __get_subgraph_str(self, possible_sg: Optional[List[Any]]) -> str:
         """RDF -> ArangoDB: Extract the sub-graph URIRef string of a quad (if any).
@@ -3250,8 +3247,13 @@ class ArangoRDF(AbstractArangoRDF):
         extract_graph = RDFGraph()
         extract_graph.bind("adb", self.__adb_ns)
 
-        for t in rdf_graph.triples(triple):
-            extract_graph.add(t)
+        _, p, _ = triple
+
+        with get_spinner_progress(f"(RDF ↔ ADB): Extract Statements '{str(p)}'") as rp:
+            rp.add_task("")
+
+            for t in rdf_graph.triples(triple):
+                extract_graph.add(t)
 
         if not keep_triples_in_rdf_graph:
             rdf_graph.remove(triple)
