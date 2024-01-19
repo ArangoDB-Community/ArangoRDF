@@ -504,7 +504,7 @@ class ArangoRDF(AbstractArangoRDF):
         overwrite_graph: bool = False,
         use_async: bool = False,
         batch_size: Optional[int] = None,
-        **adb_import_args: Any,
+        **adb_import_kwargs: Any,
     ) -> ADBGraph:
         """Create an ArangoDB Graph from an RDF Graph using
         the RDF-topology Preserving Transformation (RPT) Algorithm.
@@ -590,8 +590,6 @@ class ArangoRDF(AbstractArangoRDF):
         self.__adb_docs = defaultdict(lambda: defaultdict(dict))
         self.__contextualize_graph = contextualize_graph
         self.__use_hashed_literals_as_keys = use_hashed_literals_as_keys
-        self.__adb_import_kwargs = adb_import_args
-        self.__adb_import_kwargs["on_duplicate"] = "update"
 
         # Set the RPT ArangoDB Collection names
         self.__URIREF_COL = f"{name}_URIRef"
@@ -652,9 +650,11 @@ class ArangoRDF(AbstractArangoRDF):
                 )
 
                 if i % batch_size == 0:
-                    self.__insert_adb_docs(spinner_progress, use_async)
+                    self.__insert_adb_docs(
+                        spinner_progress, use_async, **adb_import_kwargs
+                    )
 
-            self.__insert_adb_docs(spinner_progress, use_async)
+            self.__insert_adb_docs(spinner_progress, use_async, **adb_import_kwargs)
 
         rdf_graph += self.__adb_key_statements
         return self.__rpt_create_adb_graph(name)
@@ -880,8 +880,6 @@ class ArangoRDF(AbstractArangoRDF):
         # Reset the ArangoDB Config
         self.__adb_docs = defaultdict(lambda: defaultdict(dict))
         self.__contextualize_graph = contextualize_graph
-        self.__adb_import_kwargs = adb_import_kwargs
-        self.__adb_import_kwargs["on_duplicate"] = "update"
 
         # A unique set of instance variables to
         # convert RDF Lists into JSON Lists during the PGT Process
@@ -952,6 +950,7 @@ class ArangoRDF(AbstractArangoRDF):
 
                 # Address the possibility of (s, p, o) being a part of the
                 # structure of an RDF Collection or an RDF Container.
+                # TODO: Move out of loop, into a pre-processing step
                 rdf_list_col = self.__pgt_statement_is_part_of_rdf_list(s, p)
                 if rdf_list_col:
                     key = self.rdf_id_to_adb_label(str(p))
@@ -964,9 +963,11 @@ class ArangoRDF(AbstractArangoRDF):
                 )
 
                 if i % batch_size == 0:
-                    self.__insert_adb_docs(spinner_progress, use_async)
+                    self.__insert_adb_docs(
+                        spinner_progress, use_async, **adb_import_kwargs
+                    )
 
-            self.__insert_adb_docs(spinner_progress, use_async)
+            self.__insert_adb_docs(spinner_progress, use_async, **adb_import_kwargs)
 
         bar_progress = get_bar_progress("(RDF → ADB): PGT List Processing ", "#EF7D00")
         with Live(Group(bar_progress, spinner_progress)):
@@ -2930,14 +2931,24 @@ class ArangoRDF(AbstractArangoRDF):
 
         return t.value if t.value is not None else t_str
 
-    def __insert_adb_docs(self, spinner_progress: Progress, use_async: bool) -> None:
+    def __insert_adb_docs(
+        self, spinner_progress: Progress, use_async: bool, **adb_import_kwargs: Any
+    ) -> None:
         """RDF -> ArangoDB: Insert ArangoDB documents into their ArangoDB collection.
 
+        :param spinner_progress: The spinner progress bar.
+        :type spinner_progress: rich.progress.Progress
         :param use_async: Performs asynchronous ingestion if enabled.
         :type use_async: bool
+        :param adb_import_kwargs: Keyword arguments to specify additional
+            parameters for ArangoDB document insertion. Full parameter list:
+            https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.import_bulk
+        :param adb_import_kwargs: Any
         """
         if len(self.__adb_docs) == 0:
             return
+
+        adb_import_kwargs["on_duplicate"] = "update"
 
         db = self.__async_db if use_async else self.db
 
@@ -2954,9 +2965,7 @@ class ArangoRDF(AbstractArangoRDF):
                 is_edge = col in self.__e_col_map
                 self.db.create_collection(col, edge=is_edge)
 
-            result = db.collection(col).import_bulk(
-                doc_list, **self.__adb_import_kwargs
-            )
+            result = db.collection(col).import_bulk(doc_list, **adb_import_kwargs)
             logger.debug(result)
 
             del self.__adb_docs[col]
