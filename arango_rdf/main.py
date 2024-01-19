@@ -281,6 +281,7 @@ class ArangoRDF(AbstractArangoRDF):
             doc: Json
             for doc in self.db.collection("Property"):
                 if doc.keys() >= {"_uri", "_label"}:
+                    # TODO: What if 2+ URIs have the same local name?
                     self.__uri_map[doc["_label"]] = URIRef(doc["_uri"])
 
         ######################
@@ -1205,13 +1206,9 @@ class ArangoRDF(AbstractArangoRDF):
         """
         aql_return_value = "doc"
         if explicit_metagraph:
-            edge_keys = "_from: doc._from, _to: doc._to" if is_edge else ""
-            aql_return_value = f"""
-                MERGE(
-                    KEEP(doc, {list(attributes)}),
-                    {{"_id": doc._id, "_key": doc._key, {edge_keys}}}
-                )
-            """
+            default_keys = ["_id", "_key"]
+            default_keys += ["_from", "_to"] if is_edge else []
+            aql_return_value = f"KEEP(doc, {list(attributes) + default_keys})"
 
         col_size: int = self.__db.collection(col).count()
 
@@ -1342,9 +1339,9 @@ class ArangoRDF(AbstractArangoRDF):
         _to: str = adb_e["_to"]
         _uri = adb_e.get("_uri", "")
 
-        subject = self.__term_map.get(_from) or self.__process_missing_adb_doc(_from)
+        subject = self.__get_rdf_term_of_adb_doc(_from)
         predicate = URIRef(_uri) or e_col_uri
-        object = self.__term_map.get(_to) or self.__process_missing_adb_doc(_to)
+        object = self.__get_rdf_term_of_adb_doc(_to)
         sg = URIRef(adb_e.get("_sub_graph_uri", "")) or None
 
         # TODO: Revisit when rdflib introduces RDF-star support
@@ -1452,10 +1449,11 @@ class ArangoRDF(AbstractArangoRDF):
         t = (s, p, o, sg) if sg and self.__graph_supports_quads else (s, p, o)
         self.__rdf_graph.add(t)
 
-    def __process_missing_adb_doc(self, doc_id: str) -> RDFTerm:
-        """ArangoDB -> RDF: Process an ArangoDB Document that was not originally
-        processed & placed into the `self.term_map`. Useful for when ArangoDB Edges
-        refer to other ArangoDB Edges.
+    def __get_rdf_term_of_adb_doc(self, doc_id: str) -> RDFTerm:
+        """ArangoDB -> RDF: Returns the RDF Term representing an ArangoDB Document
+        that was previously processed & placed into the `self.term_map`, or
+        is missing from the `self.term_map`. The latter can happen when
+        ArangoDB Edges refer to other ArangoDB Edges.
 
         :param doc_id: An arbitrary ArangoDB Document ID.
         :type doc: str
@@ -2091,7 +2089,7 @@ class ArangoRDF(AbstractArangoRDF):
                 doc["_sub_graph_uri"] = sg_str
 
         else:
-            raise ValueError()  # pragma: no cover
+            raise ValueError(f"Invalid type for RDF Term: {t}")  # pragma: no cover
 
     def __pgt_process_object(
         self, s_meta: RDFTermMeta, p_meta: RDFTermMeta, o_meta: RDFTermMeta, sg_str: str
