@@ -1809,7 +1809,7 @@ def test_rpt_meta(name: str, rdf_graph: RDFGraph) -> None:
     "name, rdf_graph",
     [("Case_1_PGT", get_rdf_graph("cases/1.ttl"))],
 )
-def test_pgt_case_1_a(name: str, rdf_graph: RDFGraph) -> None:
+def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
     NON_LITERAL_STATEMENTS = len(rdf_graph) - len(get_literal_statements(rdf_graph))
     UNIQUE_NODES = len(
         get_uris(rdf_graph, include_predicates=True)
