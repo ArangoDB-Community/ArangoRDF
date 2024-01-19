@@ -1809,7 +1809,7 @@ def test_rpt_meta(name: str, rdf_graph: RDFGraph) -> None:
     "name, rdf_graph",
     [("Case_1_PGT", get_rdf_graph("cases/1.ttl"))],
 )
-def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
+def test_pgt_case_1_a(name: str, rdf_graph: RDFGraph) -> None:
     NON_LITERAL_STATEMENTS = len(rdf_graph) - len(get_literal_statements(rdf_graph))
     UNIQUE_NODES = len(
         get_uris(rdf_graph, include_predicates=True)
@@ -4462,6 +4462,7 @@ def test_adb_doc_with_dict_property(name: str) -> None:
             "sub_val_2": {"sub_val_3": 3, "sub_val_4": [4]},
             "sub_val_5": [{"sub_val_6": 6}, {"sub_val_7": 7}],
         },
+        "foo": "bar",
     }
 
     db.collection("TestDoc").insert(doc)
@@ -4469,7 +4470,6 @@ def test_adb_doc_with_dict_property(name: str) -> None:
     rdf_graph = adbrdf.arangodb_graph_to_rdf(
         name,
         RDFGraph(),
-        list_conversion_mode="collection",
         include_adb_v_col_statements=True,
     )
 
@@ -4482,22 +4482,44 @@ def test_adb_doc_with_dict_property(name: str) -> None:
 
     assert len(adb_col_statements) == 1
     assert (test_doc, None, None) in rdf_graph
+    assert (test_doc, URIRef(f"{test_doc_namespace}#foo"), Literal("bar")) in rdf_graph
     assert (test_doc, URIRef(f"{test_doc_namespace}#val"), None) in rdf_graph
-    assert (None, URIRef(f"{test_doc_namespace}#sub_val_1"), None) in rdf_graph
+    assert (None, URIRef(f"{test_doc_namespace}#sub_val_1"), Literal(1)) in rdf_graph
     assert (None, URIRef(f"{test_doc_namespace}#sub_val_2"), None) in rdf_graph
     assert (None, URIRef(f"{test_doc_namespace}#sub_val_3"), Literal(3)) in rdf_graph
-    assert (None, URIRef(f"{test_doc_namespace}#sub_val_4"), None) in rdf_graph
-    assert (None, RDF.first, Literal(4)) in rdf_graph
+    assert (None, URIRef(f"{test_doc_namespace}#sub_val_4"), Literal(4)) in rdf_graph
     assert (None, URIRef(f"{test_doc_namespace}#sub_val_5"), None) in rdf_graph
     assert (None, URIRef(f"{test_doc_namespace}#sub_val_6"), Literal(6)) in rdf_graph
     assert (None, URIRef(f"{test_doc_namespace}#sub_val_7"), Literal(7)) in rdf_graph
     # TODO: Revisit magic number
-    assert len(rdf_graph) == 14
+    assert len(rdf_graph) == 10
 
     # TODO: RDF Graph back to ArangoDB with this monster ^
     # Need to discuss...
     # adb_graph = adbrdf.rdf_to_arangodb_by_pgt(f"{name}2", rdf_graph)
     # db.delete_graph(f"{name}2", drop_collections=True)
+
+    rdf_graph_2 = adbrdf.arangodb_to_rdf(
+        name,
+        RDFGraph(),
+        metagraph={"vertexCollections": {"TestDoc": {"foo"}}},
+    )
+
+    assert len(rdf_graph_2) == 1
+    assert (
+        test_doc,
+        URIRef(f"{test_doc_namespace}#foo"),
+        Literal("bar"),
+    ) in rdf_graph_2
+
+    rdf_graph_3 = adbrdf.arangodb_to_rdf(
+        name,
+        RDFGraph(),
+        metagraph={"vertexCollections": {"TestDoc": {"foo"}}},
+        explicit_metagraph=False,
+    )
+
+    assert len(rdf_graph_3) == len(rdf_graph)
 
     db.delete_graph(name, drop_collections=True)
 

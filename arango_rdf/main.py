@@ -127,10 +127,6 @@ class ArangoRDF(AbstractArangoRDF):
         for ns in os.listdir(f"{PROJECT_DIR}/meta"):
             self.__meta_graph.parse(f"{PROJECT_DIR}/meta/{ns}", format="trig")
 
-        # An instance variable that serves as a shortcut of
-        # the current RDF Graph. Used in ArangoDB-to-RDF & RDF-to-ArangoDB methods.
-        # self.__rdf_graph = RDFGraph()
-
         # A mapping of Reified Subjects to their corresponding RDF Predicates.
         self.__reified_subject_predicate_map: Dict[RDFTerm, URIRef] = {}
 
@@ -171,6 +167,7 @@ class ArangoRDF(AbstractArangoRDF):
         name: str,
         rdf_graph: RDFGraph,
         metagraph: ADBMetagraph,
+        explicit_metagraph: bool = True,
         list_conversion_mode: str = "static",
         infer_type_from_adb_v_col: bool = False,
         include_adb_v_col_statements: bool = False,
@@ -186,7 +183,25 @@ class ArangoRDF(AbstractArangoRDF):
         :type rdf_graph: rdflib.graph.Graph
         :param metagraph: An dictionary of dictionaries defining the ArangoDB Vertex
             & Edge Collections whose entries will be inserted into the RDF Graph.
+            For example:
+
+            .. code-block:: python
+            {
+                "vertexCollections": {
+                    "Person": {"name", "age"},
+                    "Book": {"title", "author"}
+                },
+                "edgeCollections": {
+                    "Likes": {"date"},
+                    "Wrote": {"date"}
+                }
+            }
+
         :type metagraph: arango_rdf.typings.ADBMetagraph
+        :param explicit_metagraph: Only keep the document attributes specified in
+            **metagraph** when importing to RDF (is True by default). Otherwise,
+            all document attributes are included. Defaults to True.
+        :type explicit_metagraph: bool
         :param list_conversion_mode: Specify how ArangoDB JSON lists
             are handled andprocessed into the RDF Graph. If "collection", ArangoDB
             lists will be processed using the RDF Collection structure. If "container",
@@ -236,8 +251,6 @@ class ArangoRDF(AbstractArangoRDF):
         self.__include_adb_v_col_statements = include_adb_v_col_statements
         self.__include_adb_v_key_statements = include_adb_v_key_statements
         self.__include_adb_e_key_statements = include_adb_e_key_statements
-        self.__adb_export_kwargs = adb_export_kwargs
-        self.__adb_export_kwargs["stream"] = True
 
         # Maps ArangoDB Document IDs to RDFLib Terms (i.e URIRef, Literal, BNode)
         self.__term_map: Dict[str, RDFTerm] = {}
@@ -261,8 +274,7 @@ class ArangoRDF(AbstractArangoRDF):
             "_sub_graph_uri",
         }
 
-        adb_v_cols = set(metagraph["vertexCollections"])
-        adb_e_cols = set(metagraph["edgeCollections"])
+        adb_e_cols = set(metagraph.get("edgeCollections", {}))
 
         # PGT Scenario: Build a mapping of the RDF Predicates stored in ArangoDB
         if self.db.has_collection("Property"):
@@ -275,7 +287,7 @@ class ArangoRDF(AbstractArangoRDF):
         # Vertex Collections #
         ######################
 
-        for v_col in adb_v_cols:
+        for v_col, atribs in metagraph["vertexCollections"].items():
             if v_col in adb_e_cols:
                 continue
 
@@ -286,7 +298,9 @@ class ArangoRDF(AbstractArangoRDF):
             self.__rdf_graph.bind(v_col, f"{v_col_namespace}#")
 
             # 1. Fetch ArangoDB vertices
-            v_col_cursor, v_col_size = self.__fetch_adb_docs(v_col)
+            v_col_cursor, v_col_size = self.__fetch_adb_docs(
+                v_col, False, atribs, explicit_metagraph, **adb_export_kwargs
+            )
 
             # 2. Process ArangoDB vertices
             self.__process_adb_cursor(
@@ -302,7 +316,7 @@ class ArangoRDF(AbstractArangoRDF):
         # Edge Collections #
         ####################
 
-        for e_col in adb_e_cols:
+        for e_col, atribs in metagraph.get("edgeCollections", {}).items():
             logger.debug(f"Preparing '{e_col}' edges")
 
             e_col_namespace = f"{self.__graph_ns}/{e_col}"
@@ -310,7 +324,9 @@ class ArangoRDF(AbstractArangoRDF):
             self.__rdf_graph.bind(e_col, f"{e_col_namespace}#")
 
             # 1. Fetch ArangoDB edges
-            e_col_cursor, e_col_size = self.__fetch_adb_docs(e_col)
+            e_col_cursor, e_col_size = self.__fetch_adb_docs(
+                e_col, True, atribs, explicit_metagraph, **adb_export_kwargs
+            )
 
             # 2. Process ArangoDB edges
             self.__process_adb_cursor(
@@ -389,10 +405,13 @@ class ArangoRDF(AbstractArangoRDF):
             "edgeCollections": {col: set() for col in e_cols},
         }
 
+        explicit_metagraph = False
+
         return self.arangodb_to_rdf(
             name,
             rdf_graph,
             metagraph,
+            explicit_metagraph,
             list_conversion_mode,
             infer_type_from_adb_v_col,
             include_adb_v_col_statements,
@@ -1227,24 +1246,51 @@ class ArangoRDF(AbstractArangoRDF):
     # Private: ArangoDB -> RDF #
     ############################
 
-    def __fetch_adb_docs(self, col: str) -> Tuple[Cursor, int]:
+    def __fetch_adb_docs(
+        self,
+        col: str,
+        is_edge: bool,
+        attributes: Set[str],
+        explicit_metagraph: bool,
+        **adb_export_kwargs: Any,
+    ) -> Tuple[Cursor, int]:
         """ArangoDB -> RDF: Fetches ArangoDB documents within a collection.
 
         :param col: The ArangoDB collection.
         :type col: str
+        :param is_edge: True if **col** is an edge collection.
+        :type is_edge: bool
+        :param attributes: The set of document attributes.
+        :type attributes: Set[str]
+        :param explicit_metagraph: If True, only return the set of **attributes**
+            specified when fetching the documents of the collection **col**.
+            If False, all document attributes are included.
+        :type explicit_metagraph: bool
+        :param adb_export_kwargs: Keyword arguments to specify AQL query options when
+            fetching documents from the ArangoDB instance.
+        :type adb_export_kwargs: Any
         :return: The document cursor along with the total collection size.
         :rtype: Tuple[arango.cursor.Cursor, int]
         """
+        aql_return_value = "doc"
+        if explicit_metagraph:
+            edge_keys = "_from: doc._from, _to: doc._to" if is_edge else ""
+            aql_return_value = f"""
+                MERGE(
+                    KEEP(doc, {list(attributes)}),
+                    {{"_id": doc._id, "_key": doc._key, {edge_keys}}}
+                )
+            """
+
         col_size: int = self.__db.collection(col).count()
 
         with get_export_spinner_progress(f"ADB Export: '{col}' ({col_size})") as p:
             p.add_task(col)
 
             cursor: Cursor = self.__db.aql.execute(
-                # TODO: Return **doc** attributes based on **metagraph**
-                "FOR doc IN @@col RETURN doc",
+                f"FOR doc IN @@col RETURN {aql_return_value}",
                 bind_vars={"@col": col},
-                **self.__adb_export_kwargs,
+                **{**adb_export_kwargs, **{"stream": True}},
             )
 
             return cursor, col_size

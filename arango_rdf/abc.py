@@ -51,6 +51,7 @@ class AbstractArangoRDF(ABC):
         name: str,
         rdf_graph: RDFGraph,
         metagraph: ADBMetagraph,
+        explicit_metagraph: bool,
         list_conversion_mode: str,
         infer_type_from_adb_v_col: bool,
         include_adb_v_col_statements: bool,
