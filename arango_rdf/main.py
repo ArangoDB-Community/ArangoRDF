@@ -633,11 +633,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         self.__reified_subject_predicate_map = {}
         if flatten_reified_triples:
-            self.__parse_reified_triples(
-                lambda s, p, o, sg, k: self.__rpt_process_subject_predicate_object(
-                    s, p, o, sg, k, contextualize_statement_func
-                )
-            )
+            self.__flatten_reified_triples(contextualize_statement_func, is_pgt=False)
 
         with Live(Group(bar_progress, spinner_progress)):
             for i, (s, p, o, *sg) in enumerate(statements((None, None, None)), 1):
@@ -934,11 +930,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         self.__reified_subject_predicate_map = {}
         if flatten_reified_triples:
-            self.__parse_reified_triples(
-                lambda s, p, o, sg, k: self.__pgt_process_subject_predicate_object(
-                    s, p, o, sg, k, contextualize_statement_func
-                )
-            )
+            self.__flatten_reified_triples(contextualize_statement_func, is_pgt=True)
 
         # TODO:
         # self.__pgt_parse_rdf_lists()
@@ -1656,10 +1648,33 @@ class ArangoRDF(AbstractArangoRDF):
         reified_triple_key: Optional[str],
         contextualize_statement_func: Callable[..., None],
     ) -> None:
+        """RDF -> ArangoDB (RPT): Processes the RDF Statement (s, p, o)
+        as an ArangoDB document for RPT.
+
+        :param s: The RDF Subject of the RDF Statement.
+        :type s: URIRef | BNode
+        :param p: The RDF Predicate of the RDF Statement.
+        :type p: URIRef
+        :param o: The RDF Object of the RDF Statement.
+        :type o: URIRef | BNode | Literal
+        :param sg: The Sub Graph URI of the (s,p,o) statement, if any.
+        :type sg: URIRef | None
+        :param reified_triple_key: The ArangoDB Document Key of
+            the triple (s,p,o) if the triple is reified. Defaults to None.
+        :type reified_triple_key: str | None
+        :param contextualize_statement_func: A function that contextualizes
+            an RDF Statement. A no-op function is used if Graph Contextualization
+            is disabled.
+        :type contextualize_statement_func: Callable[..., None]
+        """
         sg_str = self.__get_subgraph_str(sg)
+
         s_meta = self.__rpt_process_term(s)
+
         o_meta = self.__rpt_process_term(o)
+
         self.__rpt_process_statement(s_meta, p, o_meta, sg_str, reified_triple_key)
+
         contextualize_statement_func(s_meta, p, o_meta, sg_str)
 
     def __rpt_process_term(self, t: RDFTerm) -> RDFTermMeta:
@@ -2517,19 +2532,20 @@ class ArangoRDF(AbstractArangoRDF):
 
         return graph
 
-    def __parse_reified_triples(
-        self, process_subject_predicate_object_func: Callable[..., None]
+    def __flatten_reified_triples(
+        self, contextualize_statement_func: Callable[..., None], is_pgt: bool
     ) -> None:
         """RDF -> ArangoDB: Parse all reified triples within the RDF Graph
         if Reified Triple Simplification is enabled.
 
         NOTE: This modifies the RDF Graph in-place. TODO: Revisit
 
-        :param process_subject_predicate_object_func: A function that processes
-            the RDF Statement (s, p, o). Set to either
-            `__rpt_process_subject_predicate_object` or
-            `__pgt_process_subject_predicate_object`.
-        :type process_subject_predicate_object_func: Callable[..., None]
+        :param contextualize_statement_func: A function that contextualizes
+            an RDF Statement. A no-op function is used if Graph Contextualization
+            is disabled.
+        :type contextualize_statement_func: Callable[..., None]
+        :param is_pgt: Whether the RDF Graph is being processed by PGT or RPT.
+        :type is_pgt: bool
         """
         if isinstance(self.__rdf_graph, RDFConjunctiveGraph):
             query = """
@@ -2558,22 +2574,29 @@ class ArangoRDF(AbstractArangoRDF):
 
         data = self.__rdf_graph.query(query)
 
+        self.__reified_subject_predicate_map = {
+            reified_subject: p for reified_subject, _, p, *_ in data
+        }
+
         reified_subject: RDFTerm
         s: RDFTerm
         p: URIRef
         o: RDFTerm
-        sg: Optional[List[URIRef]]
 
-        self.__reified_subject_predicate_map = {
-            reified_subject: p for reified_subject, _, p, *_ in data
-        }
+        process_subject_predicate_object = (
+            self.__pgt_process_subject_predicate_object
+            if is_pgt
+            else self.__rpt_process_subject_predicate_object
+        )
 
         for reified_subject, s, p, o, *sg in data:
             reified_triple_key = self.rdf_id_to_adb_key(
                 str(reified_subject), reified_subject
             )
 
-            process_subject_predicate_object_func(s, p, o, sg, reified_triple_key)
+            process_subject_predicate_object(
+                s, p, o, sg, reified_triple_key, contextualize_statement_func
+            )
 
             self.__rdf_graph.remove((reified_subject, RDF.type, RDF.Statement))
             self.__rdf_graph.remove((reified_subject, RDF.subject, s))
