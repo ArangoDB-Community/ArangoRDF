@@ -203,29 +203,29 @@ class ArangoRDF(AbstractArangoRDF):
             all document attributes are included. Defaults to True.
         :type explicit_metagraph: bool
         :param list_conversion_mode: Specify how ArangoDB JSON lists
-            are handled andprocessed into the RDF Graph. If "collection", ArangoDB
+            are processed into the RDF Graph. If "collection", ArangoDB
             lists will be processed using the RDF Collection structure. If "container",
-            lists found within the ArangoDB Graph will be processed using the
-            RDF Container structure. If "static", elements within lists will be
-            processed as individual statements. Defaults to "static".
+            ArangoDB lists will be processed using the RDF Container structure.
+            If "static", elements within lists will be processed as individual
+            statements. Defaults to "static".
         :type list_conversion_mode: str
-        :param infer_type_from_adb_v_col: Specify whether `rdf:type` relationships
-            of the form `(resource rdf:type adb_v_col)` should be inferred upon
-            transferring ArangoDB Documents into RDF.
+        :param infer_type_from_adb_v_col: Specify whether `rdf:type` statements
+            of the form `resource rdf:type adb_v_col .` should be inferred upon
+            transferring ArangoDB Vertices into RDF.
         :type infer_type_from_adb_v_col: bool
         :param include_adb_v_col_statements: Specify whether `adb:collection`
-            relationships of the form (adb_vertex adb:collection adb_v_col) should
+            statements of the form `adb_vertex adb:collection adb_v_col .` should
             be generated upon transferring ArangoDB Documents into RDF. This can be used
             to maintain document collections when a user is interested in
             round-tripping.
         :type include_adb_v_col_statements: bool
-        :param include_adb_v_key_statements: Specify whether `adb:key` relationships
-            of the form (adb_vertex adb:key adb_vertex["key"]) should be generated upon
-            transferring ArangoDB Documennts into RDF. This can be used to
+        :param include_adb_v_key_statements: Specify whether `adb:key` statements
+            of the form `adb_vertex adb:key adb_vertex["key"] .` should be generated
+            upon transferring ArangoDB Documennts into RDF. This can be used to
             maintain document keys when a user is interested in round-tripping.
         :type include_adb_v_key_statements: bool
-        :param include_adb_e_key_statements: Specify whether `adb:key` relationships
-            of the form (adb_edge adb:key adb_edge["key"]) should be generated upon
+        :param include_adb_e_key_statements: Specify whether `adb:key` statements
+            of the form `adb_edge adb:key adb_edge["key"] .` should be generated upon
             transferring ArangoDB Edges into RDF. This can be used to
             maintain edge keys when a user is interested in round-tripping.
             NOTE: Enabling this option will impose Triple Reification on all
@@ -365,31 +365,30 @@ class ArangoRDF(AbstractArangoRDF):
         :param e_cols: The set of ArangoDB Edge Collections to import to RDF.
         :type e_cols: Set[str]
         :param list_conversion_mode: Specify how ArangoDB JSON lists
-            are handled andprocessed into the RDF Graph. If "collection", ArangoDB
+            are processed into the RDF Graph. If "collection", ArangoDB
             lists will be processed using the RDF Collection structure. If "container",
-            lists found within the ArangoDB Graph will be processed using the
-            RDF Container structure. If "static", elements within lists will be
-            processed as individual statements. Defaults to "static".
-        :type list_conversion_mode: str
-        :param infer_type_from_adb_v_col: Specify whether `rdf:type` relationships
-            of the form (adb_doc rdf:type adb_col) should be inferred upon
-            transferring ArangoDB Documents into RDF.
+            ArangoDB lists will be processed using the RDF Container structure.
+            If "static", elements within lists will be processed as individual
+            statements. Defaults to "static".
+        :param infer_type_from_adb_v_col: Specify whether `rdf:type` statements
+            of the form `resource rdf:type adb_v_col .` should be inferred upon
+            transferring ArangoDB Vertices into RDF.
         :type infer_type_from_adb_v_col: bool
         :param include_adb_v_col_statements: Specify whether `adb:collection`
-            relationships of the form (adb_vertex adb:collection adb_v_col) should
+            statements of the form `adb_vertex adb:collection adb_v_col .` should
             be generated upon transferring ArangoDB Documents into RDF. This can be used
             to maintain document collections when a user is interested in
             round-tripping.
         :type include_adb_v_col_statements: bool
-        :param include_adb_v_key_statements: Specify whether `adb:key` relationships
-            of the form (adb_doc adb:key adb_doc["key"]) should be generated upon
-            transferring ArangoDB Documents into RDF. This can be used to
+        :param include_adb_v_key_statements: Specify whether `adb:key` statements
+            of the form `adb_vertex adb:key adb_vertex["key"] .` should be generated
+            upon transferring ArangoDB Documennts into RDF. This can be used to
             maintain document keys when a user is interested in round-tripping.
         :type include_adb_v_key_statements: bool
-        :param include_adb_e_key_statements: Specify whether `adb:key` relationships
-            of the form (adb_edge adb:key adb_edge["key"]) should be generated upon
+        :param include_adb_e_key_statements: Specify whether `adb:key` statements
+            of the form `adb_edge adb:key adb_edge["key"] .` should be generated upon
             transferring ArangoDB Edges into RDF. This can be used to
-            maintain document keys when a user is interested in round-tripping.
+            maintain edge keys when a user is interested in round-tripping.
             NOTE: Enabling this option will impose Triple Reification on all
             ArangoDB Edges.
         :type include_adb_e_key_statements: bool
@@ -438,31 +437,30 @@ class ArangoRDF(AbstractArangoRDF):
         :param rdf_graph: The target RDF Graph to insert into.
         :type rdf_graph: rdflib.graph.Graph
         :param list_conversion_mode: Specify how ArangoDB JSON lists
-            are handled andprocessed into the RDF Graph. If "collection", ArangoDB
+            are processed into the RDF Graph. If "collection", ArangoDB
             lists will be processed using the RDF Collection structure. If "container",
-            lists found within the ArangoDB Graph will be processed using the
-            RDF Container structure. If "static", elements within lists will be
-            processed as individual statements. Defaults to "static".
-        :type list_conversion_mode: str
-        :param infer_type_from_adb_v_col: Specify whether `rdf:type` relationships
-            of the form (adb_doc rdf:type adb_col) should be inferred upon
-            transferring ArangoDB Documents into RDF.
+            ArangoDB lists will be processed using the RDF Container structure.
+            If "static", elements within lists will be processed as individual
+            statements. Defaults to "static".
+        :param infer_type_from_adb_v_col: Specify whether `rdf:type` statements
+            of the form `resource rdf:type adb_v_col .` should be inferred upon
+            transferring ArangoDB Vertices into RDF.
         :type infer_type_from_adb_v_col: bool
         :param include_adb_v_col_statements: Specify whether `adb:collection`
-            relationships of the form (adb_vertex adb:collection adb_v_col) should
+            statements of the form `adb_vertex adb:collection adb_v_col .` should
             be generated upon transferring ArangoDB Documents into RDF. This can be used
             to maintain document collections when a user is interested in
             round-tripping.
         :type include_adb_v_col_statements: bool
-        :param include_adb_v_key_statements: Specify whether `adb:key` relationships
-            of the form (adb_doc adb:key adb_doc["key"]) should be generated upon
-            transferring ArangoDB Documents into RDF. This can be used to
+        :param include_adb_v_key_statements: Specify whether `adb:key` statements
+            of the form `adb_vertex adb:key adb_vertex["key"] .` should be generated
+            upon transferring ArangoDB Documennts into RDF. This can be used to
             maintain document keys when a user is interested in round-tripping.
         :type include_adb_v_key_statements: bool
-        :param include_adb_e_key_statements: Specify whether `adb:key` relationships
-            of the form (adb_edge adb:key adb_edge["key"]) should be generated upon
+        :param include_adb_e_key_statements: Specify whether `adb:key` statements
+            of the form `adb_edge adb:key adb_edge["key"] .` should be generated upon
             transferring ArangoDB Edges into RDF. This can be used to
-            maintain document keys when a user is interested in round-tripping.
+            maintain edge keys when a user is interested in round-tripping.
             NOTE: Enabling this option will impose Triple Reification on all
             ArangoDB Edges.
         :type include_adb_e_key_statements: bool
@@ -499,7 +497,7 @@ class ArangoRDF(AbstractArangoRDF):
         name: str,
         rdf_graph: RDFGraph,
         contextualize_graph: bool = False,
-        simplify_reified_triples: bool = True,
+        flatten_reified_triples: bool = True,
         use_hashed_literals_as_keys: bool = True,
         overwrite_graph: bool = False,
         use_async: bool = False,
@@ -518,10 +516,10 @@ class ArangoRDF(AbstractArangoRDF):
         **rdf_graph** under the following ArangoDB Collections:
 
         ```
-        "f{name}_URIRef" # The Document collection for `rdflib.term.URIRef` resources.
-        "f{name}_BNode" # The Document collection for`rdflib.term.BNode` resources.
-        "f{name}_Literal" # The Document collection for `rdflib.term.Literal` resources.
-        "f{name}_Statement" # The Edge collection for all triples/quads.
+        "f{name}_URIRef" # Vertex collection for `rdflib.term.URIRef`.
+        "f{name}_BNode" # Vertex collection for`rdflib.term.BNode`.
+        "f{name}_Literal" # Vertex collection for `rdflib.term.Literal`.
+        "f{name}_Statement" # Edge collection for all triples/quads.
         ```
 
         :param name: The name of the RDF Graph
@@ -548,10 +546,10 @@ class ArangoRDF(AbstractArangoRDF):
                     for the given predicate.
                 4) TODO - What's next?
         :type contextualize_graph: bool
-        :param simplify_reified_triples: If set to False, will preserve the RDF
+        :param flatten_reified_triples: If set to False, will preserve the RDF
             structure of reified triples. If set to True, will convert any reified
             triple into a "regular" Property Graph Edge. Defaults to True.
-        :type simplify_reified_triples: bool
+        :type flatten_reified_triples: bool
         :param use_hashed_literals_as_keys: If set to False, will not use the
             hashed value of an RDF Literal as its ArangoDB Document Key (i.e
             a randomly-generated key will instead be used). If set to True, all
@@ -625,8 +623,7 @@ class ArangoRDF(AbstractArangoRDF):
         contextualize_statement_func = empty_func
         if contextualize_graph:
             contextualize_statement_func = self.__rpt_contextualize_statement
-
-            self.__rdf_graph = self.load_meta_ontology(self.__rdf_graph)
+            self.__rdf_graph = self.__load_meta_ontology(self.__rdf_graph)
             self.__explicit_type_map = self.__build_explicit_type_map()
             self.__subclass_tree = self.__build_subclass_tree()
             self.__predicate_scope = self.__build_predicate_scope()
@@ -634,7 +631,7 @@ class ArangoRDF(AbstractArangoRDF):
             self.__type_map = self.__combine_type_map_and_dr_map()
 
         self.__reified_subject_predicate_map = {}
-        if simplify_reified_triples:
+        if flatten_reified_triples:
             self.__parse_reified_triples(
                 lambda s, p, o, sg, k: self.__rpt_process_subject_predicate_object(
                     s, p, o, sg, k, contextualize_statement_func
@@ -670,7 +667,7 @@ class ArangoRDF(AbstractArangoRDF):
         adb_col_statements: Optional[RDFGraph] = None,
         write_adb_col_statements: bool = True,
         contextualize_graph: bool = False,
-        simplify_reified_triples: bool = True,
+        flatten_reified_triples: bool = True,
         overwrite_graph: bool = False,
         use_async: bool = False,
         batch_size: Optional[int] = None,
@@ -684,7 +681,7 @@ class ArangoRDF(AbstractArangoRDF):
         in the package's README file, or in the following
         paper: https://arxiv.org/pdf/2210.05781.pdf.
 
-        In contrast to RPT, the `rdf_to_arangodb_by_pgt` method will rely on
+        In contrast to RPT, this method will rely on
         the nature of the RDF Resource/Statement to determine which ArangoDB
         Collection it belongs to. The ArangoDB Collection mapping process relies
         on two fundamental URIs:
@@ -722,25 +719,25 @@ class ArangoRDF(AbstractArangoRDF):
                         name of the selected URI will be designated as the Document
                         collection for that Resource.
 
-            NOTE 1: If `contextualize_graph` is set to True, then additional `rdf:type`
-                statements may be generated via ArangoRDF's Domain & Range Inference
-                feature. These "synthetic" statements will be considered when mapping
-                RDF Resources to the correct ArangoDB Collections, but ONLY if there
-                were no "original" rdf:type statements to consider for
+            NOTE 1: If **contextualize_graph** is set to True, then additional
+                `rdf:type` statements may be generated via ArangoRDF's Domain & Range
+                Inference feature. These "synthetic" statements will be considered when
+                mapping RDF Resources to the correct ArangoDB Collections, but ONLY if
+                there were no "original" rdf:type statements to consider for
                 the given RDF Resource.
 
             NOTE 2: The ArangoDB Collection Mapping algorithm is a Work in Progress,
                 and will most likely be subject to change for the time being.
 
-        In contrast to RPT, regardless of whether `contextualize_graph` is set to
+        In contrast to RPT, regardless of whether **contextualize_graph** is set to
         True or not, all RDF Predicates within every RDF Statement in **rdf_graph**
         will be processed as their own ArangoDB Document, and will be stored under
-        the "Property" Document Collection.
+        the "Property" Vertex Collection.
 
-        ===============================================================================
         To demo the ArangoDB Collection Mapping process,
-        let us consider the following RDF Graph
-        --------------------------------------------------------------------
+        let us consider the following RDF Graph:
+
+        ```
         @prefix ex: <http://example.com/> .
         @prefix adb: <http://www.arangodb.com/> .
         @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -765,7 +762,7 @@ class ArangoRDF(AbstractArangoRDF):
         ex:frank rdf:type D .
 
         ex:bob ex:name "Bob" .
-        --------------------------------------------------------------------
+        ```
         Given the RDF TTL Snippet above, we can derive the following
         ArangoDB Collection mappings:
 
@@ -796,13 +793,13 @@ class ArangoRDF(AbstractArangoRDF):
             nor an `adb:collection` statement associated to it. It
             is therefore placed under the "UnknownResource"
             Document Collection.
-        ===============================================================================
 
         :param name: The name of the RDF Graph
         :type name: str
         :param rdf_graph: The RDF Graph object. NOTE: This method does not
             currently support RDF graphs of type `rdflib.graph.Dataset`.
-            Apologies for the inconvenience.
+            Consider using `rdflib.graph.ConjunctiveGraph` if using quads
+            instead of triples is required.
         :type: rdf_graph: rdflib.graph.Graph
         :param adb_col_statements: An optional RDF Graph containing
             ArangoDB Collection statements of the form
@@ -835,17 +832,17 @@ class ArangoRDF(AbstractArangoRDF):
             by **name** if it already exists, and drops its associated collections.
             Defaults to False.
         :type overwrite_graph: bool
-        :param batch_size: If specified, runs the ArangoDB Data Ingestion
-            process for every **batch_size** RDF triples/quads within **rdf_graph**.
-            Defaults to `len(rdf_graph)`.
         :param use_async: Performs asynchronous ArangoDB ingestion if enabled.
             Defaults to False.
         :type use_async: bool
+        :param batch_size: If specified, runs the ArangoDB Data Ingestion
+            process for every **batch_size** RDF triples/quads within **rdf_graph**.
+            Defaults to `len(rdf_graph)`.
         :type batch_size: int | None
-        :param simplify_reified_triples: If set to False, will preserve the RDF
+        :param flatten_reified_triples: If set to False, will preserve the RDF
             Structure of any reified triples. If set to True, will convert any reified
             triples into regular ArangoDB edges. Defaults to True.
-        :type simplify_reified_triples: bool
+        :type flatten_reified_triples: bool
         :param adb_import_kwargs: Keyword arguments to specify additional
             parameters for the ArangoDB Data Ingestion process.
             The full parameter list is here:
@@ -911,18 +908,12 @@ class ArangoRDF(AbstractArangoRDF):
 
         self.__pgt_remove_blacklisted_statements()
 
-        self.__adb_col_statements = adb_col_statements or RDFGraph()
-        if write_adb_col_statements:
-            self.__adb_col_statements = self.write_adb_col_statements(
-                rdf_graph, self.__adb_col_statements, contextualize_graph
-            )
-
         # NOTE: Graph Contextualization is an experimental work-in-progress
         contextualize_statement_func = empty_func
         if contextualize_graph:
             contextualize_statement_func = self.__pgt_contextualize_statement
 
-            self.__type_map = self.__combine_type_map_and_dr_map()
+            self.__rdf_graph = self.__load_meta_ontology(self.__rdf_graph)
 
             self.__e_col_map["type"]["from"].add("Property")
             self.__e_col_map["type"]["from"].add("Class")
@@ -931,8 +922,17 @@ class ArangoRDF(AbstractArangoRDF):
                 self.__e_col_map[label]["from"].add("Property")
                 self.__e_col_map[label]["to"].add("Class")
 
+        self.__adb_col_statements = adb_col_statements or RDFGraph()
+        if write_adb_col_statements or contextualize_graph:
+            # Enabling Graph Contextualization forces
+            # us to run the ArangoDB Collection Mapping algorithm
+            # regardless of **write_adb_col_statements**
+            self.__adb_col_statements = self.write_adb_col_statements(
+                rdf_graph, self.__adb_col_statements, contextualize_graph
+            )
+
         self.__reified_subject_predicate_map = {}
-        if simplify_reified_triples:
+        if flatten_reified_triples:
             self.__parse_reified_triples(
                 lambda s, p, o, sg, k: self.__pgt_process_subject_predicate_object(
                     s, p, o, sg, k, contextualize_statement_func
@@ -977,83 +977,14 @@ class ArangoRDF(AbstractArangoRDF):
         rdf_graph += self.__adb_key_statements
         return self.__pgt_create_adb_graph(name)
 
-    #######################################
-    # Public: RDF -> ArangoDB (RPT & PGT) #
-    #######################################
-
-    def rdf_id_to_adb_key(self, rdf_id: str, rdf_term: Optional[RDFTerm] = None) -> str:
-        """Convert an RDF Resource ID string into an ArangoDB Key via
-        some hashing function. If **rdf_term** is provided, then the value of
-        the statement (rdf_term adb:key "<ArangoDB Document Key>") will be used
-        as the ArangoDB Key (assuming that said statement exists) in
-        `self.__adb_key_statements`.
-
-        Current hashing function used: FarmHash
-
-        :param rdf_id: The string representation of an RDF Resource
-        :type rdf_id: str
-        :param rdf_term: The optional RDF Term to check if it has an
-            adb:key statement associated to it.
-        :type rdf_term: Optional[URIRef | BNode | Literal]
-        :return: The ArangoDB _key equivalent of **rdf_id**
-        :rtype: str
-        """
-        if adb_key := self.__adb_key_statements.value(rdf_term, self.adb_key_uri):
-            return str(adb_key)
-
-        return self.hash(rdf_id)
-
-    def hash(self, rdf_id: str) -> str:
-        """RDF -> ArangoDB: Hash an RDF Resource ID string into an ArangoDB Key via
-        some hashing function.
-
-        Current hashing function used: FarmHash
-
-        List of hashing functions tested & benchmarked:
-        - Built-in hash() function
-        - Hashlib MD5
-        - xxHash
-        - MurmurHash
-        - CityHash
-        - FarmHash
-
-        :param rdf_id: The string representation of an RDF Resource
-        :type rdf_id: str
-        :return: The ArangoDB _key equivalent of **rdf_id**
-        :rtype: str
-        """
-
-        # hash(rdf_id) # NOTE: not platform/session independent!
-        # hashlib.md5(rdf_id.encode()).hexdigest()
-        # xxhash.xxh64(rdf_id.encode()).hexdigest()
-        # mmh3.hash64(rdf_id, signed=False)[0]
-        # cityhash.CityHash64(item)
-        # farmhash.Fingerprint64(rdf_id)
-
-        return str(farmhash.Fingerprint64(rdf_id))
-
-    def rdf_id_to_adb_label(self, rdf_id: str) -> str:
-        """Return the suffix of an RDF URI. The suffix can (1)
-        be used as an ArangoDB Collection name, or (2) be used as
-        the `_label` property value for an ArangoDB Document.
-        For example, rdf_id_to_adb_label("http://example.com/Person")
-        returns "Person".
-
-        :param rdf_id: The string representation of a URIRef
-        :type rdf_id: str
-        :return: The suffix of the RDF URI string
-        :rtype: str
-        """
-        return re.split("/|#|:", rdf_id)[-1] or rdf_id
-
     def write_adb_col_statements(
         self,
         rdf_graph: RDFGraph,
         adb_col_statements: Optional[RDFGraph] = None,
         contextualize_graph: bool = False,
     ) -> RDFGraph:
-        """Returns an RDF Graph to map RDF Resources to their respective
-        ArangoDB Collection.
+        """RDF -> ArangoDB (PGT): Returns an RDF Graph to map RDF Resources to
+        their respective ArangoDB Collection.
 
         The PGT Algorithm relies on the ArangoDB Collection Mapping Process to
         identify the ArangoDB Collection of every RDF Resource. Using this method prior
@@ -1139,7 +1070,11 @@ class ArangoRDF(AbstractArangoRDF):
         )
         self.__domain_range_map = self.__build_domain_range_map()
 
-        # 4. Finalize **adb_col_statements**
+        # 4. (Optional) Create the type map for Graph Contextualization
+        if contextualize_graph:
+            self.__type_map = self.__combine_type_map_and_dr_map()
+
+        # 5. Finalize **adb_col_statements**
         for rdf_map in [self.__explicit_type_map, self.__domain_range_map]:
             for rdf_resource, class_set in rdf_map.items():
                 has_mapping = (rdf_resource, None, None) in self.__adb_col_statements
@@ -1164,84 +1099,79 @@ class ArangoRDF(AbstractArangoRDF):
 
         return RDFGraph() + self.__adb_col_statements
 
-    def load_base_ontology(self, rdf_graph: RDFGraph) -> None:
-        """An RDF-to-ArangoDB helper method that loads a minimialistic
-        t-box into **rdf_graph**.
+    #######################################
+    # Public: RDF -> ArangoDB (RPT & PGT) #
+    #######################################
 
-        This method is called when users choose to set the
-        `contextualize_graph` flag to True via any of the two
-        `rdf_to_arangodb` methods.
+    def rdf_id_to_adb_key(self, rdf_id: str, rdf_term: Optional[RDFTerm] = None) -> str:
+        """RDF -> ArangoDB: Convert an RDF Resource ID string into an ArangoDB Key via
+        some hashing function.
 
-        The "base" t-box triples are:
-        1)  <RDFS.Class> <RDF.type> <RDFS.Class>
-        2)  <RDF.Property> <RDF.type> <RDFS.Class>
-        3)  <RDF.type> <RDF.type> <RDF.Property>
-        4)  <RDFS.domain> <RDF.type> <RDF.Property>
-        5)  <RDFS.range> <RDF.type> <RDF.Property>
+        If **rdf_term** is provided, then the value of
+        the statement `rdf_term adb:key "<ArangoDB Document Key>" .` will be used
+        as the ArangoDB Key (assuming that said statement exists).
 
-        :param rdf_graph: The RDF Graph, soon to be converted into an ArangoDB Graph.
-        :type rdf_graph: rdflib.graph.Graph
+        Current hashing function used: FarmHash
+
+        :param rdf_id: The string representation of an RDF Resource
+        :type rdf_id: str
+        :param rdf_term: The optional RDF Term to check if it has an
+            adb:key statement associated to it.
+        :type rdf_term: Optional[URIRef | BNode | Literal]
+        :return: The ArangoDB _key equivalent of **rdf_id**
+        :rtype: str
+        """
+        if adb_key := self.__adb_key_statements.value(rdf_term, self.adb_key_uri):
+            return str(adb_key)
+
+        return self.hash(rdf_id)
+
+    def hash(self, rdf_id: str) -> str:
+        """RDF -> ArangoDB: Hash an RDF Resource ID string into an ArangoDB Key via
+        some hashing function.
+
+        Current hashing function used: FarmHash
+
+        List of hashing functions tested & benchmarked:
+        - Built-in hash() function
+        - Hashlib MD5
+        - xxHash
+        - MurmurHash
+        - CityHash
+        - FarmHash
+
+        :param rdf_id: The string representation of an RDF Resource
+        :type rdf_id: str
+        :return: The ArangoDB _key equivalent of **rdf_id**
+        :rtype: str
         """
 
-        base_ontology = [
-            (RDFS.Class, RDF.type, RDFS.Class),
-            (RDF.Property, RDF.type, RDFS.Class),
-            (RDF.type, RDF.type, RDF.Property),
-            (RDFS.domain, RDF.type, RDF.Property),
-            (RDFS.range, RDF.type, RDF.Property),
-        ]
+        # hash(rdf_id) # NOTE: not platform/session independent!
+        # hashlib.md5(rdf_id.encode()).hexdigest()
+        # xxhash.xxh64(rdf_id.encode()).hexdigest()
+        # mmh3.hash64(rdf_id, signed=False)[0]
+        # cityhash.CityHash64(item)
+        # farmhash.Fingerprint64(rdf_id)
 
-        for t in base_ontology:
-            # We must make sure that we are not overwriting any **quad** statements
-            # i.e ontology statements that have a sub-graph associated to them.
-            if t not in rdf_graph:
-                rdf_graph.add(t)
+        return str(farmhash.Fingerprint64(rdf_id))
 
-    def load_meta_ontology(self, rdf_graph: RDFGraph) -> RDFConjunctiveGraph:
-        """An RDF-to-ArangoDB helper method that loads the RDF, RDFS, and OWL
-        Ontologies into **rdf_graph** as 3 sub-graphs. This method returns
-        an RDF Graph of type rdflib.graph.ConjunctiveGraph in order to support
-        sub-graph functionality.
+    def rdf_id_to_adb_label(self, rdf_id: str) -> str:
+        """RDF -> ArangoDB: Return the suffix of an RDF URI.
 
-        This method is useful for users who seek to help contextualize their
-        RDF Graph within ArangoDB. A common use case would look like this:
+        The suffix can (1) be used as an ArangoDB Collection name,
+        or (2) be used as the `_label` property value for an ArangoDB Document.
 
-        ```
-        from arango_rdf import ArangoRDF
-        from arango import ArangoClient
-        from rdflib import Graph
+        For example:
+        - `http://example.com/Person -> "Person"`
+        - `http://example.com/Person#Bob -> "Bob"`
+        - `http://example.com/Person:Bob -> "Bob"`
 
-        db = ArangoClient(...)
-        adbrdf = ArangoRDF(db)
-
-        g = Graph()
-        g.parse('...')
-
-        cg = adbrdf.load_meta_ontology(g) # Returns a `ConjunctiveGraph`
-        adbrdf.rdf_to_arangodb_by_rpt('RPTGraph', cg, contextualize_graph=True)
-        adbrdf.rdf_to_arangodb_by_pgt('PGTGraph', cg, contextualize_graph=True)
-        ```
-
-        NOTE: If **rdf_graph** is already of type rdflib.graph.ConjunctiveGraph,
-        then the **same** graph is returned (pass by reference).
-
-        :param rdf_graph: The RDF Graph, soon to be converted into an ArangoDB Graph.
-        :type rdf_graph: rdflib.graph.Graph
-        :return: A ConjunctiveGraph equivalent of **rdf_graph** containing 3
-            additional subgraphs (RDF, RDFS, OWL)
-        :rtype: rdflib.graph.ConjunctiveGraph
+        :param rdf_id: The string representation of a URIRef
+        :type rdf_id: str
+        :return: The suffix of the RDF URI string
+        :rtype: str
         """
-
-        graph: RDFConjunctiveGraph = (
-            rdf_graph
-            if isinstance(rdf_graph, RDFConjunctiveGraph)
-            else RDFConjunctiveGraph() + rdf_graph
-        )
-
-        for ns in os.listdir(f"{PROJECT_DIR}/meta"):
-            graph.parse(f"{PROJECT_DIR}/meta/{ns}", format="trig")
-
-        return graph
+        return re.split("/|#|:", rdf_id)[-1] or rdf_id
 
     ############################
     # Private: ArangoDB -> RDF #
@@ -1679,7 +1609,8 @@ class ArangoRDF(AbstractArangoRDF):
     def extract_adb_col_statements(
         self, rdf_graph: RDFGraph, keep_adb_col_statements_in_rdf_graph: bool = False
     ) -> RDFGraph:
-        """Extracts the ArangoDB Collection statements from an RDF Graph.
+        """ArangoDB <-> RDF: Extracts `adb:collection` statements
+        from an RDF Graph.
 
         :param rdf_graph: The RDF Graph to extract the statements from.
         :type rdf_graph: rdflib.graph.Graph
@@ -1698,7 +1629,7 @@ class ArangoRDF(AbstractArangoRDF):
     def extract_adb_key_statements(
         self, rdf_graph: RDFGraph, keep_adb_key_statements_in_rdf_graph: bool = False
     ) -> RDFGraph:
-        """Extracts the ArangoDB Key statements from an RDF Graph.
+        """ArangoDB <-> RDF: Extracts the `adb:key` statements from an RDF Graph.
 
         :param rdf_graph: The RDF Graph to extract the statements from.
         :type rdf_graph: rdflib.graph.Graph
@@ -1891,6 +1822,35 @@ class ArangoRDF(AbstractArangoRDF):
     ##################################
 
     def __pgt_remove_blacklisted_statements(self) -> None:
+        """RDF -> ArangoDB (PGT): Removes RDF Statements that are blacklisted
+        from being inserted into the ArangoDB instance.
+
+        Useful for statements that add noise to the data. For example:
+
+        ```
+        ex:subject ex:predicate [
+            rdf:type rdf:List ;
+            rdf:first ex:item1 ;
+            rdf:rest [
+                rdf:type rdf:List ;
+                rdf:first ex:item2 ;
+                rdf:rest [
+                    rdf:type rdf:List ;
+                    rdf:first ex:item3 ;
+                    rdf:rest rdf:nil
+                ]
+            ]
+        ] .
+        ```
+
+        The above RDF List should simply translate to:
+
+        ```
+        subject = {
+            "predicate": [item1, item2, item3]
+        }
+        ```
+        """
         rdf_statement_blacklist = {
             (RDF.type, RDF.List),
             (RDF.type, RDF.Bag),
@@ -1906,6 +1866,19 @@ class ArangoRDF(AbstractArangoRDF):
         statements: Callable[..., Generator[_OptionalQuadType, None, None]],
         pgt_contextualize_statement_func: Callable[..., None],
     ) -> None:
+        """RDF -> ArangoDB (PGT): Pre-processes all RDF Literal statements
+        (i.e "Datatype Property Statements") within the RDF Graph.
+
+        Essential for RDF -> ArangoDB (PGT) transformations, as RDF Literals
+        are stored as ArangoDB Document properties.
+
+        :param statements: A function that returns a generator of RDF Statements.
+        :type statements: Callable[..., Generator[_OptionalQuadType, None, None]]
+        :param pgt_contextualize_statement_func: A function that contextualizes
+            an RDF Statement. A no-op function is used if Graph Contextualization
+            is disabled.
+        :type pgt_contextualize_statement_func: Callable[..., None]
+        """
         # query = """
         #     SELECT ?subject ?predicate
         #     WHERE {
@@ -1916,6 +1889,9 @@ class ArangoRDF(AbstractArangoRDF):
         # """
 
         # TODO: Revisit FILTER clauses
+        # We rely on the FILTER clauses to make sure no literal
+        # statements belonging to RDF Lists are processed,
+        # as that is handled in another step (which also needs work...)
         query = f"""
             PREFIX rdf: <{RDF}>
 
@@ -1957,6 +1933,25 @@ class ArangoRDF(AbstractArangoRDF):
         reified_triple_key: Optional[str],
         contextualize_statement_func: Callable[..., None],
     ) -> None:
+        """RDF -> ArangoDB (PGT): Processes the RDF Statement (s, p, o)
+        as an ArangoDB document for PGT.
+
+        :param s: The RDF Subject of the RDF Statement.
+        :type s: URIRef | BNode
+        :param p: The RDF Predicate of the RDF Statement.
+        :type p: URIRef
+        :param o: The RDF Object of the RDF Statement.
+        :type o: URIRef | BNode | Literal
+        :param sg: The Sub Graph URI of the (s,p,o) statement, if any.
+        :type sg: URIRef | None
+        :param reified_triple_key: The ArangoDB Document Key of
+            the triple (s,p,o) if the triple is reified. Defaults to None.
+        :type reified_triple_key: str | None
+        :param contextualize_statement_func: A function that contextualizes
+            an RDF Statement. A no-op function is used if Graph Contextualization
+            is disabled.
+        :type contextualize_statement_func: Callable[..., None]
+        """
         sg_str = self.__get_subgraph_str(sg)
 
         s_meta = self.__pgt_get_term_metadata(s)
@@ -1973,7 +1968,8 @@ class ArangoRDF(AbstractArangoRDF):
         contextualize_statement_func(s_meta, p_meta, o_meta, sg_str)
 
     def __pgt_get_term_metadata(self, t: Union[URIRef, BNode, Literal]) -> RDFTermMeta:
-        """Return the following PGT-relevant metadata associated to the RDF Term:
+        """RDF -> ArangoDB (PGT): Return the following PGT-relevant metadata
+        associated to the RDF Term:
             1. The RDF Term (**term**)
             2. The Arangodb Collection of **term**
             3. The Arangodb Key of **term**
@@ -2007,8 +2003,7 @@ class ArangoRDF(AbstractArangoRDF):
     def __pgt_rdf_val_to_adb_val(
         self, doc: Json, key: str, val: Any, process_val_as_string: bool = False
     ) -> None:
-        """A helper function used to insert an arbitrary value
-        into an arbitrary document.
+        """RDF -> ArangoDB (PGT): Insert an arbitrary value into an arbitrary document.
 
         :param doc: An arbitrary document
         :type doc: Dict[str, Any]
@@ -2045,7 +2040,7 @@ class ArangoRDF(AbstractArangoRDF):
         sg_str: str = "",
         process_val_as_string: bool = False,
     ) -> None:
-        """Process an RDF Term as an ArangoDB document by PGT.
+        """RDF -> ArangoDB (PGT): Process an RDF Term as an ArangoDB document by PGT.
 
         :param t_meta: The RDF Term Metadata associated to the RDF Term.
         :type t_meta: arango_rdf.typings.RDFTermMeta
@@ -2101,10 +2096,11 @@ class ArangoRDF(AbstractArangoRDF):
     def __pgt_process_object(
         self, s_meta: RDFTermMeta, p_meta: RDFTermMeta, o_meta: RDFTermMeta, sg_str: str
     ) -> None:
-        """Processes the RDF Object into ArangoDB. Given the possibily of
-        the RDF Object being used as the "root" of an RDF Collection or
-        an RDF Container (i.e an RDF List), this wrapper function is used
-        to prevent calling `__pgt_process_rdf_term` if it is not required.
+        """RDF -> ArangoDB (PGT): Processes the RDF Object into ArangoDB.
+        Given the possibily of the RDF Object being used as the "root" of
+        an RDF Collection or an RDF Container (i.e an RDF List), this wrapper
+        function is used to prevent calling `__pgt_process_rdf_term` if it is not
+        required.
 
         :param s_meta: The RDF Term Metadata associated to the
             RDF Subject of the statement containing the RDF Object.
@@ -2138,7 +2134,8 @@ class ArangoRDF(AbstractArangoRDF):
         sg_str: str,
         reified_triple_key: Optional[str] = None,
     ) -> None:
-        """Processes the RDF Statement (s, p, o) as an ArangoDB Edge for PGT.
+        """RDF -> ArangoDB (PGT): Processes the RDF Statement (s, p, o) as an
+        ArangoDB Edge for PGT.
 
         An edge is only created if:
             1) The RDF Object within the RDF Statement is not a Literal
@@ -2180,10 +2177,11 @@ class ArangoRDF(AbstractArangoRDF):
         self.__e_col_map[p_label]["to"].add(o_col)
 
     def __pgt_object_is_head_of_rdf_list(self, o: RDFTerm) -> bool:
-        """Return True if the RDF Object *o* is either the "root" node
-        of some RDF Collection or RDF Container within the RDF Graph.
-        Essential for unpacking the complicated data structure of
-        RDF Lists and re-building them as a JSON List for ArangoDB insertion.
+        """RDF -> ArangoDB (PGT): Return True if the RDF Object *o*
+        is either the "root" node of some RDF Collection or RDF Container
+        within the RDF Graph. Essential for unpacking the complicated data
+        structure of RDF Lists and re-building them as a JSON List for ArangoDB
+        insertion.
 
         :param o: The RDF Object.
         :type o: URIRef | BNode | Literal
@@ -2209,9 +2207,9 @@ class ArangoRDF(AbstractArangoRDF):
         return False
 
     def __pgt_statement_is_part_of_rdf_list(self, s: RDFTerm, p: URIRef) -> str:
-        """Return the associated "Document Buffer" key if the RDF Statement
-        (s, p, _) is part of an RDF Collection or RDF Container within the RDF Graph.
-        Essential for unpacking the complicated data structure of
+        """RDF -> ArangoDB (PGT): Return the associated "Document Buffer" key
+        if the RDF Statement (s, p, _) is part of an RDF Collection or RDF Container
+        within the RDF Graph. Essential for unpacking the complicated data structure of
         RDF Lists and re-building them as an ArangoDB Document Property.
 
         :param s: The RDF Subject.
@@ -2240,24 +2238,25 @@ class ArangoRDF(AbstractArangoRDF):
         return ""
 
     def __pgt_process_rdf_lists(self, bar_progress: Progress) -> None:
-        """A helper function to help process all RDF Collections & Containers
+        """RDF -> ArangoDB (PGT): Process all RDF Collections & Containers
         within the RDF Graph prior to inserting the documents into ArangoDB.
-
-        # TODO: Rework the following paragraph to address `_rdf_list_head` and
-        `_rdf_list_data` usage instead
-        This function relies on a Dictionary/Linked-List representation of the
-        RDF Lists. This representation is stored via the "_LIST_HEAD",
-        "_CONTAINER_BNODE", and "_COLLECTION_BNODE" keys within `self.adb_docs`.
 
         Given the "linked-list" nature of these RDF Lists, we rely on
         recursion via the `__pgt_process_rdf_list_object`,
         `__pgt_unpack_rdf_collection`, and `__pgt_unpack_rdf_container` functions.
 
         NOTE: A form of string manipulation is used if Literals are
-        present within the RDF List. For example, given the RDF Statement
-        ```ex:Doc ex:numbers (1 (2 3)) .```, the equivalent ArangoDB List is
-        constructed via a string-based solution:
+        present within the RDF List.
+
+        For example:
+
+        `ex:Doc ex:numbers (1 (2 3)) .`
+
+        would be constructed via a string-based solution:
+
         "[" → "[1" → "[1, [" → "[1, [2," → "[1, [2, 3" → "[1, [2, 3]" → "[1, [2, 3]]"
+
+        I know, it's hacky.
         """
         list_heads = self.__rdf_list_heads.items()
         bar_progress_task = bar_progress.add_task(
@@ -2299,17 +2298,17 @@ class ArangoRDF(AbstractArangoRDF):
         o: RDFTerm,
         sg: str,
     ) -> None:
-        """Given an ArangoDB Document, and the RDF List Statement represented
-        by `s_meta, p_meta, o`, process the value of the object **o**
-        into the ArangoDB Document.
+        """RDF -> ArangoDB (PGT): Given an ArangoDB Document, and the
+        RDF List Statement represented by **s_meta**, **p_meta**, and **o**,
+        process the value of the object **o** into the ArangoDB Document.
 
-        If the Object is part of an RDF Collection Data Structure,
+        1. If **o** is part of an RDF Collection Data Structure,
         rely on the recursive `__pgt_unpack_rdf_collection` function.
 
-        If the Object is part of an RDF Container Data Structure,
+        2. If **o** is part of an RDF Container Data Structure,
         rely on the recursive `__pgt_unpack_rdf_container` function.
 
-        If the Object is none of the above, then it is considered
+        3. If **o** is none of the above, then it is considered
         as a processable entity.
 
         :param doc: The ArangoDB Document associated to the RDF List.
@@ -2361,8 +2360,9 @@ class ArangoRDF(AbstractArangoRDF):
         bnode_dict: Dict[str, RDFTerm],
         sg: str,
     ) -> None:
-        """A recursive function that disassembles the structure of the
-        RDF Collection, most notably known for its "first" & "rest" structure.
+        """RDF -> ArangoDB (PGT): A recursive function that disassembles
+        the structure of the RDF Collection, most notably known by its
+        `rdf:first` & `rdf:rest` structure.
 
         :param doc: The ArangoDB Document associated to the RDF Collection.
         :type doc: Dict[str, Any]
@@ -2395,9 +2395,9 @@ class ArangoRDF(AbstractArangoRDF):
         bnode_dict: Dict[str, Union[RDFTerm, List[RDFTerm]]],
         sg: str,
     ) -> None:
-        """A recursive function that disassembles the structure of the
-        RDF Container, most notably known for its linear structure
-        (i.e rdf:li & rdf:_n properties)
+        """RDF -> ArangoDB (PGT): A recursive function that disassembles
+        the structure of the RDF Container, most notably known for its
+        `rdf:li` or `rdf:_n` structure.
 
         :param doc: The ArangoDB Document associated to the RDF Collection.
         :type doc: Dict[str, Any]
@@ -2441,7 +2441,8 @@ class ArangoRDF(AbstractArangoRDF):
         self.__contextualize_statement(s_meta, p_meta, o_meta, sg_str, is_pgt=True)
 
     def __pgt_create_adb_graph(self, name: str) -> ADBGraph:
-        """Create an ArangoDB graph based on a PGT Transformation.
+        """RDF -> ArangoDB (PGT): Create an ArangoDB graph based
+        on a PGT Transformation.
 
         :param name: The ArangoDB Graph name
         :type name: str
@@ -2457,7 +2458,7 @@ class ArangoRDF(AbstractArangoRDF):
         non_orphan_v_cols: Set[str] = set()
 
         for col in self.__adb_col_statements.objects(
-            None, self.adb_col_uri, unique=True
+            subject=None, predicate=self.adb_col_uri, unique=True
         ):
             all_v_cols.add(str(col))
 
@@ -2488,6 +2489,35 @@ class ArangoRDF(AbstractArangoRDF):
     ########################################
     # Private: RDF -> ArangoDB (RPT & PGT) #
     ########################################
+
+    def __load_meta_ontology(self, rdf_graph: RDFGraph) -> RDFConjunctiveGraph:
+        """RDF -> ArangoDB: Load the RDF, RDFS, and OWL
+        Ontologies into **rdf_graph** as 3 sub-graphs. This method returns
+        an RDF Graph of type rdflib.graph.ConjunctiveGraph in order to support
+        sub-graph functionality.
+
+        Essential for Graph Contextualization.
+
+        NOTE: If **rdf_graph** is already of type rdflib.graph.ConjunctiveGraph,
+        then the **same** graph is returned (pass by reference).
+
+        :param rdf_graph: The RDF Graph, soon to be converted into an ArangoDB Graph.
+        :type rdf_graph: rdflib.graph.Graph
+        :return: A ConjunctiveGraph equivalent of **rdf_graph** containing 3
+            additional subgraphs (RDF, RDFS, OWL)
+        :rtype: rdflib.graph.ConjunctiveGraph
+        """
+
+        graph: RDFConjunctiveGraph = (
+            rdf_graph
+            if isinstance(rdf_graph, RDFConjunctiveGraph)
+            else RDFConjunctiveGraph() + rdf_graph
+        )
+
+        for ns in os.listdir(f"{PROJECT_DIR}/meta"):
+            graph.parse(f"{PROJECT_DIR}/meta/{ns}", format="trig")
+
+        return graph
 
     def __parse_reified_triples(
         self, process_subject_predicate_object_func: Callable[..., None]
@@ -3029,13 +3059,13 @@ class ArangoRDF(AbstractArangoRDF):
         sg_str: str,
         is_pgt: bool,
     ) -> None:
-        """A helper method shared accross RDF to ArangoDB RPT & PGT to provide
-        Domain/Range (DR) Inference & Introspection.
+        """RDF -> ArangoDB: Provide Domain/Range (DR) Inference & Introspection
+        for the current statement represented by **p** and **dr_meta**
 
-        DR Inference: Generate `RDF:type` statements for RDF Resources via the
+        1. DR Inference: Generate `RDF:type` statements for RDF Resources via the
             `RDFS:Domain` & `RDFS:Range` statements of RDF Predicates.
 
-        DR Introspection: Generate `RDFS:Domain` & `RDFS:Range` statements for
+        2. DR Introspection: Generate `RDFS:Domain` & `RDFS:Range` statements for
             RDF Predicates via the `RDF:type` statements of RDF Resources.
 
         Uses the following instance variables:
@@ -3126,8 +3156,7 @@ class ArangoRDF(AbstractArangoRDF):
         adb_col: str,
         overwrite: bool = False,
     ) -> None:
-        """Add a statement to **self.__adb_col_statements** of the form
-        (subject, URIRef("http://www.arangodb.com/collection"), Literal(adb_col)) .
+        """RDF -> ArangoDB: Add a statement to **self.__adb_col_statements**
 
         :param subject: The RDF Subject.
         :type subject: URIRef | BNode
@@ -3156,7 +3185,7 @@ class ArangoRDF(AbstractArangoRDF):
         rdf_graph: RDFGraph,
         keep_triples_in_rdf_graph: bool,
     ) -> RDFGraph:
-        """Extracts statements from an RDF Graph.
+        """ArangoDB <-> RDF: Extracts statements from an RDF Graph.
 
         :param triple: The triple to extract from the RDF Graph.
         :type triple: Tuple[RDFTerm, RDFTerm, RDFTerm]

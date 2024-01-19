@@ -1783,7 +1783,6 @@ def test_rpt_meta(name: str, rdf_graph: RDFGraph) -> None:
     assert len(subtract_graphs(rdf_graph_3, rdf_graph_2)) == 0
     assert len(rdf_graph_3) == len(rdf_graph_2)
 
-    rdf_graph_3 = adbrdf.load_meta_ontology(rdf_graph_3)
     adbrdf.rdf_to_arangodb_by_rpt(
         name,
         rdf_graph_3,
@@ -2604,7 +2603,7 @@ def test_pgt_case_8(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph_3 + RDFGraph(),
         overwrite_graph=True,
-        simplify_reified_triples=False,
+        flatten_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -2725,7 +2724,7 @@ def test_pgt_case_10(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph_3 + RDFGraph(),
         overwrite_graph=True,
-        simplify_reified_triples=False,
+        flatten_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -2834,7 +2833,7 @@ def test_pgt_case_11_1(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph_3 + RDFGraph(),
         overwrite_graph=True,
-        simplify_reified_triples=False,
+        flatten_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -2946,7 +2945,7 @@ def test_pgt_case_11_2(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph_3 + RDFGraph(),
         overwrite_graph=True,
-        simplify_reified_triples=False,
+        flatten_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -3056,7 +3055,7 @@ def test_pgt_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph_3 + RDFGraph(),
         overwrite_graph=True,
-        simplify_reified_triples=False,
+        flatten_reified_triples=False,
     )
 
     assert not adb_graph.has_vertex_collection("Statement")
@@ -3167,7 +3166,7 @@ def test_pgt_case_12_2(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph_3 + RDFGraph(),
         overwrite_graph=True,
-        simplify_reified_triples=False,
+        flatten_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -3295,7 +3294,7 @@ def test_pgt_case_13_1(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph_3 + RDFGraph(),
         overwrite_graph=True,
-        simplify_reified_triples=False,
+        flatten_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -3426,7 +3425,7 @@ def test_pgt_case_13_2(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph_3 + RDFGraph(),
         overwrite_graph=True,
-        simplify_reified_triples=False,
+        flatten_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -3628,7 +3627,7 @@ def test_pgt_case_14_2(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph_3 + RDFGraph(),
         overwrite_graph=True,
-        simplify_reified_triples=False,
+        flatten_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -3754,7 +3753,7 @@ def test_pgt_case_15_1(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph_3 + RDFGraph(),
         overwrite_graph=True,
-        simplify_reified_triples=False,
+        flatten_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -3881,7 +3880,7 @@ def test_pgt_case_15_2(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph_3 + RDFGraph(),
         overwrite_graph=True,
-        simplify_reified_triples=False,
+        flatten_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -4014,7 +4013,7 @@ def test_pgt_case_15_3(name: str, rdf_graph: RDFGraph) -> None:
         name,
         rdf_graph_3 + RDFGraph(),
         overwrite_graph=True,
-        simplify_reified_triples=False,
+        flatten_reified_triples=False,
     )
 
     assert adb_graph.has_vertex_collection("Statement")
@@ -4176,7 +4175,7 @@ def test_pgt_case_15_4(name: str, rdf_graph: RDFGraph) -> None:
         rdf_graph_3_copy.add(quad)
 
     adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph_3_copy, overwrite_graph=True, simplify_reified_triples=False
+        name, rdf_graph_3_copy, overwrite_graph=True, flatten_reified_triples=False
     )
 
     assert adb_graph.has_vertex_collection("Statement")
