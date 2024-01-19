@@ -2,7 +2,7 @@
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-# << ex:Mary ex:likes ex:Matt >> ex:certainty 0.5 .
+# << ex:Mary ex:likes ex:Matt >> ex:certainty 0.5; ex:foo ex:bar .
 # ex:Mary ex:likes ex:Matt >> .
 
 [] a rdf:Statement;
