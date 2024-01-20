@@ -1253,8 +1253,8 @@ class ArangoRDF(AbstractArangoRDF):
 
         col_size: int = self.__db.collection(col).count()
 
-        with get_spinner_progress(f"(ADB → RDF): Export '{col}' ({col_size})") as p:
-            p.add_task("")
+        with get_spinner_progress(f"(ADB → RDF): Export '{col}' ({col_size})") as sp:
+            sp.add_task("")
 
             cursor: Cursor = self.__db.aql.execute(
                 f"FOR doc IN @@col RETURN {aql_return_value}",
@@ -1467,7 +1467,7 @@ class ArangoRDF(AbstractArangoRDF):
         """
         for k in doc.keys() - self.adb_key_blacklist:
             val = doc[k]
-            p = self.__uri_map.get(k, URIRef(f"{self.__graph_ns}/{col}#{k}"))
+            p = self.__uri_map.get(k, URIRef(f"{self.__graph_ns}/{k}"))
             self.__adb_val_to_rdf_val(col, term, p, val, sg)
 
             # if self.__include_adb_v_col_statements:
@@ -1634,7 +1634,7 @@ class ArangoRDF(AbstractArangoRDF):
             self.__add_to_rdf_graph(s, p, bnode, sg)
 
             for k, v in val.items():
-                p = self.__uri_map.get(k, URIRef(f"{self.__graph_ns}/{col}#{k}"))
+                p = self.__uri_map.get(k, URIRef(f"{self.__graph_ns}/{k}"))
                 self.__adb_val_to_rdf_val(col, bnode, p, v, sg)
 
         else:
@@ -1976,16 +1976,21 @@ class ArangoRDF(AbstractArangoRDF):
             GROUP BY ?subject ?predicate
         """
 
-        data = self.__rdf_graph.query(query)
+        with get_spinner_progress("(RDF → ADB): PGT [RDF Literals (Query)]") as sp:
+            sp.add_task("")
+
+            data = self.__rdf_graph.query(query)
 
         total = len(data)
         batch_size = batch_size or total
         bar_progress = get_bar_progress("(RDF → ADB): PGT [RDF Literals]", "#EF7D00")
         bar_progress_task = bar_progress.add_task("", total=total - 1)
-        spinner_progress = get_spinner_progress("    ")
+        spinner_progress = get_import_spinner_progress("    ")
 
         with Live(Group(bar_progress, spinner_progress)):
-            for i, (s, p) in enumerate(self.__rdf_graph.query(query)):
+            for i, (s, p) in enumerate(data, 1):
+                bar_progress.update(bar_progress_task, advance=1)
+
                 s_meta = self.__pgt_get_term_metadata(s)
                 self.__pgt_process_rdf_term(s_meta)
 
@@ -2001,8 +2006,6 @@ class ArangoRDF(AbstractArangoRDF):
                     pgt_contextualize_statement_func(s_meta, p_meta, o_meta, sg_str)
 
                     self.__rdf_graph.remove((s, p, o))
-
-                bar_progress.advance(bar_progress_task)
 
                 if i % batch_size == 0:
                     self.__insert_adb_docs(spinner_progress, **adb_import_kwargs)
@@ -2368,6 +2371,8 @@ class ArangoRDF(AbstractArangoRDF):
         bar_progress_task = bar_progress.add_task("", total=len(list_heads))
 
         for s, s_dict in list_heads:
+            bar_progress.advance(bar_progress_task)
+
             s_meta = self.__pgt_get_term_metadata(s)
             _, s_col, s_key, _ = s_meta
 
@@ -2391,8 +2396,6 @@ class ArangoRDF(AbstractArangoRDF):
                     del doc[p_label]
                 else:
                     doc[p_label] = literal_eval(doc[p_label])
-
-            bar_progress.advance(bar_progress_task)
 
     def __pgt_process_rdf_list_object(
         self,
@@ -2694,7 +2697,12 @@ class ArangoRDF(AbstractArangoRDF):
             }}
         """
 
-        data = self.__rdf_graph.query(query)
+        text = "(RDF → ADB): PGT [Flatten Reified Triples (Query)]"
+        with get_spinner_progress(text) as sp:
+            sp.add_task("")
+
+            data = self.__rdf_graph.query(query)
+
         total = len(data)
         batch_size = batch_size or total
         m = "(RDF → ADB): Flatten Reified Triples"
@@ -2703,13 +2711,13 @@ class ArangoRDF(AbstractArangoRDF):
         spinner_progress = get_import_spinner_progress("    ")
 
         with Live(Group(bar_progress, spinner_progress)):
-            for i, (reified_subject, *sg) in enumerate(data):
+            for i, (reified_subject, *sg) in enumerate(data, 1):
+                bar_progress.advance(bar_progress_task)
+
                 # Only process the reified triple if it has not been processed yet
                 # i.e recursion
                 if reified_subject not in self.__reified_subject_map:
                     process_reified_subject(reified_subject, sg)
-
-                bar_progress.advance(bar_progress_task)
 
                 if i % batch_size == 0:
                     self.__insert_adb_docs(spinner_progress, **adb_import_kwargs)
@@ -3332,8 +3340,8 @@ class ArangoRDF(AbstractArangoRDF):
 
         _, p, _ = triple
 
-        with get_spinner_progress(f"(RDF ↔ ADB): Extract Statements '{str(p)}'") as rp:
-            rp.add_task("")
+        with get_spinner_progress(f"(RDF ↔ ADB): Extract Statements '{str(p)}'") as sp:
+            sp.add_task("")
 
             for t in rdf_graph.triples(triple):
                 extract_graph.add(t)
