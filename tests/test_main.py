@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, List
 
 import pytest
@@ -4572,6 +4573,7 @@ def test_adb_doc_with_dict_property(name: str) -> None:
     rdf_graph = adbrdf.arangodb_graph_to_rdf(
         name,
         RDFGraph(),
+        dict_conversion_mode="static",
         include_adb_v_col_statements=True,
     )
 
@@ -4581,7 +4583,10 @@ def test_adb_doc_with_dict_property(name: str) -> None:
 
     graph_namespace = f"{db._conn._url_prefixes[0]}/{name}"
     test_doc_namespace = f"{graph_namespace}/TestDoc"
+
     test_doc = URIRef(f"{test_doc_namespace}#1")
+    foo = URIRef(f"{graph_namespace}/foo")
+    val = URIRef(f"{graph_namespace}/val")
 
     assert len(adb_col_statements) == 1
     assert (test_doc, None, None) in rdf_graph
@@ -4605,6 +4610,7 @@ def test_adb_doc_with_dict_property(name: str) -> None:
     rdf_graph_2 = adbrdf.arangodb_to_rdf(
         name,
         RDFGraph(),
+        dict_conversion_mode="static",
         metagraph={"vertexCollections": {"TestDoc": {"foo"}}},
     )
 
@@ -4618,11 +4624,35 @@ def test_adb_doc_with_dict_property(name: str) -> None:
     rdf_graph_3 = adbrdf.arangodb_to_rdf(
         name,
         RDFGraph(),
+        dict_conversion_mode="static",
         metagraph={"vertexCollections": {"TestDoc": {"foo"}}},
         explicit_metagraph=False,
     )
 
     assert len(rdf_graph_3) == len(rdf_graph)
+
+    rdf_graph_4 = adbrdf.arangodb_graph_to_rdf(
+        name,
+        RDFGraph(),
+        dict_conversion_mode="serialize",
+        include_adb_v_col_statements=True,
+        include_adb_v_key_statements=True,
+    )
+
+    assert len(rdf_graph_4) == 4
+    assert (test_doc, foo, Literal("bar")) in rdf_graph_4
+    assert (test_doc, val, Literal(json.dumps(doc["val"]))) in rdf_graph_4
+
+    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
+        name,
+        rdf_graph_4,
+        overwrite_graph=True,
+    )
+
+    new_doc = adb_graph.vertex_collection("TestDoc").get("1")
+    assert new_doc
+    assert new_doc["foo"] == doc["foo"]
+    assert new_doc["val"] == doc["val"]
 
     db.delete_graph(name, drop_collections=True)
 

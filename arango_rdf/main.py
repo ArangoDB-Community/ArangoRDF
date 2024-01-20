@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import logging
 import os
 import re
@@ -167,6 +168,7 @@ class ArangoRDF(AbstractArangoRDF):
         metagraph: ADBMetagraph,
         explicit_metagraph: bool = True,
         list_conversion_mode: str = "static",
+        dict_conversion_mode: str = "static",
         infer_type_from_adb_v_col: bool = False,
         include_adb_v_col_statements: bool = False,
         include_adb_v_key_statements: bool = False,
@@ -201,12 +203,23 @@ class ArangoRDF(AbstractArangoRDF):
             all document attributes are included. Defaults to True.
         :type explicit_metagraph: bool
         :param list_conversion_mode: Specify how ArangoDB JSON lists
-            are processed into the RDF Graph. If "collection", ArangoDB
-            lists will be processed using the RDF Collection structure. If "container",
-            ArangoDB lists will be processed using the RDF Container structure.
-            If "static", elements within lists will be processed as individual
-            statements. Defaults to "static".
+            **within** and ArangoDB Document are processed into the RDF Graph.
+            If "serialize", JSON Objects will be serialized into RDF Literals.
+            If "collection", ArangoDB lists will be processed using the RDF Collection
+            structure. If "container", ArangoDB lists will be processed using the RDF
+            Container structure. If "static", elements within lists will be processed as
+            individual statements. Defaults to "static".
+            NOTE: "serialize" is recommended if round-tripping is desired, but
+            **only** if round-tripping via **PGT**.
         :type list_conversion_mode: str
+        :param dict_conversion_mode: Specify how ArangoDB JSON Objects
+            **within** an ArangoDB Document are processed into the RDF Graph.
+            If "serialize", JSON Objects will be serialized into RDF Literals.
+            If "static", elements within dictionaries will be processed as individual
+            statements with the help of BNodes. Defaults to "static".
+            NOTE: "serialize" is recommended if round-tripping is desired, but
+            **only** if round-tripping via **PGT**.
+        :type dict_conversion_mode: str
         :param infer_type_from_adb_v_col: Specify whether `rdf:type` statements
             of the form `resource rdf:type adb_v_col .` should be inferred upon
             transferring ArangoDB Vertices into RDF.
@@ -236,6 +249,14 @@ class ArangoRDF(AbstractArangoRDF):
         :return: The RDF representation of the ArangoDB Graph.
         :rtype: rdflib.graph.Graph
         """
+        list_conversion_modes = {"serialize", "collection", "container", "static"}
+        if list_conversion_mode not in list_conversion_modes:
+            msg = f"Invalid **list_conversion_mode** parameter: {list_conversion_mode}"
+            raise ValueError(msg)
+
+        if dict_conversion_mode not in {"serialize", "static"}:
+            msg = f"Invalid **dict_conversion_mode** parameter: {dict_conversion_mode}"
+            raise ValueError(msg)
 
         self.__rdf_graph = rdf_graph
         self.__graph_supports_quads = isinstance(self.__rdf_graph, RDFConjunctiveGraph)
@@ -245,6 +266,7 @@ class ArangoRDF(AbstractArangoRDF):
         self.__rdf_graph.bind(name, f"{self.__graph_ns}/")
 
         self.__list_conversion = list_conversion_mode
+        self.__dict_conversion = dict_conversion_mode
         self.__infer_type_from_adb_v_col = infer_type_from_adb_v_col
         self.__include_adb_v_col_statements = include_adb_v_col_statements
         self.__include_adb_v_key_statements = include_adb_v_key_statements
@@ -350,6 +372,7 @@ class ArangoRDF(AbstractArangoRDF):
         v_cols: Set[str],
         e_cols: Set[str],
         list_conversion_mode: str = "static",
+        dict_conversion_mode: str = "static",
         infer_type_from_adb_v_col: bool = False,
         include_adb_v_col_statements: bool = False,
         include_adb_v_key_statements: bool = False,
@@ -367,11 +390,23 @@ class ArangoRDF(AbstractArangoRDF):
         :param e_cols: The set of ArangoDB Edge Collections to import to RDF.
         :type e_cols: Set[str]
         :param list_conversion_mode: Specify how ArangoDB JSON lists
-            are processed into the RDF Graph. If "collection", ArangoDB
-            lists will be processed using the RDF Collection structure. If "container",
-            ArangoDB lists will be processed using the RDF Container structure.
-            If "static", elements within lists will be processed as individual
-            statements. Defaults to "static".
+            **within** and ArangoDB Document are processed into the RDF Graph.
+            If "serialize", JSON Objects will be serialized into RDF Literals.
+            If "collection", ArangoDB lists will be processed using the RDF Collection
+            structure. If "container", ArangoDB lists will be processed using the RDF
+            Container structure. If "static", elements within lists will be processed as
+            individual statements. Defaults to "static".
+            NOTE: "serialize" is recommended if round-tripping is desired, but
+            **only** if round-tripping via **PGT**.
+        :type list_conversion_mode: str
+        :param dict_conversion_mode: Specify how ArangoDB JSON Objects
+            **within** an ArangoDB Document are processed into the RDF Graph.
+            If "serialize", JSON Objects will be serialized into RDF Literals.
+            If "static", elements within dictionaries will be processed as individual
+            statements with the help of BNodes. Defaults to "static".
+            NOTE: "serialize" is recommended if round-tripping is desired, but
+            **only** if round-tripping via **PGT**.
+        :type dict_conversion_mode: str
         :param infer_type_from_adb_v_col: Specify whether `rdf:type` statements
             of the form `resource rdf:type adb_v_col .` should be inferred upon
             transferring ArangoDB Vertices into RDF.
@@ -414,6 +449,7 @@ class ArangoRDF(AbstractArangoRDF):
             metagraph,
             explicit_metagraph,
             list_conversion_mode,
+            dict_conversion_mode,
             infer_type_from_adb_v_col,
             include_adb_v_col_statements,
             include_adb_v_key_statements,
@@ -426,6 +462,7 @@ class ArangoRDF(AbstractArangoRDF):
         name: str,
         rdf_graph: RDFGraph,
         list_conversion_mode: str = "static",
+        dict_conversion_mode: str = "static",
         infer_type_from_adb_v_col: bool = False,
         include_adb_v_col_statements: bool = False,
         include_adb_v_key_statements: bool = False,
@@ -439,11 +476,23 @@ class ArangoRDF(AbstractArangoRDF):
         :param rdf_graph: The target RDF Graph to insert into.
         :type rdf_graph: rdflib.graph.Graph
         :param list_conversion_mode: Specify how ArangoDB JSON lists
-            are processed into the RDF Graph. If "collection", ArangoDB
-            lists will be processed using the RDF Collection structure. If "container",
-            ArangoDB lists will be processed using the RDF Container structure.
-            If "static", elements within lists will be processed as individual
-            statements. Defaults to "static".
+            **within** and ArangoDB Document are processed into the RDF Graph.
+            If "serialize", JSON Objects will be serialized into RDF Literals.
+            If "collection", ArangoDB lists will be processed using the RDF Collection
+            structure. If "container", ArangoDB lists will be processed using the RDF
+            Container structure. If "static", elements within lists will be processed as
+            individual statements. Defaults to "static".
+            NOTE: "serialize" is recommended if round-tripping is desired, but
+            **only** if round-tripping via **PGT**.
+        :type list_conversion_mode: str
+        :param dict_conversion_mode: Specify how ArangoDB JSON Objects
+            **within** an ArangoDB Document are processed into the RDF Graph.
+            If "serialize", JSON Objects will be serialized into RDF Literals.
+            If "static", elements within dictionaries will be processed as individual
+            statements with the help of BNodes. Defaults to "static".
+            NOTE: "serialize" is recommended if round-tripping is desired, but
+            **only** if round-tripping via **PGT**.
+        :type dict_conversion_mode: str
         :param infer_type_from_adb_v_col: Specify whether `rdf:type` statements
             of the form `resource rdf:type adb_v_col .` should be inferred upon
             transferring ArangoDB Vertices into RDF.
@@ -483,6 +532,7 @@ class ArangoRDF(AbstractArangoRDF):
             v_cols,
             e_cols,
             list_conversion_mode,
+            dict_conversion_mode,
             infer_type_from_adb_v_col,
             include_adb_v_col_statements,
             include_adb_v_key_statements,
@@ -1602,7 +1652,11 @@ class ArangoRDF(AbstractArangoRDF):
         """
 
         if type(val) is list:
-            if self.__list_conversion == "collection":
+            if self.__list_conversion == "static":
+                for v in val:
+                    self.__adb_val_to_rdf_val(col, s, p, v, sg)
+
+            elif self.__list_conversion == "collection":
                 node: RDFTerm = BNode()
                 self.__add_to_rdf_graph(s, p, node, sg)
 
@@ -1622,20 +1676,22 @@ class ArangoRDF(AbstractArangoRDF):
                     _n = URIRef(f"{RDF}_{i}")
                     self.__adb_val_to_rdf_val(col, bnode, _n, v, sg)
 
-            elif self.__list_conversion == "static":
-                for v in val:
-                    self.__adb_val_to_rdf_val(col, s, p, v, sg)
-
-            else:
-                raise ValueError("Invalid **list_conversion_mode** value")
+            else:  # serialize
+                val = json.dumps(val)
+                self.__add_to_rdf_graph(s, p, Literal(val), sg)
 
         elif type(val) is dict:
-            bnode = BNode()
-            self.__add_to_rdf_graph(s, p, bnode, sg)
+            if self.__dict_conversion == "static":
+                bnode = BNode()
+                self.__add_to_rdf_graph(s, p, bnode, sg)
 
-            for k, v in val.items():
-                p = self.__uri_map.get(k, URIRef(f"{self.__graph_ns}/{k}"))
-                self.__adb_val_to_rdf_val(col, bnode, p, v, sg)
+                for k, v in val.items():
+                    p = self.__uri_map.get(k, URIRef(f"{self.__graph_ns}/{k}"))
+                    self.__adb_val_to_rdf_val(col, bnode, p, v, sg)
+
+            else:  # serialize
+                val = json.dumps(val)
+                self.__add_to_rdf_graph(s, p, Literal(val), sg)
 
         else:
             # TODO: Datatype? Lang? Not yet sure how to handle this...
@@ -2098,7 +2154,11 @@ class ArangoRDF(AbstractArangoRDF):
         return t, t_col, t_key, t_label
 
     def __pgt_rdf_val_to_adb_val(
-        self, doc: Json, key: str, val: Any, process_val_as_string: bool = False
+        self,
+        doc: Json,
+        key: str,
+        val: Any,
+        process_val_as_serialized_list: bool = False,
     ) -> None:
         """RDF -> ArangoDB (PGT): Insert an arbitrary value into an arbitrary document.
 
@@ -2108,14 +2168,27 @@ class ArangoRDF(AbstractArangoRDF):
         :type key: str
         :param val: The value associated to the document property **key**.
         :type val: Any
-        :param process_val_as_string: If enabled, **val** is appended to
+        :param process_val_as_serialized_list: If enabled, **val** is appended to
             a string representation of the current value of the document
-            property. Defaults to False.
-        :type process_val_as_string: bool
+            property. Defaults to False. Only used for
+            `ArangoRDF.__pgt_process_rdf_lists()`.
+        :type process_val_as_serialized_list: bool
         """
+        # Special case for round-tripping
+        # See "serialize" option in **list_conversion_mode**
+        # and **dict_conversion_mode** (ArangoDB to RDF) for
+        # more information.
+        try:
+            loads_val = json.loads(val)
+        except (TypeError, json.JSONDecodeError):
+            pass
+        else:
+            # Only consider the value if it's a list or dict
+            if isinstance(loads_val, (list, dict)):
+                val = loads_val
 
         # This flag is only active in ArangoRDF.__pgt_process_rdf_lists()
-        if process_val_as_string:
+        if process_val_as_serialized_list:
             doc[key] += f"'{val}'," if type(val) is str else f"{val},"
             return
 
@@ -2135,7 +2208,7 @@ class ArangoRDF(AbstractArangoRDF):
         s_key: str = "",
         p_label: str = "",
         sg_str: str = "",
-        process_val_as_string: bool = False,
+        process_val_as_serialized_list: bool = False,
     ) -> None:
         """RDF -> ArangoDB (PGT): Process an RDF Term as an ArangoDB document by PGT.
 
@@ -2153,10 +2226,10 @@ class ArangoRDF(AbstractArangoRDF):
         :param sg_str: The string representation of the sub-graph URIRef associated
             to the RDF Term **t**.
         :type sg_str: str
-        :param process_val_as_string: If enabled, the value of **t** is appended to
-            a string representation of the current value of the document
+        :param process_val_as_serialized_list: If enabled, the value of **t** is
+            appended to a string representation of the current value of the document
             property. Only considered if **t** is a Literal. Defaults to False.
-        :type process_val_as_string: bool
+        :type process_val_as_serialized_list: bool
         """
 
         t, t_col, t_key, t_label = t_meta
@@ -2189,7 +2262,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         elif type(t) is Literal and all([s_col, s_key, p_label]):
             self.__pgt_process_rdf_literal(
-                t, s_col, s_key, p_label, sg_str, process_val_as_string
+                t, s_col, s_key, p_label, sg_str, process_val_as_serialized_list
             )
 
         else:
@@ -2202,7 +2275,7 @@ class ArangoRDF(AbstractArangoRDF):
         s_key: str,
         p_label: str,
         sg_str: str,
-        process_val_as_string: bool = False,
+        process_val_as_serialized_list: bool = False,
     ) -> None:
         """RDF -> ArangoDB (PGT): Process an RDF Literal as an ArangoDB
         document property.
@@ -2221,14 +2294,14 @@ class ArangoRDF(AbstractArangoRDF):
         :param sg_str: The string representation of the sub-graph URIRef associated
             to the RDF Literal **literal**.
         :type sg_str: str
-        :param process_val_as_string: If enabled, the value of **literal** is appended to
-            a string representation of the current value of the document
+        :param process_val_as_serialized_list: If enabled, the value of **literal** is
+            appended to a string representation of the current value of the document
             property. Defaults to False.
-        :type process_val_as_string: bool
+        :type process_val_as_serialized_list: bool
         """
         doc = self.__adb_docs[s_col][s_key]
         val = self.__get_literal_val(literal, str(literal))
-        self.__pgt_rdf_val_to_adb_val(doc, p_label, val, process_val_as_string)
+        self.__pgt_rdf_val_to_adb_val(doc, p_label, val, process_val_as_serialized_list)
 
         if sg_str:
             doc["_sub_graph_uri"] = sg_str
@@ -2496,7 +2569,7 @@ class ArangoRDF(AbstractArangoRDF):
 
             # Process the RDF Object as an ArangoDB Document
             self.__pgt_process_rdf_term(
-                o_meta, s_col, s_key, p_label, process_val_as_string=True
+                o_meta, s_col, s_key, p_label, process_val_as_serialized_list=True
             )
             # Process the RDF Statement as an ArangoDB Edge
             self.__pgt_process_statement(s_meta, p_meta, o_meta, sg)
