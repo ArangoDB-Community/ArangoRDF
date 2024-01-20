@@ -1987,6 +1987,10 @@ class ArangoRDF(AbstractArangoRDF):
         bar_progress_task = bar_progress.add_task("", total=total - 1)
         spinner_progress = get_import_spinner_progress("    ")
 
+        s: RDFTerm
+        p: URIRef
+        o: Literal
+
         with Live(Group(bar_progress, spinner_progress)):
             for i, (s, p) in enumerate(data, 1):
                 bar_progress.update(bar_progress_task, advance=1)
@@ -1997,11 +2001,14 @@ class ArangoRDF(AbstractArangoRDF):
                 p_meta = self.__pgt_get_term_metadata(p)
                 self.__pgt_process_rdf_term(p_meta)
 
+                _, s_col, s_key, _ = s_meta
+                _, _, _, p_label = p_meta
+
                 for _, _, o, *sg in statements((s, p, None)):
                     sg_str = self.__get_subgraph_str(sg)
 
                     o_meta = self.__pgt_get_term_metadata(o)
-                    self.__pgt_process_object(s_meta, p_meta, o_meta, sg_str)
+                    self.__pgt_process_rdf_literal(o, s_col, s_key, p_label, sg_str)
 
                     pgt_contextualize_statement_func(s_meta, p_meta, o_meta, sg_str)
 
@@ -2181,15 +2188,50 @@ class ArangoRDF(AbstractArangoRDF):
             }
 
         elif type(t) is Literal and all([s_col, s_key, p_label]):
-            doc = self.__adb_docs[s_col][s_key]
-            t_value = self.__get_literal_val(t, str(t))
-            self.__pgt_rdf_val_to_adb_val(doc, p_label, t_value, process_val_as_string)
-
-            if sg_str:
-                doc["_sub_graph_uri"] = sg_str
+            self.__pgt_process_rdf_literal(
+                t, s_col, s_key, p_label, sg_str, process_val_as_string
+            )
 
         else:
             raise ValueError(f"Invalid type for RDF Term: {t}")  # pragma: no cover
+
+    def __pgt_process_rdf_literal(
+        self,
+        literal: Literal,
+        s_col: str,
+        s_key: str,
+        p_label: str,
+        sg_str: str,
+        process_val_as_string: bool = False,
+    ) -> None:
+        """RDF -> ArangoDB (PGT): Process an RDF Literal as an ArangoDB
+        document property.
+
+        :param literal: The RDF Literal to process
+        :type literal: Literal
+        :param s_col: The ArangoDB document collection of the Subject associated
+            to the RDF Literal **literal**.
+        :type s_col: str
+        :param s_key: The ArangoDB document key of the Subject associated
+            to the RDF Literal **literal**.
+        :type s_key: str
+        :param p_label: The RDF Predicate Label key of the Predicate associated
+            to the RDF Literal **literal**.
+        :type p_label: str
+        :param sg_str: The string representation of the sub-graph URIRef associated
+            to the RDF Literal **literal**.
+        :type sg_str: str
+        :param process_val_as_string: If enabled, the value of **literal** is appended to
+            a string representation of the current value of the document
+            property. Defaults to False.
+        :type process_val_as_string: bool
+        """
+        doc = self.__adb_docs[s_col][s_key]
+        val = self.__get_literal_val(literal, str(literal))
+        self.__pgt_rdf_val_to_adb_val(doc, p_label, val, process_val_as_string)
+
+        if sg_str:
+            doc["_sub_graph_uri"] = sg_str
 
     def __pgt_process_object(
         self, s_meta: RDFTermMeta, p_meta: RDFTermMeta, o_meta: RDFTermMeta, sg_str: str
