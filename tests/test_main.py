@@ -1,8 +1,8 @@
 import json
 from typing import Any, Dict, List
-from arango_datasets import Datasets
 
 import pytest
+from arango_datasets import Datasets
 from rdflib import RDF, RDFS, BNode
 from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
 from rdflib import Graph as RDFGraph
@@ -4889,9 +4889,7 @@ def test_open_intelligence_graph(name: str) -> None:
         include_adb_e_key_statements=True,
     )
 
-    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
-        name, rdf_graph, overwrite_graph=True
-    )
+    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(name, rdf_graph, overwrite_graph=True)
     v_count_2, e_count_2 = get_adb_graph_count(name)
 
     property_col_count = adb_graph.vertex_collection("Property").count()
