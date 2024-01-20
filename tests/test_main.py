@@ -1,5 +1,6 @@
 import json
 from typing import Any, Dict, List
+from arango_datasets import Datasets
 
 import pytest
 from rdflib import RDF, RDFS, BNode
@@ -4658,6 +4659,55 @@ def test_adb_doc_with_dict_property(name: str) -> None:
 
 
 @pytest.mark.parametrize(
+    "name, rdf_graph",
+    [("Key", get_rdf_graph("key.ttl"))],
+)
+def test_adb_key_uri(name: str, rdf_graph: RDFGraph) -> None:
+    adb_graph_rpt = adbrdf.rdf_to_arangodb_by_rpt(
+        f"{name}_RPT", rdf_graph + RDFGraph(), overwrite_graph=True
+    )
+    adb_graph_pgt = adbrdf.rdf_to_arangodb_by_pgt(
+        f"{name}_PGT", rdf_graph + RDFGraph(), overwrite_graph=True
+    )
+
+    _bob = "1"
+    _alice = "2"
+    _john = "3"
+    _person = "Person"
+
+    col = adb_graph_rpt.vertex_collection(f"{name}_RPT_URIRef")
+    assert col.has(_bob)
+    assert col.has(_alice)
+    assert col.has(_john)
+    assert col.has(_person)
+
+    col = adb_graph_pgt.vertex_collection("Person")
+    assert col.has(_bob)
+    assert col.has(_alice)
+    assert col.has(_john)
+
+    col = adb_graph_pgt.vertex_collection("Class")
+    assert col.has(_person)
+
+    rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(
+        f"{name}_RPT", type(rdf_graph)(), include_adb_v_key_statements=True
+    )
+
+    assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
+    assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
+
+    rdf_graph_3 = adbrdf.arangodb_graph_to_rdf(
+        f"{name}_PGT", type(rdf_graph)(), include_adb_v_key_statements=True
+    )
+
+    assert len(subtract_graphs(rdf_graph, rdf_graph_3)) == 0
+    assert set(subtract_graphs(rdf_graph_3, rdf_graph).subjects()) == {RDF.type}
+
+    db.delete_graph(f"{name}_RPT", drop_collections=True)
+    db.delete_graph(f"{name}_PGT", drop_collections=True)
+
+
+@pytest.mark.parametrize(
     "name, path, edge_definitions, orphan_collections",
     [
         (
@@ -4674,7 +4724,7 @@ def test_adb_doc_with_dict_property(name: str) -> None:
         )
     ],
 )
-def test_adb_native_graph(
+def test_game_of_thrones_graph(
     name: str,
     path: str,
     edge_definitions: List[Dict[str, Any]],
@@ -4824,50 +4874,28 @@ def test_adb_native_graph(
     db.delete_graph(name, drop_collections=True)
 
 
-@pytest.mark.parametrize(
-    "name, rdf_graph",
-    [("Key", get_rdf_graph("key.ttl"))],
-)
-def test_adb_key_uri(name: str, rdf_graph: RDFGraph) -> None:
-    adb_graph_rpt = adbrdf.rdf_to_arangodb_by_rpt(
-        f"{name}_RPT", rdf_graph + RDFGraph(), overwrite_graph=True
-    )
-    adb_graph_pgt = adbrdf.rdf_to_arangodb_by_pgt(
-        f"{name}_PGT", rdf_graph + RDFGraph(), overwrite_graph=True
-    )
+@pytest.mark.parametrize("name", [("OPEN_INTELLIGENCE_ANGOLA")])
+def test_open_intelligence_graph(name: str) -> None:
+    Datasets(db).load(name)
+    v_count_1, e_count_1 = get_adb_graph_count(name)
 
-    _bob = "1"
-    _alice = "2"
-    _john = "3"
-    _person = "Person"
-
-    col = adb_graph_rpt.vertex_collection(f"{name}_RPT_URIRef")
-    assert col.has(_bob)
-    assert col.has(_alice)
-    assert col.has(_john)
-    assert col.has(_person)
-
-    col = adb_graph_pgt.vertex_collection("Person")
-    assert col.has(_bob)
-    assert col.has(_alice)
-    assert col.has(_john)
-
-    col = adb_graph_pgt.vertex_collection("Class")
-    assert col.has(_person)
-
-    rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(
-        f"{name}_RPT", type(rdf_graph)(), include_adb_v_key_statements=True
+    rdf_graph = adbrdf.arangodb_graph_to_rdf(
+        name,
+        RDFGraph(),
+        list_conversion_mode="serialize",
+        dict_conversion_mode="serialize",
+        include_adb_v_col_statements=True,
+        include_adb_v_key_statements=True,
+        include_adb_e_key_statements=True,
     )
 
-    assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
-    assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
-
-    rdf_graph_3 = adbrdf.arangodb_graph_to_rdf(
-        f"{name}_PGT", type(rdf_graph)(), include_adb_v_key_statements=True
+    adb_graph = adbrdf.rdf_to_arangodb_by_pgt(
+        name, rdf_graph, overwrite_graph=True
     )
+    v_count_2, e_count_2 = get_adb_graph_count(name)
 
-    assert len(subtract_graphs(rdf_graph, rdf_graph_3)) == 0
-    assert set(subtract_graphs(rdf_graph_3, rdf_graph).subjects()) == {RDF.type}
+    property_col_count = adb_graph.vertex_collection("Property").count()
+    assert v_count_1 == v_count_2 - property_col_count
+    assert e_count_1 == e_count_2
 
-    db.delete_graph(f"{name}_RPT", drop_collections=True)
-    db.delete_graph(f"{name}_PGT", drop_collections=True)
+    db.delete_graph(name, drop_collections=True)

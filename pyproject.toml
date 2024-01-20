@@ -41,6 +41,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "arango_datasets~=1.2",
     "black==23.3.0",
     "flake8==6.0.0",
     "Flake8-pyproject",
