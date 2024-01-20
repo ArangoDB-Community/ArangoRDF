@@ -25,7 +25,6 @@ class AbstractArangoRDF(ABC):
         flatten_reified_triples: bool,
         use_hashed_literals_as_keys: bool,
         overwrite_graph: bool,
-        use_async: bool,
         batch_size: Optional[int],
         **adb_import_kwargs: Any,
     ) -> ADBGraph:
@@ -40,7 +39,6 @@ class AbstractArangoRDF(ABC):
         contextualize_graph: bool,
         flatten_reified_triples: bool,
         overwrite_graph: bool,
-        use_async: bool,
         batch_size: Optional[int],
         **adb_import_kwargs: Any,
     ) -> ADBGraph:
