@@ -6,6 +6,15 @@ ex:Graph1 {
         ex:subject "aau_page" .
 }
 
+ex:Graph2 {
+    [] a rdf:Statement;
+        rdf:subject ex:college_page;
+        rdf:predicate ex:link;
+        rdf:object ex:college_page_3;
+        ex:foo "bar";
+        ex:foo "bar2" .
+        # ex:bar ("foo1" "foo2") . # BREAKS ArangoRDF
+}
 
 [] a rdf:Statement;
     rdf:subject ex:college_page_3;
@@ -17,14 +26,3 @@ ex:Graph1 {
     rdf:subject ex:college_page_4;
     rdf:predicate ex:subject;
     rdf:object "Info_Page", "aau_page" .
-
-
-ex:Graph2 {
-    [] a rdf:Statement;
-        rdf:subject ex:college_page;
-        rdf:predicate ex:link;
-        rdf:object ex:college_page_3;
-        ex:foo "bar";
-        ex:foo "bar2" .
-        # ex:bar ("foo1" "foo2") . # BREAKS ArangoRDF
-}

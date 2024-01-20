@@ -5,9 +5,10 @@
 # << ex:Mary ex:likes ex:Matt >> ex:certainty 0.5 .
 # << ex:Mary ex:likes ex:Matt >> ex:certainty 0.75 .
 # << ex:Mary ex:likes ex:Matt >> ex:certainty 1 .
+# << ex:John ex:said << ex:Mary ex:likes ex:Matt >> >> ex:foo "bar" .
 
 ex:Graph1 {
-    [] a rdf:Statement;
+    ex:mary_likes_matt_05 a rdf:Statement;
         rdf:subject ex:Mary;
         rdf:predicate ex:likes;
         rdf:object ex:Matt;
@@ -20,6 +21,12 @@ ex:Graph2 {
         rdf:predicate ex:likes;
         rdf:object ex:Matt;
         ex:certainty 0.75 .
+
+    [] a rdf:Statement;
+        rdf:subject ex:John;
+        rdf:predicate ex:said;
+        rdf:object ex:mary_likes_matt_05;
+        ex:foo "bar" .
 }
 
 [] a rdf:Statement;
