@@ -766,7 +766,8 @@ class ArangoRDF(AbstractArangoRDF):
             2) Providing Domain & Range Inference
             3) Providing Domain & Range Introspection
 
-            `Learn more about Graph Contextualization here <../html/contextualization.html>`_.
+            `Learn more about Graph Contextualization
+            here <../html/contextualization.html>`_.
         :type contextualize_graph: bool
         :param flatten_reified_triples: If set to False, will preserve the RDF
             structure of any Reified Triple. If set to True, will "flatten" any reified
@@ -785,7 +786,7 @@ class ArangoRDF(AbstractArangoRDF):
         :param adb_import_kwargs: Keyword arguments to specify additional
             parameters for the ArangoDB Data Ingestion process.
             The full parameter list is
-            `here <https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.import_bulk>`_.
+            `here <https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.import_bulk>`_. # noqa: E501
         :return: The ArangoDB Graph API wrapper.
         :rtype: arango.graph.Graph
         """
