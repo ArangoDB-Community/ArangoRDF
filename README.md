@@ -29,6 +29,7 @@ Resources to get started:
 * [RDF Primer](https://www.w3.org/TR/rdf11-concepts/)
 * [RDFLib (Python)](https://pypi.org/project/rdflib/)
 * [One Example for Modeling RDF as ArangoDB Graphs](https://www.arangodb.com/docs/stable/data-modeling-graphs-from-rdf.html)
+
 ## Installation
 
 #### Latest Release
@@ -41,69 +42,61 @@ pip install git+https://github.com/ArangoDB-Community/ArangoRDF
 ```
 
 ##  Quickstart
-Run the full version with Google Colab: <a href="https://colab.research.google.com/github/ArangoDB-Community/ArangoRDF/blob/main/examples/ArangoRDF.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+<a href="https://colab.research.google.com/github/ArangoDB-Community/ArangoRDF/blob/main/examples/ArangoRDF.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
 ```py
 from rdflib import Graph
 from arango import ArangoClient
 from arango_rdf import ArangoRDF
 
-db = ArangoClient(hosts="http://localhost:8529").db("_system_", username="root", password="")
+db = ArangoClient().db()
 
 adbrdf = ArangoRDF(db)
 
-g = Graph()
-g.parse("https://raw.githubusercontent.com/stardog-union/stardog-tutorials/master/music/beatles.ttl")
+def beatles():
+    g = Graph()
+    g.parse("https://raw.githubusercontent.com/ArangoDB-Community/ArangoRDF/main/tests/data/rdf/beatles.ttl", format="ttl")
+    return g
+```
 
-# RDF to ArangoDB
-###################################################################################
+### RDF to ArangoDB
 
-# 1.1: RDF-Topology Preserving Transformation (RPT)
-adbrdf.rdf_to_arangodb_by_rpt("Beatles", g, overwrite_graph=True)
+```py
+# 1. RDF-Topology Preserving Transformation (RPT)
+adbrdf.rdf_to_arangodb_by_rpt(name="BeatlesRPT", rdf_graph=beatles(), overwrite_graph=True)
 
-# 1.2: Property Graph Transformation (PGT) 
-adbrdf.rdf_to_arangodb_by_pgt("Beatles", g, overwrite_graph=True)
+# 2. Property Graph Transformation (PGT) 
+adbrdf.rdf_to_arangodb_by_pgt(name="BeatlesPGT", rdf_graph=beatles(), overwrite_graph=True)
+```
 
-g = adbrdf.load_meta_ontology(g)
+### ArangoDB to RDF
 
-# 1.3: RPT w/ Graph Contextualization
-adbrdf.rdf_to_arangodb_by_rpt("Beatles", g, contextualize_graph=True, overwrite_graph=True)
+```py
+# 1. Graph to RDF
+rdf_graph = adbrdf.arangodb_graph_to_rdf(name="BeatlesRPT", rdf_graph=Graph())
 
-# 1.4: PGT w/ Graph Contextualization
-adbrdf.rdf_to_arangodb_by_pgt("Beatles", g, contextualize_graph=True, overwrite_graph=True)
-
-# 1.5: PGT w/ ArangoDB Document-to-Collection Mapping Exposed
-adb_mapping = adbrdf.build_adb_mapping_for_pgt(g)
-print(adb_mapping.serialize())
-adbrdf.rdf_to_arangodb_by_pgt("Beatles", g, adb_mapping, contextualize_graph=True, overwrite_graph=True)
-
-# ArangoDB to RDF
-###################################################################################
-
-# Start from scratch!
-g = Graph()
-g.parse("https://raw.githubusercontent.com/stardog-union/stardog-tutorials/master/music/beatles.ttl")
-adbrdf.rdf_to_arangodb_by_pgt("Beatles", g, overwrite_graph=True)
-
-# 2.1: Via Graph Name
-g2, adb_mapping_2 = adbrdf.arangodb_graph_to_rdf("Beatles", Graph())
-
-# 2.2: Via Collection Names
-g3, adb_mapping_3 = adbrdf.arangodb_collections_to_rdf(
-    "Beatles",
-    Graph(),
-    v_cols={"Album", "Band", "Class", "Property", "SoloArtist", "Song"},
-    e_cols={"artist", "member", "track", "type", "writer"},
+# 2. Collections to RDF
+rdf_graph_2 = adbrdf.arangodb_collections_to_rdf(
+    name="BeatlesRPT",
+    rdf_graph=Graph(),
+    v_cols={"BeatlesRPT_URIRef", "BeatlesRPT_Literal", "BeatlesRPT_BNode"},
+    e_cols={"BeatlesRPT_Statement"}
 )
 
-print(len(g2), len(adb_mapping_2))
-print(len(g3), len(adb_mapping_3))
-
-print('--------------------')
-print(g2.serialize())
-print('--------------------')
-print(adb_mapping_2.serialize())
-print('--------------------')
+# 3. Metagraph to RDF
+rdf_graph_3 = adbrdf.arangodb_to_rdf(
+    name="BeatlesPGT",
+    rdf_graph=Graph(),
+    metagraph={
+        "vertexCollections": {
+            "Album": {"name", "date"},
+            "SoloArtist": {}
+        },
+        "edgeCollections": {
+            "artist": {}
+        }
+    }
+)
 ```
 
 ##  Development & Testing
