@@ -88,6 +88,10 @@ class ArangoRDF(AbstractArangoRDF):
         # to store the to-be-inserted ArangoDB documents (RDF-to-ArangoDB).
         self.__adb_docs: ADBDocs
 
+        # Work-in-progress feature to enhance the Terminology Box of an RDF Graph
+        # when importing to ArangoDB.
+        self.__contextualize_graph = False
+
         # Represents the ArangoDB Graph Edge Definitions
         self.__e_col_map: DefaultDict[str, DefaultDict[str, Set[str]]]
 
@@ -935,6 +939,7 @@ class ArangoRDF(AbstractArangoRDF):
         # Graph Contextualization (WIP) #
         #################################
 
+        # NOTE: Graph Contextualization is an experimental work-in-progress
         contextualize_statement_func = empty_func
         if contextualize_graph:
             contextualize_statement_func = self.__pgt_contextualize_statement
@@ -979,7 +984,7 @@ class ArangoRDF(AbstractArangoRDF):
             # us to run the ArangoDB Collection Mapping algorithm
             # regardless of **write_adb_col_statements**
             self.__adb_col_statements = self.write_adb_col_statements(
-                self.__rdf_graph, self.__adb_col_statements, contextualize_graph
+                self.__rdf_graph, self.__adb_col_statements
             )
 
         ###########################
@@ -1063,7 +1068,6 @@ class ArangoRDF(AbstractArangoRDF):
         self,
         rdf_graph: RDFGraph,
         adb_col_statements: Optional[RDFGraph] = None,
-        contextualize_graph: bool = False,
     ) -> RDFGraph:
         """RDF -> ArangoDB (PGT): Returns an RDF Graph to map RDF Resources to
         their respective ArangoDB Collection.
@@ -1124,16 +1128,10 @@ class ArangoRDF(AbstractArangoRDF):
             it is currently not possible to overwrite any RDF Resources
             that belong to these two collections.
         :type adb_col_statements: rdflib.graph.Graph | None
-        :param contextualize_graph: A work-in-progress flag that seeks
-            to enhance the Terminology Box of **rdf_graph**. See
-            `ArangoRDF.rdf_to_arangodb_by_pgt()` for more details.
-            Defaults to False.
-        :type contextualize_graph: bool
         :type adb_col_statements: Optional[rdflib.graph.Graph]
         """
         self.__adb_col_statements = adb_col_statements or RDFGraph()
         self.__adb_col_statements.bind("adb", self.__adb_ns)
-        self.__contextualize_graph = contextualize_graph
 
         self.__rdf_graph = rdf_graph
         self.__cntrl.rdf_graph = rdf_graph
@@ -1159,7 +1157,7 @@ class ArangoRDF(AbstractArangoRDF):
             self.__domain_range_map = self.__build_domain_range_map()
 
             # 4. (Optional) Create the type map for Graph Contextualization
-            if contextualize_graph:
+            if self.__contextualize_graph:
                 self.__type_map = self.__combine_type_map_and_dr_map()
 
             # 5. Finalize **adb_col_statements**
