@@ -721,14 +721,14 @@ class ArangoRDF(AbstractArangoRDF):
         PGT ensures that datatype property statements (i.e statements whose
         objects are Literals) are mapped to document properties in the
         Property Graph. `Learn more about PGT here
-        <../html/rdf_to_arangodb_pgt.html>`_.
+        <./rdf_to_arangodb_pgt.html>`_.
 
         Contrary to RPT, this method will rely on
         the nature of the RDF Resource/Statement to determine which ArangoDB
         Collection it belongs to. This process is referred to as the
         ArangoDB Collection Mapping Process. `Learn more about the PGT ArangoDB
         Collection Mapping Process here
-        <../html/rdf_to_arangodb_pgt.html#arangodb-collection-mapping-process>`_.
+        <./rdf_to_arangodb_pgt.html#arangodb-collection-mapping-process>`_.
 
         Contrary to RPT, regardless of whether **contextualize_graph** is set to
         True or not, all RDF Predicates within every RDF Statement in **rdf_graph**
@@ -770,7 +770,7 @@ class ArangoRDF(AbstractArangoRDF):
             structure of any Reified Triple. If set to True, will "flatten" any reified
             triples into a regular Property Graph Edge. Defaults to True.
 
-            `Learn more about Triple Reification here <../html/reification.html>`_.
+            `Learn more about Triple Reification here <./reification.html>`_.
         :type flatten_reified_triples: bool
         :param overwrite_graph: Overwrites the ArangoDB graph identified
             by **name** if it already exists, and drops its associated collections.
@@ -958,7 +958,7 @@ class ArangoRDF(AbstractArangoRDF):
         to running :func:`rdf_to_arangodb_by_pgt` allows you to visualize and
         modify the mapping. `Learn more about the PGT ArangoDB
         Collection Mapping Process here
-        <../html/rdf_to_arangodb_pgt.html#arangodb-collection-mapping-process>`_.
+        <./rdf_to_arangodb_pgt.html#arangodb-collection-mapping-process>`_.
 
         NOTE: Running this method prior to :func:`rdf_to_arangodb_by_pgt`
         is unnecessary if the user is not interested in

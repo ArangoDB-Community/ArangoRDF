@@ -22,7 +22,7 @@ class ArangoRDFController(AbstractArangoRDFController):
 
     `Read more about how the PGT ArangoDB Collection Mapping
     Process works here
-    <../html/rdf_to_arangodb_pgt.html#arangodb-collection-mapping-process>`_.
+    <./rdf_to_arangodb_pgt.html#arangodb-collection-mapping-process>`_.
     """
 
     def __init__(self) -> None:
@@ -40,7 +40,7 @@ class ArangoRDFController(AbstractArangoRDFController):
 
         `Read more about how the PGT ArangoDB Collection Mapping
         Process works here
-        <../html/rdf_to_arangodb_pgt.html#arangodb-collection-mapping-process>`_.
+        <./rdf_to_arangodb_pgt.html#arangodb-collection-mapping-process>`_.
 
         The "ideal RDFS Class" is defined as an RDFS Class whose local name best
         represents the RDF Resource in question. This local name will be
