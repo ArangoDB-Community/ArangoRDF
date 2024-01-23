@@ -212,7 +212,7 @@ collection for that Resource.
 We are welcome to suggestions on how to improve the ArangoDB Collection Mapping Process for PGT,
 as we understand that it is not perfect. 
 
-Consider overriding the `ArangoRDFController <./specs.html#arango_rdf.controller.ArangoRDFController>`` Class
+Consider overriding the `ArangoRDFController <./specs.html#arango_rdf.controller.ArangoRDFController>`_ Class
 to implement your own ArangoDB Collection Mapping Process for PGT.
 
 Supported Cases
@@ -228,7 +228,7 @@ test cases range from simple RDF Graphs to complex RDF-star Graphs.
 ArangoRDF's PGT interface can be observed `here <./specs.html#arango_rdf.main.ArangoRDF.rdf_to_arangodb_by_pgt>`_.
 
 `View how ArangoRDF's PGT transformation approach performs on these test cases in 
-Colab <https://colab.research.google.com/github/ArangoDB-Community/ArangoRDF/blob/main/examples/ArangoRDF.ipynb#scrollTo=mRutdKii-Pk5>`_.
+Colab <https://colab.research.google.com/github/ArangoDB-Community/ArangoRDF/blob/main/examples/ArangoRDF.ipynb#scrollTo=cy_BWXK2AX5n>`_.
 
 .. image:: _static/cases.png
    :width: 500px

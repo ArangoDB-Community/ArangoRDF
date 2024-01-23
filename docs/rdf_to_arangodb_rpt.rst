@@ -145,7 +145,7 @@ test cases range from simple RDF Graphs to complex RDF-star Graphs.
 ArangoRDF's RPT interface can be observed `here <./specs.html#arango_rdf.main.ArangoRDF.rdf_to_arangodb_by_rpt>`_.
 
 `View how ArangoRDF's RPT transformation approach performs on these test cases in 
-Colab <https://colab.research.google.com/github/ArangoDB-Community/ArangoRDF/blob/main/examples/ArangoRDF.ipynb#scrollTo=mRutdKii-Pk5>`_.
+Colab <https://colab.research.google.com/github/ArangoDB-Community/ArangoRDF/blob/main/examples/ArangoRDF.ipynb#scrollTo=cy_BWXK2AX5n>`_.
 
 .. image:: _static/cases.png
    :width: 500px

@@ -41,28 +41,34 @@ Quickstart
 
 .. code-block:: python
 
+   # pip install arango-datasets
+   from arango_datasets import Datasets
+
+   name = "OPEN_INTELLIGENCE_ANGOLA"
+   Datasets(db).load(name)
+
    # 1. Graph to RDF
-   rdf_graph = adbrdf.arangodb_graph_to_rdf(name="BeatlesRPT", rdf_graph=Graph())
+   rdf_graph = adbrdf.arangodb_graph_to_rdf(name, rdf_graph=Graph())
 
    # 2. Collections to RDF
    rdf_graph_2 = adbrdf.arangodb_collections_to_rdf(
-      name="BeatlesRPT",
+      name,
       rdf_graph=Graph(),
-      v_cols={"BeatlesRPT_URIRef", "BeatlesRPT_Literal", "BeatlesRPT_BNode"},
-      e_cols={"BeatlesRPT_Statement"}
+      v_cols={"Event", "Actor", "Source"},
+      e_cols={"eventActor", "hasSource"},
    )
 
    # 3. Metagraph to RDF
    rdf_graph_3 = adbrdf.arangodb_to_rdf(
-      name="BeatlesPGT",
+      name=name,
       rdf_graph=Graph(),
       metagraph={
          "vertexCollections": {
-               "Album": {"name", "date"},
-               "SoloArtist": {}
+               "Event": {"date", "description", "fatalities"},
+               "Actor": {"name"}
          },
          "edgeCollections": {
-               "artist": {}
-         }
-      }
+               "eventActor": {}
+         },
+      },
    )

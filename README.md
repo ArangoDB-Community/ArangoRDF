@@ -64,8 +64,8 @@ def beatles():
 **Note**: RDF-to-ArangoDB functionality has been implemented using concepts described in the paper
 *[Transforming RDF-star to Property Graphs: A Preliminary Analysis of Transformation Approaches](https://arxiv.org/abs/2210.05781)*. So we offer two transformation approaches:
 
-1. RDF-Topology Preserving Transformation (RPT)
-2. Property Graph Transformation (PGT)
+1. [RDF-Topology Preserving Transformation (RPT)](https://arangordf.readthedocs.io/en/docs/rdf_to_arangodb_rpt.html)
+2. [Property Graph Transformation (PGT)](https://arangordf.readthedocs.io/en/docs/rdf_to_arangodb_pgt.html)
 
 ```py
 # 1. RDF-Topology Preserving Transformation (RPT)

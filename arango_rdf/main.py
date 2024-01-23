@@ -544,12 +544,10 @@ class ArangoRDF(AbstractArangoRDF):
         This method will store the RDF Resources of
         **rdf_graph** under the following ArangoDB Collections:
 
-        ```
-        "f{name}_URIRef" # Vertex collection for `rdflib.term.URIRef`.
-        "f{name}_BNode" # Vertex collection for`rdflib.term.BNode`.
-        "f{name}_Literal" # Vertex collection for `rdflib.term.Literal`.
-        "f{name}_Statement" # Edge collection for all triples/quads.
-        ```
+        1. ``{Name}_URIRef``: Vertex collection for ``rdflib.term.URIRef`` resources.
+        2. ``{Name}_BNode``: Vertex collection for ``rdflib.term.BNode`` resources.
+        3. ``{Name}_Literal``: Vertex collection for ``rdflib.term.Literal`` resources.
+        4. ``{Name}_Statement``: Edge collection for all triples/quads.
 
         :param name: The name of the RDF Graph
         :type name: str
@@ -721,14 +719,16 @@ class ArangoRDF(AbstractArangoRDF):
         the Property Graph Transformation (PGT) Algorithm.
 
         PGT ensures that datatype property statements (i.e statements whose
-        objects are Literals) are mapped to document properties in the Property Graph.
-        `Learn more about PGT here <../html/pgt.html>`_.
+        objects are Literals) are mapped to document properties in the
+        Property Graph. `Learn more about PGT here
+        <../html/rdf_to_arangodb_pgt.html>`_.
 
         Contrary to RPT, this method will rely on
         the nature of the RDF Resource/Statement to determine which ArangoDB
         Collection it belongs to. This process is referred to as the
-        ArangoDB Collection Mapping Process. `Learn more about the ArangoDB
-        Collection Mapping Process here <../html/mapping.html>`_.
+        ArangoDB Collection Mapping Process. `Learn more about the PGT ArangoDB
+        Collection Mapping Process here
+        <../html/rdf_to_arangodb_pgt.html#arangodb-collection-mapping-process>`_.
 
         Contrary to RPT, regardless of whether **contextualize_graph** is set to
         True or not, all RDF Predicates within every RDF Statement in **rdf_graph**
@@ -765,9 +765,6 @@ class ArangoRDF(AbstractArangoRDF):
             1) Loading Meta Ontologies (i.e OWL, RDF, RDFS, etc.)  into the RDF Graph
             2) Providing Domain & Range Inference
             3) Providing Domain & Range Introspection
-
-            `Learn more about Graph Contextualization
-            here <../html/contextualization.html>`_.
         :type contextualize_graph: bool
         :param flatten_reified_triples: If set to False, will preserve the RDF
             structure of any Reified Triple. If set to True, will "flatten" any reified
@@ -959,8 +956,9 @@ class ArangoRDF(AbstractArangoRDF):
         The PGT Algorithm relies on the ArangoDB Collection Mapping Process to
         identify the ArangoDB Collection of every RDF Resource. Using this method prior
         to running :func:`rdf_to_arangodb_by_pgt` allows you to visualize and
-        modify the mapping. `Learn more about the ArangoDB Collection Mapping
-        Process here <../html/mapping.html>`_.
+        modify the mapping. `Learn more about the PGT ArangoDB
+        Collection Mapping Process here
+        <../html/rdf_to_arangodb_pgt.html#arangodb-collection-mapping-process>`_.
 
         NOTE: Running this method prior to :func:`rdf_to_arangodb_by_pgt`
         is unnecessary if the user is not interested in
