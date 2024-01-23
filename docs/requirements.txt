@@ -1,0 +1,5 @@
+sphinx_rtd_theme
+python-arango
+cityhash
+rdflib
+rich
