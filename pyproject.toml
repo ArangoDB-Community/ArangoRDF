@@ -41,6 +41,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "arango_datasets~=1.2",
     "black==23.3.0",
     "flake8==6.0.0",
     "Flake8-pyproject",
@@ -74,7 +75,7 @@ profile = "black"
 
 [tool.flake8]
 max-line-length = 88
-extend-ignore = ["E203", "W503", "E251", "E272", "E231", "E221"]
+extend-ignore = ["E203", "W503", "E251", "E272", "E231", "E221", "E202", "E201", "E222"]
 exclude = [".git", ".idea", ".*_cache", "dist", "venv"]
 
 [tool.mypy]

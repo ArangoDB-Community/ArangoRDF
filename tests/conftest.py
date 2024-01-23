@@ -1,38 +1,21 @@
-import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Set, Tuple
 
 from arango import ArangoClient, DefaultHTTPClient
 from arango.database import StandardDatabase
+from rdflib import BNode
 from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
 from rdflib import Graph as RDFGraph
+from rdflib import Literal, URIRef
 
 from arango_rdf import ArangoRDF
 
+con: Dict[str, Any]
 db: StandardDatabase
-PROJECT_DIR = Path(__file__).parent.parent
 adbrdf: ArangoRDF
-
-META_GRAPH_SIZE = 684
-META_GRAPH_NON_LITERAL_STATEMENTS = 440
-META_GRAPH_DUPLICATE_LITERALS = 1
-META_GRAPH_LITERAL_STATEMENTS = (
-    META_GRAPH_SIZE - META_GRAPH_NON_LITERAL_STATEMENTS - META_GRAPH_DUPLICATE_LITERALS
-)
-META_GRAPH_CONTEXTUALIZE_STATEMENTS = 0
-META_GRAPH_ALL_RESOURCES = 137
-META_GRAPH_UNKNOWN_RESOURCES = 12
-META_GRAPH_IDENTIFIED_RESOURCES = 125
-META_GRAPH_CONTEXTS = {
-    "http://www.arangodb.com/",
-    "http://www.w3.org/2002/07/owl#",
-    "http://purl.org/dc/elements/1.1/",
-    "http://www.w3.org/2001/XMLSchema#",
-    "http://www.w3.org/2000/01/rdf-schema#",
-    "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-}
+PROJECT_DIR = Path(__file__).parent.parent
 
 
 def pytest_addoption(parser: Any) -> None:
@@ -43,6 +26,7 @@ def pytest_addoption(parser: Any) -> None:
 
 
 def pytest_configure(config: Any) -> None:
+    global con
     con = {
         "url": config.getoption("url"),
         "username": config.getoption("username"),
@@ -66,58 +50,11 @@ def pytest_configure(config: Any) -> None:
     )
 
     global adbrdf
-    adbrdf = ArangoRDF(db, logging_lvl=logging.DEBUG)
-
-    if not db.has_graph("GameOfThrones"):
-        arango_restore(con, "tests/data/adb/got_dump")
-        db.create_graph(
-            "GameOfThrones",
-            edge_definitions=[
-                {
-                    "edge_collection": "ChildOf",
-                    "from_vertex_collections": ["Characters"],
-                    "to_vertex_collections": ["Characters"],
-                },
-            ],
-            orphan_collections=["Traits", "Locations"],
-        )
-
-    # if not db.has_graph("fraud-detection"):
-    #     arango_restore(con, "tests/data/adb/fraud_dump")
-    #     db.delete_collection("Class")
-    #     db.delete_collection("Relationship")
-    #     db.create_graph(
-    #         "fraud-detection",
-    #         edge_definitions=[
-    #             {
-    #                 "edge_collection": "accountHolder",
-    #                 "from_vertex_collections": ["customer"],
-    #                 "to_vertex_collections": ["account"],
-    #             },
-    #             {
-    #                 "edge_collection": "transaction",
-    #                 "from_vertex_collections": ["account"],
-    #                 "to_vertex_collections": ["account"],
-    #             },
-    #         ],
-    #         orphan_collections=["bank", "branch"],
-    #     )
-
-    # if db.has_graph("imdb") is False:
-    #     arango_restore(con, "tests/data/adb/imdb_dump")
-    #     db.create_graph(
-    #         "imdb",
-    #         edge_definitions=[
-    #             {
-    #                 "edge_collection": "Ratings",
-    #                 "from_vertex_collections": ["Users"],
-    #                 "to_vertex_collections": ["Movies"],
-    #             },
-    #         ],
-    #     )
+    adbrdf = ArangoRDF(db)
 
 
-def arango_restore(con: Dict[str, Any], path_to_data: str) -> None:
+def arango_restore(path_to_data: str) -> None:
+    global con
     restore_prefix = "./tools/" if os.getenv("GITHUB_ACTIONS") else ""
     protocol = "http+ssl://" if "https://" in con["url"] else "tcp://"
     url = protocol + con["url"].partition("://")[-1]
@@ -183,6 +120,55 @@ def get_adb_graph_count(name: str) -> Tuple[int, int]:
     return (v_count, e_count)
 
 
-def outersect_graphs(rdf_graph_a: RDFGraph, rdf_graph_b: RDFGraph) -> RDFGraph:
+def subtract_graphs(rdf_graph_a: RDFGraph, rdf_graph_b: RDFGraph) -> RDFGraph:
     assert rdf_graph_a and rdf_graph_b
     return rdf_graph_a - rdf_graph_b
+
+
+def get_uris(rdf_graph: RDFGraph, include_predicates: bool = False) -> Set[URIRef]:
+    global adbrdf
+
+    unique_uris = set()
+    for s, p, o in rdf_graph.triples((None, None, None)):
+        if isinstance(s, URIRef):
+            unique_uris.add(s)
+
+        if include_predicates and isinstance(p, URIRef):
+            if p != adbrdf.adb_col_uri:
+                unique_uris.add(p)
+
+        if isinstance(o, URIRef):
+            unique_uris.add(o)
+
+    return unique_uris
+
+
+def get_bnodes(rdf_graph: RDFGraph, include_predicates: bool = False) -> Set[BNode]:
+    unique_bnodes = set()
+    for s, p, o in rdf_graph.triples((None, None, None)):
+        if isinstance(s, BNode):
+            unique_bnodes.add(s)
+        if include_predicates and isinstance(p, BNode):
+            unique_bnodes.add(p)
+        if isinstance(o, BNode):
+            unique_bnodes.add(o)
+
+    return unique_bnodes
+
+
+def get_literals(rdf_graph: RDFGraph) -> Set[Literal]:
+    literals = set()
+    for _, _, o in rdf_graph.triples((None, None, None)):
+        if isinstance(o, Literal):
+            literals.add(o)
+
+    return literals
+
+
+def get_literal_statements(rdf_graph: RDFGraph) -> Set[Tuple[URIRef, URIRef, Literal]]:
+    literal_statements = set()
+    for s, p, o in rdf_graph.triples((None, None, None)):
+        if isinstance(o, Literal):
+            literal_statements.add((s, p, o))
+
+    return literal_statements

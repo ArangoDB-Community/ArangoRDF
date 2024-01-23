@@ -21,7 +21,30 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 
-def rdf_track(text: str, color: str) -> Progress:
+def empty_func(*args: Any, **kwargs: Any) -> None:
+    pass
+
+
+def get_spinner_progress(text: str) -> Progress:
+    return Progress(
+        TextColumn(text),
+        SpinnerColumn("aesthetic", "#5BC0DE"),
+        TimeElapsedColumn(),
+        transient=True,
+    )
+
+
+def get_import_spinner_progress(text: str) -> Progress:
+    return Progress(
+        TextColumn(text),
+        TextColumn("{task.fields[action]}"),
+        SpinnerColumn("aesthetic", "#5BC0DE"),
+        TimeElapsedColumn(),
+        transient=True,
+    )
+
+
+def get_bar_progress(text: str, color: str) -> Progress:
     return Progress(
         TextColumn(text),
         BarColumn(complete_style=color, finished_style=color),
@@ -29,19 +52,6 @@ def rdf_track(text: str, color: str) -> Progress:
         TextColumn("({task.completed}/{task.total})"),
         TimeElapsedColumn(),
     )
-
-
-def adb_track(text: str) -> Progress:
-    return Progress(
-        TextColumn(text),
-        TimeElapsedColumn(),
-        TextColumn("{task.fields[action]}"),
-        SpinnerColumn("aesthetic", "#5BC0DE"),
-    )
-
-
-def empty_function(*args: Any) -> None:
-    pass
 
 
 class Node:

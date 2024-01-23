@@ -1,4 +1,4 @@
 @prefix ex: <http://example.com/> .
 
-ex:book ex:title "Book"@en.
+ex:book ex:Englishtitle "Book"@en.
 ex:book ex:title "Bog"@da.

@@ -22,10 +22,11 @@ class AbstractArangoRDF(ABC):
         name: str,
         rdf_graph: RDFGraph,
         contextualize_graph: bool,
+        flatten_reified_triples: bool,
+        use_hashed_literals_as_keys: bool,
         overwrite_graph: bool,
-        use_async: bool,
         batch_size: Optional[int],
-        **import_options: Any,
+        **adb_import_kwargs: Any,
     ) -> ADBGraph:
         raise NotImplementedError  # pragma: no cover
 
@@ -33,12 +34,13 @@ class AbstractArangoRDF(ABC):
         self,
         name: str,
         rdf_graph: RDFGraph,
+        adb_col_statements: Optional[RDFGraph],
+        write_adb_col_statements: bool,
         contextualize_graph: bool,
+        flatten_reified_triples: bool,
         overwrite_graph: bool,
-        use_async: bool,
         batch_size: Optional[int],
-        adb_mapping: Optional[RDFGraph],
-        **import_options: Any,
+        **adb_import_kwargs: Any,
     ) -> ADBGraph:
         raise NotImplementedError  # pragma: no cover
 
@@ -47,10 +49,14 @@ class AbstractArangoRDF(ABC):
         name: str,
         rdf_graph: RDFGraph,
         metagraph: ADBMetagraph,
+        explicit_metagraph: bool,
         list_conversion_mode: str,
+        dict_conversion_mode: str,
         infer_type_from_adb_v_col: bool,
-        include_adb_key_statements: bool,
-        **export_options: Any,
+        include_adb_v_col_statements: bool,
+        include_adb_v_key_statements: bool,
+        include_adb_e_key_statements: bool,
+        **adb_export_kwargs: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
         raise NotImplementedError  # pragma: no cover
 
@@ -61,9 +67,12 @@ class AbstractArangoRDF(ABC):
         v_cols: Set[str],
         e_cols: Set[str],
         list_conversion_mode: str,
+        dict_conversion_mode: str,
         infer_type_from_adb_v_col: bool,
-        include_adb_key_statements: bool,
-        **export_options: Any,
+        include_adb_v_col_statements: bool,
+        include_adb_v_key_statements: bool,
+        include_adb_e_key_statements: bool,
+        **adb_export_kwargs: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
         raise NotImplementedError  # pragma: no cover
 
@@ -72,9 +81,12 @@ class AbstractArangoRDF(ABC):
         name: str,
         rdf_graph: RDFGraph,
         list_conversion_mode: str,
+        dict_conversion_mode: str,
         infer_type_from_adb_v_col: bool,
-        include_adb_key_statements: bool,
-        **export_options: Any,
+        include_adb_v_col_statements: bool,
+        include_adb_v_key_statements: bool,
+        include_adb_e_key_statements: bool,
+        **adb_export_kwargs: Any,
     ) -> Tuple[RDFGraph, RDFGraph]:
         raise NotImplementedError  # pragma: no cover
 

@@ -6,6 +6,9 @@
 _:x a rdf:Statement;
     rdf:subject ex:mainPage;
     rdf:predicate ex:writer;
-    rdf:object ex:alice .
+    rdf:object ex:alice;
+    ex:1 "1";
+    ex:2 "2";
+    ex:3 "3" .
 
 ex:bobshomepage ex:source _:x .
