@@ -42,7 +42,7 @@ nodes for the same IRIs.
 
 Now, consider the following RDF-star Graph:
 
-.. code-block:: turtle
+.. code-block::
 
     @prefix ex: <http://example.com/> .
 
