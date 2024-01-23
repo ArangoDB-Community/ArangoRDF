@@ -1,3 +1,288 @@
+## 0.9.0 (2024-01-23)
+
+### Other
+
+* Fix hyperlinks. [Anthony Mahanna]
+
+* Documentation updates (#19) [Anthony Mahanna]
+
+  * cleanup hash logic, make `rdf_graph` private
+
+  * checkpoint
+
+  * more cleanup
+
+  * update action versions
+
+  * checkpoint
+
+  * update tests
+
+  * checkpoint: green tests
+
+  * checkpoint: cases `14_2` and `15` are failing
+
+  * fix: make `__hash()` public
+
+  * cleanup `conftest`
+
+  * fix `v_count/e_count` assertions, more test cleanup
+
+  * new: case 15_1, 15_2, 15_3
+
+  * cleanup case 13
+
+  * checkpoing: all tests green (except 1 flaky)
+
+  15_2 RPT is flaky, need to revisit
+
+  * update case 14_1
+
+  * cleanup tests
+
+  * checkpoint: `__process_subject_predicate_object`
+
+  * fix lint
+
+  * fix conftest
+
+  * set `continue-on-error`
+
+  * update case `15_2` (still flaky)
+
+  * fix: `type` instead of `isinstance`
+
+  * update case `14_1`
+
+  * update tests
+
+  * update case `container.ttl`
+
+  * update `test_main`
+
+  add `+ RDFGraph()` hack, update `test_pgt_container`
+
+  * new: `pgt_remove_blacklisted_statements`, `pgt_parse_literal_statements`, remove `adb_col_blacklist`
+
+  so many todos...
+
+  * fix flake
+
+  * new: case 13_1 and 13_2
+
+  * new: case 14_3
+
+  * new: case 15_4
+
+  * update tests
+
+  * fix: rdf namespacing
+
+  * fix case 7 and native graph
+
+  * new: `adb_col_statements`, `write_adb_col_statements` (pgt)
+
+  * update 13_2, 15_2, 14_3
+
+  * new test cases, use `pytest.xfail` on flaky assertions
+
+  tests should be green now...
+
+  * flake ignore
+
+  can't reproduce
+
+  * new: `explicit_metagraph`, optimize `fetch_adb_docs`
+
+  * fix typo
+
+  * cleanup: `**adb_kwargs`
+
+  * doc cleanup
+
+  * cleanup
+
+  * cleanup: `flatten_reified_triples`
+
+  * cleanup: progress/spinner bars via `rich`
+
+  * more `rich` cleanup
+
+  * update cases 10, 14.3, 15_4
+
+  * final main checkpoint: `arango_rdf`
+
+  * minor cleanup
+
+  * new: `__pgt_process_rdf_literal`
+
+  * new: `serialize` as a conversion mode
+
+  * new: `test_open_intelligence_graph`
+
+  * fix lint
+
+  * fix: `statements`, `rdf_graph` ref
+
+  * cleanup: `write_adb_col_statements`
+
+  * initial commit
+
+  * fix lint
+
+  * update notebook
+
+  * checkpoint
+
+  * fix lint
+
+  * Create .readthedocs.yaml
+
+  * Update README.md
+
+  * Update requirements.txt
+
+  * fix: code block warning
+
+  * cleanup
+
+  * nit
+
+  * fix hyperlinks
+
+  * fix docstring
+
+* Housekeeping (#18) [Anthony Mahanna]
+
+  * cleanup hash logic, make `rdf_graph` private
+
+  * checkpoint
+
+  * more cleanup
+
+  * update action versions
+
+  * checkpoint
+
+  * update tests
+
+  * checkpoint: green tests
+
+  * checkpoint: cases `14_2` and `15` are failing
+
+  * fix: make `__hash()` public
+
+  * cleanup `conftest`
+
+  * fix `v_count/e_count` assertions, more test cleanup
+
+  * new: case 15_1, 15_2, 15_3
+
+  * cleanup case 13
+
+  * checkpoing: all tests green (except 1 flaky)
+
+  15_2 RPT is flaky, need to revisit
+
+  * update case 14_1
+
+  * cleanup tests
+
+  * checkpoint: `__process_subject_predicate_object`
+
+  * fix lint
+
+  * fix conftest
+
+  * set `continue-on-error`
+
+  * update case `15_2` (still flaky)
+
+  * fix: `type` instead of `isinstance`
+
+  * update case `14_1`
+
+  * update tests
+
+  * update case `container.ttl`
+
+  * update `test_main`
+
+  add `+ RDFGraph()` hack, update `test_pgt_container`
+
+  * new: `pgt_remove_blacklisted_statements`, `pgt_parse_literal_statements`, remove `adb_col_blacklist`
+
+  so many todos...
+
+  * fix flake
+
+  * new: case 13_1 and 13_2
+
+  * new: case 14_3
+
+  * new: case 15_4
+
+  * update tests
+
+  * fix: rdf namespacing
+
+  * fix case 7 and native graph
+
+  * new: `adb_col_statements`, `write_adb_col_statements` (pgt)
+
+  * update 13_2, 15_2, 14_3
+
+  * new test cases, use `pytest.xfail` on flaky assertions
+
+  tests should be green now...
+
+  * flake ignore
+
+  can't reproduce
+
+  * new: `explicit_metagraph`, optimize `fetch_adb_docs`
+
+  * fix typo
+
+  * cleanup: `**adb_kwargs`
+
+  * doc cleanup
+
+  * cleanup
+
+  * cleanup: `flatten_reified_triples`
+
+  * cleanup: progress/spinner bars via `rich`
+
+  * more `rich` cleanup
+
+  * update cases 10, 14.3, 15_4
+
+  * final main checkpoint: `arango_rdf`
+
+  * minor cleanup
+
+  * new: `__pgt_process_rdf_literal`
+
+  * new: `serialize` as a conversion mode
+
+  * new: `test_open_intelligence_graph`
+
+  * fix lint
+
+  * fix: `statements`, `rdf_graph` ref
+
+  * cleanup: `write_adb_col_statements`
+
+* Revert 6f85c04. [Anthony Mahanna]
+
+* Cleanup: notebooks. [Anthony Mahanna]
+
+* Update notebook output. [Anthony Mahanna]
+
+* Fix pepy badge. [Anthony Mahanna]
+
+
 ## 0.1.0 (2023-12-04)
 
 ### Other
