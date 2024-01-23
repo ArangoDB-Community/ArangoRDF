@@ -559,21 +559,9 @@ class ArangoRDF(AbstractArangoRDF):
             to enhance the Terminology Box of **rdf_graph** by providing
             the following features:
 
-            1) Process RDF Predicates within **rdf_graph** as their own ArangoDB
-            Document, and cast a (predicate RDF.type RDF.Property) edge
-            relationship into the ArangoDB graph for every RDF predicate
-            used in the form (subject predicate object) within **rdf_graph**.
-
-            2) Provide RDFS.Domain & RDFS.Range **Inference** on all
-            RDF Resources within the **rdf_graph**, so long that no
-            RDF.Type statement already exists in **rdf_graph**
-            for the given resource.
-
-            3) Provide RDFS.Domain & RDFS.Range **Introspection** on all
-            RDF Predicates with the **rdf_graph**, so long that
-            no RDFS.Domain or RDFS.Range statement already exists
-            for the given predicate.
-
+            1) Loading Meta Ontologies (i.e OWL, RDF, RDFS, etc.)  into the RDF Graph
+            2) Providing Domain & Range Inference
+            3) Providing Domain & Range Introspection
         :type contextualize_graph: bool
         :param flatten_reified_triples: If set to False, will preserve the RDF
             structure of reified triples. If set to True, will convert any reified
