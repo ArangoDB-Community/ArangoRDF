@@ -1,6 +1,6 @@
 RDF to ArangoDB (PGT)
 ---------------------
-`The same graph, but lighter.`
+`Same graph, but lighter`
 
 What is PGT?
 ============
