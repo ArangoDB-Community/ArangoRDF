@@ -75,9 +75,6 @@ Contents
    :maxdepth: 1
 
    quickstart
-   rpt
-   pgt
-   mapping
-   contextualization
-   reification
+   rdf_to_arangodb_rpt
+   rdf_to_arangodb_pgt
    specs

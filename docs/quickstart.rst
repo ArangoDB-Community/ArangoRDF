@@ -22,6 +22,13 @@ Quickstart
 
 **ArangoDB to RDF**
 
+**Note**: RDF-to-ArangoDB functionality has been implemented using concepts described in the paper
+`Transforming RDF-star to Property Graphs: A Preliminary Analysis of Transformation Approaches 
+<https://arxiv.org/abs/2210.05781>`_. So we offer two transformation approaches:
+
+1. `RDF-Topology Preserving Transformation (RPT) <./rdf_to_arangodb_rpt.html>`_
+2. `Property Graph Transformation (PGT) <./rdf_to_arangodb_pgt.html>`_
+
 .. code-block:: python
 
    # 1. RDF-Topology Preserving Transformation (RPT)
