@@ -61,6 +61,12 @@ def beatles():
 
 ### RDF to ArangoDB
 
+**Note**: RDF-to-ArangoDB functionality has been implemented using concepts described in the paper
+*[Transforming RDF-star to Property Graphs: A Preliminary Analysis of Transformation Approaches](https://arxiv.org/abs/2210.05781)*. So we offer two transformation approaches:
+
+1. RDF-Topology Preserving Transformation (RPT)
+2. Property Graph Transformation (PGT)
+
 ```py
 # 1. RDF-Topology Preserving Transformation (RPT)
 adbrdf.rdf_to_arangodb_by_rpt(name="BeatlesRPT", rdf_graph=beatles(), overwrite_graph=True)
@@ -71,37 +77,37 @@ adbrdf.rdf_to_arangodb_by_pgt(name="BeatlesPGT", rdf_graph=beatles(), overwrite_
 
 ### ArangoDB to RDF
 
-**Note**: RDF-to-ArangoDB functionality has been implemented using concepts described in the paper
-*[Transforming RDF-star to Property Graphs: A Preliminary Analysis of Transformation Approaches](https://arxiv.org/abs/2210.05781)*. So we offer two transformation approaches:
-
-1. RDF-Topology Preserving Transformation (RPT)
-2. Property Graph Transformation (PGT)
-
 ```py
+# pip install arango-datasets
+from arango_datasets import Datasets
+
+name = "OPEN_INTELLIGENCE_ANGOLA"
+Datasets(db).load(name)
+
 # 1. Graph to RDF
-rdf_graph = adbrdf.arangodb_graph_to_rdf(name="BeatlesRPT", rdf_graph=Graph())
+rdf_graph = adbrdf.arangodb_graph_to_rdf(name, rdf_graph=Graph())
 
 # 2. Collections to RDF
 rdf_graph_2 = adbrdf.arangodb_collections_to_rdf(
-    name="BeatlesRPT",
+    name,
     rdf_graph=Graph(),
-    v_cols={"BeatlesRPT_URIRef", "BeatlesRPT_Literal", "BeatlesRPT_BNode"},
-    e_cols={"BeatlesRPT_Statement"}
+    v_cols={"Event", "Actor", "Source"},
+    e_cols={"eventActor", "hasSource"},
 )
 
 # 3. Metagraph to RDF
 rdf_graph_3 = adbrdf.arangodb_to_rdf(
-    name="BeatlesPGT",
+    name=name,
     rdf_graph=Graph(),
     metagraph={
         "vertexCollections": {
-            "Album": {"name", "date"},
-            "SoloArtist": {}
+            "Event": {"date", "description", "fatalities"},
+            "Actor": {"name"}
         },
         "edgeCollections": {
-            "artist": {}
-        }
-    }
+            "eventActor": {}
+        },
+    },
 )
 ```
 
