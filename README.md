@@ -28,7 +28,7 @@ This linking structure forms a directed, labeled graph, where the edges represen
 Resources to get started:
 * [RDF Primer](https://www.w3.org/TR/rdf11-concepts/)
 * [RDFLib (Python)](https://pypi.org/project/rdflib/)
-* [One Example for Modeling RDF as ArangoDB Graphs](https://www.arangodb.com/docs/stable/data-modeling-graphs-from-rdf.html)
+* [RDF Base Terminology](https://docs.arangodb.com/stable/data-science/adapters/arangodb-rdf-adapter/#terminology)
 
 ## Installation
 
