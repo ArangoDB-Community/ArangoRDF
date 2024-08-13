@@ -78,21 +78,17 @@ adbrdf.rdf_to_arangodb_by_pgt(name="BeatlesPGT", rdf_graph=beatles(), overwrite_
 ### ArangoDB to RDF
 
 ```py
-# pip install arango-datasets
-from arango_datasets import Datasets
-
-name = "OPEN_INTELLIGENCE_ANGOLA"
-Datasets(db).load(name)
+# Assumption: "BeatlesPGT" loaded in ArangoDB ^
 
 # 1. Graph to RDF
-rdf_graph = adbrdf.arangodb_graph_to_rdf(name, rdf_graph=Graph())
+rdf_graph = adbrdf.arangodb_graph_to_rdf("BeatlesPGT", rdf_graph=Graph())
 
 # 2. Collections to RDF
 rdf_graph_2 = adbrdf.arangodb_collections_to_rdf(
-    name,
+    "BeatlesPGT",
     rdf_graph=Graph(),
-    v_cols={"Event", "Actor", "Source"},
-    e_cols={"eventActor", "hasSource"},
+    v_cols={"Album", "Band"},
+    e_cols={"artist"},
 )
 
 # 3. Metagraph to RDF
@@ -101,11 +97,11 @@ rdf_graph_3 = adbrdf.arangodb_to_rdf(
     rdf_graph=Graph(),
     metagraph={
         "vertexCollections": {
-            "Event": {"date", "description", "fatalities"},
-            "Actor": {"name"}
+            "Album": {"name", "date"},
+            "Band": {"name"}
         },
         "edgeCollections": {
-            "eventActor": {}
+            "artist": {}
         },
     },
 )
