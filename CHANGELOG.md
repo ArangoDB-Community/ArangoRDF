@@ -1,3 +1,12 @@
+## 1.0.0 (2024-08-13)
+
+### Other
+
+* Update README.md. [Anthony Mahanna]
+
+* Fix broken readme link. [Anthony Mahanna]
+
+
 ## 0.9.0 (2024-01-23)
 
 ### Other
