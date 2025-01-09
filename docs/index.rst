@@ -49,7 +49,7 @@ Convert RDF Graphs to ArangoDB, and vice-versa.
 Requirements
 ============
 
-- Python 3.8+
+- Python 3.9+
 - ArangoDB 3.10+
 
 Installation

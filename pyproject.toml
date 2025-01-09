@@ -12,7 +12,7 @@ keywords=["arangodb", "rdf", "resource description framework", "rdflib", "adapte
 readme = "README.md"
 dynamic = ["version"]
 license = {file = "LICENSE"}
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 authors = [{name = "Anthony Mahanna", email = "anthony.mahanna@arangodb.com"}]
 
@@ -21,7 +21,6 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -32,7 +31,7 @@ classifiers = [
 
 dependencies = [
     "rdflib>=6.0.0",
-    "python-arango~=7.4",
+    "python-arango>=7.4",
     "cityhash>=0.4.6",
     "requests>=2.27.1",
     "rich>=12.5.1",
