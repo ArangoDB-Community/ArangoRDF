@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 import pytest
 from arango_datasets import Datasets
 from rdflib import RDF, RDFS, BNode
-from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
+from rdflib import Dataset as RDFDataset
 from rdflib import Graph as RDFGraph
 from rdflib import Literal, URIRef
 
@@ -1638,7 +1638,7 @@ def test_rpt_case_15_3(name: str, rdf_graph: RDFGraph) -> None:
 def test_rpt_case_15_4(name: str, rdf_graph: RDFGraph) -> None:
     # Reified Triple Simplification modifies the source graph,
     # so we must make a copy of the graph to test against
-    rdf_graph_copy = RDFConjunctiveGraph()
+    rdf_graph_copy = RDFDataset()
     for quad in rdf_graph.quads((None, None, None, None)):
         rdf_graph_copy.add(quad)
 
@@ -1908,7 +1908,7 @@ def test_pgt_case_1(name: str, rdf_graph: RDFGraph) -> None:
 
     rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(
         name,
-        RDFConjunctiveGraph(),
+        RDFDataset(),
         include_adb_v_col_statements=True,
     )
 
@@ -4112,7 +4112,7 @@ def test_pgt_case_15_3(name: str, rdf_graph: RDFGraph) -> None:
 def test_pgt_case_15_4(name: str, rdf_graph: RDFGraph) -> None:
     # Reified Triple Simplification modifies the source graph,
     # so we must make a copy of the graph to test against
-    rdf_graph_copy = RDFConjunctiveGraph()
+    rdf_graph_copy = RDFDataset()
     for quad in rdf_graph.quads((None, None, None, None)):
         rdf_graph_copy.add(quad)
 
@@ -4235,7 +4235,7 @@ def test_pgt_case_15_4(name: str, rdf_graph: RDFGraph) -> None:
     assert graph1 in rdf_graph_contexts and graph1 in rdf_graph_2_contexts
     assert graph2 in rdf_graph_contexts and graph2 in rdf_graph_2_contexts
 
-    rdf_graph_2_copy = RDFConjunctiveGraph()
+    rdf_graph_2_copy = RDFDataset()
     for quad in rdf_graph_2.quads((None, None, None, None)):
         rdf_graph_2_copy.add(quad)
 
@@ -4275,7 +4275,7 @@ def test_pgt_case_15_4(name: str, rdf_graph: RDFGraph) -> None:
     assert len(subtract_graphs(rdf_graph_3, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph_3)) == 0
 
-    rdf_graph_3_copy = RDFConjunctiveGraph()
+    rdf_graph_3_copy = RDFDataset()
     for quad in rdf_graph_3.quads((None, None, None, None)):
         rdf_graph_3_copy.add(quad)
 
@@ -4309,7 +4309,7 @@ def test_pgt_case_15_4(name: str, rdf_graph: RDFGraph) -> None:
     "name, rdf_graph",
     [("Meta_PGT", get_meta_graph())],
 )
-def test_pgt_meta(name: str, rdf_graph: RDFConjunctiveGraph) -> None:
+def test_pgt_meta(name: str, rdf_graph: RDFDataset) -> None:
     META_GRAPH_CONTEXTS = {
         "http://www.arangodb.com/",
         "http://www.w3.org/2002/07/owl#",
