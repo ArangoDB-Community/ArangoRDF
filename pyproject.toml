@@ -36,6 +36,7 @@ dependencies = [
     "requests>=2.27.1",
     "rich>=12.5.1",
     "setuptools>=45",
+    "isodate",
 ]
 
 [project.optional-dependencies]
