@@ -6,7 +6,7 @@ from typing import Any, Dict, Set, Tuple
 from arango import ArangoClient, DefaultHTTPClient
 from arango.database import StandardDatabase
 from rdflib import BNode
-from rdflib import Dataset as RDFDataset
+from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
 from rdflib import Graph as RDFGraph
 from rdflib import Literal, URIRef
 
@@ -87,13 +87,13 @@ def pytest_exception_interact(node: Any, call: Any, report: Any) -> None:
 
 
 def get_rdf_graph(path: str) -> RDFGraph:
-    g = RDFDataset() if path.endswith(".trig") else RDFGraph()
+    g = RDFConjunctiveGraph() if path.endswith(".trig") else RDFGraph()
     g.parse(f"{PROJECT_DIR}/tests/data/rdf/{path}")
     return g
 
 
-def get_meta_graph() -> RDFDataset:
-    g = RDFDataset()
+def get_meta_graph() -> RDFConjunctiveGraph:
+    g = RDFConjunctiveGraph()
     for ns in os.listdir(f"{PROJECT_DIR}/arango_rdf/meta"):
         g.parse(f"{PROJECT_DIR}/arango_rdf/meta/{ns}", format="trig")
 
