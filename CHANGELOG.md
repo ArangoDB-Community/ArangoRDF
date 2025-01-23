@@ -1,3 +1,38 @@
+## 1.0.1 (2025-01-23)
+
+### Other
+
+* Cleanup config (#22) [Anthony Mahanna]
+
+  * cleanup config
+
+  testing with rdflib 7...
+
+  * attempt: isodate
+
+  * attempt: replace `ConjunctiveGraph` with `Dataset`
+
+  this won't work for now
+
+  * fix: lint
+
+  * attempt: update `conftest.py`
+
+  * Revert "attempt: update `conftest.py`"
+
+  This reverts commit 79783278adb5f41e6bb8b8f0192b20d0b40e492f.
+
+  * Revert "fix: lint"
+
+  This reverts commit e01eae6936c475f9c74521ec649d61d610b7e1ed.
+
+  * Revert "attempt: replace `ConjunctiveGraph` with `Dataset`"
+
+  This reverts commit 070310867d8a6771d915cb155f1f9e80ec6e648e.
+
+  * update: pyproject
+
+
 ## 1.0.0 (2024-08-13)
 
 ### Other
