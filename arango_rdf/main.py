@@ -2563,7 +2563,9 @@ class ArangoRDF(AbstractArangoRDF):
         """
 
         graph: RDFDataset = (
-            rdf_graph if isinstance(rdf_graph, RDFDataset) else RDFDataset() + rdf_graph
+            rdf_graph
+            if isinstance(rdf_graph, RDFDataset)
+            else RDFDataset() + rdf_graph
         )
 
         for ns in os.listdir(f"{PROJECT_DIR}/meta"):
