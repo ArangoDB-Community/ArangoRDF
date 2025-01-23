@@ -15,6 +15,7 @@ from arango.database import StandardDatabase
 from arango.graph import Graph as ADBGraph
 from isodate import Duration
 from rdflib import RDF, RDFS, XSD, BNode
+from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
 from rdflib import Dataset as RDFDataset
 from rdflib import Graph as RDFGraph
 from rdflib import Literal, URIRef
@@ -110,10 +111,10 @@ class ArangoRDF(AbstractArangoRDF):
         self.__adb_key_statements = RDFGraph()
         self.__adb_ns = "http://www.arangodb.com/"
 
-        # An RDF Conjunctive Graph (i.e Dataset) representing the
+        # An RDF Conjunctive Graph representing the
         # Ontology files found under the `arango_rdf/meta/` directory.
         # Essential for fully contextualizing an RDF Graph in ArangoDB.
-        self.__meta_graph = RDFDataset()
+        self.__meta_graph = RDFConjunctiveGraph()
         for ns in os.listdir(f"{PROJECT_DIR}/meta"):
             self.__meta_graph.parse(f"{PROJECT_DIR}/meta/{ns}", format="trig")
 
@@ -236,7 +237,7 @@ class ArangoRDF(AbstractArangoRDF):
             raise ValueError(msg)
 
         self.__rdf_graph = rdf_graph
-        self.__graph_supports_quads = isinstance(self.__rdf_graph, RDFDataset)
+        self.__graph_supports_quads = isinstance(self.__rdf_graph, RDFConjunctiveGraph)
 
         self.__graph_ns = f"{self.db._conn._url_prefixes[0]}/{name}"
         self.__rdf_graph.bind("adb", self.__adb_ns)
@@ -588,14 +589,14 @@ class ArangoRDF(AbstractArangoRDF):
         :return: The ArangoDB Graph API wrapper.
         :rtype: arango.graph.Graph
         """
-        # if isinstance(rdf_graph, RDFDataset):  # pragma: no cover
-        #     m = """
-        #         Invalid type for **rdf_graph**: ArangoRDF does not yet
-        #         support RDF Graphs of type rdflib.graph.Dataset. Consider
-        #         using rdflib.graph.ConjunctiveGraph if using quads instead
-        #         of triples is required.
-        #     """
-        #     raise TypeError(m)
+        if isinstance(rdf_graph, RDFDataset):  # pragma: no cover
+            m = """
+                Invalid type for **rdf_graph**: ArangoRDF does not yet
+                support RDF Graphs of type rdflib.graph.Dataset. Consider
+                using rdflib.graph.ConjunctiveGraph if using quads instead
+                of triples is required.
+            """
+            raise TypeError(m)
 
         self.__rdf_graph = rdf_graph
         self.__adb_key_statements = self.extract_adb_key_statements(rdf_graph)
@@ -667,7 +668,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         statements = (
             self.__rdf_graph.quads
-            if isinstance(rdf_graph, RDFDataset)
+            if isinstance(rdf_graph, RDFConjunctiveGraph)
             else self.__rdf_graph.triples
         )
 
@@ -774,14 +775,14 @@ class ArangoRDF(AbstractArangoRDF):
         :return: The ArangoDB Graph API wrapper.
         :rtype: arango.graph.Graph
         """
-        # if isinstance(rdf_graph, RDFDataset):  # pragma: no cover
-        #     m = """
-        #         Invalid type for **rdf_graph**: ArangoRDF does not yet
-        #         support RDF Graphs of type rdflib.graph.Dataset. Consider
-        #         using rdflib.graph.ConjunctiveGraph if using quads instead
-        #         of triples is required.
-        #     """
-        #     raise TypeError(m)
+        if isinstance(rdf_graph, RDFDataset):  # pragma: no cover
+            m = """
+                Invalid type for **rdf_graph**: ArangoRDF does not yet
+                support RDF Graphs of type rdflib.graph.Dataset. Consider
+                using rdflib.graph.ConjunctiveGraph if using quads instead
+                of triples is required.
+            """
+            raise TypeError(m)
 
         self.__rdf_graph = rdf_graph
         self.__adb_key_statements = self.extract_adb_key_statements(rdf_graph)
@@ -894,7 +895,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         statements = (
             self.__rdf_graph.quads
-            if isinstance(self.__rdf_graph, RDFDataset)
+            if isinstance(self.__rdf_graph, RDFConjunctiveGraph)
             else self.__rdf_graph.triples
         )
 
@@ -1875,7 +1876,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         statements = (
             self.__rdf_graph.quads
-            if isinstance(self.__rdf_graph, RDFDataset)
+            if isinstance(self.__rdf_graph, RDFConjunctiveGraph)
             else self.__rdf_graph.triples
         )
 
@@ -2544,28 +2545,28 @@ class ArangoRDF(AbstractArangoRDF):
     # Private: RDF -> ArangoDB (RPT & PGT) #
     ########################################
 
-    def __load_meta_ontology(self, rdf_graph: RDFGraph) -> RDFDataset:
+    def __load_meta_ontology(self, rdf_graph: RDFGraph) -> RDFConjunctiveGraph:
         """RDF -> ArangoDB: Load the RDF, RDFS, and OWL
         Ontologies into **rdf_graph** as 3 sub-graphs. This method returns
-        an RDF Graph of type rdflib.graph.Dataset in order to support
+        an RDF Graph of type rdflib.graph.ConjunctiveGraph in order to support
         sub-graph functionality.
 
         Essential for Graph Contextualization.
 
-        NOTE: If **rdf_graph** is already of type rdflib.graph.Dataset,
+        NOTE: If **rdf_graph** is already of type rdflib.graph.ConjunctiveGraph,
         then the **same** graph is returned (pass by reference).
 
         :param rdf_graph: The RDF Graph, soon to be converted into an ArangoDB Graph.
         :type rdf_graph: rdflib.graph.Graph
-        :return: A Dataset equivalent of **rdf_graph** containing 3
+        :return: A ConjunctiveGraph equivalent of **rdf_graph** containing 3
             additional subgraphs (RDF, RDFS, OWL)
-        :rtype: rdflib.graph.Dataset
+        :rtype: rdflib.graph.ConjunctiveGraph
         """
 
-        graph: RDFDataset = (
+        graph: RDFConjunctiveGraph = (
             rdf_graph
-            if isinstance(rdf_graph, RDFDataset)
-            else RDFDataset() + rdf_graph
+            if isinstance(rdf_graph, RDFConjunctiveGraph)
+            else RDFConjunctiveGraph() + rdf_graph
         )
 
         for ns in os.listdir(f"{PROJECT_DIR}/meta"):
@@ -2595,7 +2596,7 @@ class ArangoRDF(AbstractArangoRDF):
             is disabled.
         :type contextualize_statement_func: Callable[..., None]
         """
-        graph_supports_quads = isinstance(self.__rdf_graph, RDFDataset)
+        graph_supports_quads = isinstance(self.__rdf_graph, RDFConjunctiveGraph)
 
         # Recursion is used to process nested reified triples
         # Things can get really wild here...
