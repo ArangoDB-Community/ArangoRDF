@@ -4897,3 +4897,75 @@ def test_open_intelligence_graph(name: str) -> None:
     assert e_count_1 == e_count_2
 
     db.delete_graph(name, drop_collections=True)
+
+
+def test_multiple_graphs_pgt() -> None:
+    g1 = RDFGraph()
+
+    g1.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+        @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+        ex:alice a ex:Person ;
+            ex:knows ex:bob ;
+            ex:age "25"^^xsd:integer .
+
+        ex:bob a ex:Person ;
+            ex:knows ex:charlie ;
+            ex:age "30"^^xsd:integer .
+
+        ex:charlie a ex:Person ;
+            ex:knows ex:alice ;
+            ex:age "35"^^xsd:integer .
+        """,
+        format="turtle",
+    )
+
+    g2 = RDFGraph()
+
+    g2.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+        ex:hired rdfs:range ex:Person .
+
+        ex:Apple a ex:Company .
+        ex:Apple ex:hired ex:bob .
+        """,
+        format="turtle",
+    )
+
+    for g in [g1, g2]:
+        adbrdf.rdf_to_arangodb_by_pgt("PersonGraph", g, overwrite_graph=False)
+
+    edge_defs = {
+        e_d["edge_collection"]: e_d
+        for e_d in db.graph("PersonGraph").edge_definitions()
+    }
+
+    assert edge_defs == {
+        "hired": {
+            "edge_collection": "hired",
+            "from_vertex_collections": ["Company"],
+            "to_vertex_collections": ["Person"],
+        },
+        "range": {
+            "edge_collection": "range",
+            "from_vertex_collections": ["Property"],
+            "to_vertex_collections": ["Class"],
+        },
+        "knows": {
+            "edge_collection": "knows",
+            "from_vertex_collections": ["Person"],
+            "to_vertex_collections": ["Person"],
+        },
+        "type": {
+            "edge_collection": "type",
+            "from_vertex_collections": ["Company", "Person"],
+            "to_vertex_collections": ["Class"],
+        },
+    }
+
+    db.delete_graph("PersonGraph", ignore_missing=True, drop_collections=True)
