@@ -2504,9 +2504,6 @@ class ArangoRDF(AbstractArangoRDF):
         :return: The ArangoDB Graph API wrapper.
         :rtype: arango.graph.Graph
         """
-        if self.db.has_graph(name):  # pragma: no cover
-            return self.db.graph(name)
-
         edge_definitions: List[Dict[str, Union[str, List[str]]]] = []
 
         all_v_cols: Set[str] = set()
@@ -2539,7 +2536,40 @@ class ArangoRDF(AbstractArangoRDF):
 
         orphan_v_cols = list(all_v_cols ^ non_orphan_v_cols ^ {self.__UNKNOWN_RESOURCE})
 
-        return self.db.create_graph(name, edge_definitions, orphan_v_cols)
+        if not self.db.has_graph(name):
+            return self.db.create_graph(name, edge_definitions, orphan_v_cols)
+
+        old_edge_definitions = {
+            edge_def["edge_collection"]: edge_def
+            for edge_def in self.db.graph(name).edge_definitions()
+        }
+
+        for e_d in edge_definitions:
+            if e_d["edge_collection"] in old_edge_definitions:
+                old_e_d = old_edge_definitions[e_d["edge_collection"]]
+
+                from_v_cols = set(e_d["from_vertex_collections"])
+                from_v_cols |= set(old_e_d["from_vertex_collections"])
+
+                to_v_cols = set(e_d["to_vertex_collections"])
+                to_v_cols |= set(old_e_d["to_vertex_collections"])
+
+                # Update Edge Definition
+                self.db.graph(name).replace_edge_definition(
+                    e_d["edge_collection"],
+                    list(from_v_cols),
+                    list(to_v_cols),
+                )
+
+            else:
+                # Create new Edge Definiton
+                self.db.graph(name).create_edge_definition(
+                    e_d["edge_collection"],
+                    e_d["from_vertex_collections"],
+                    e_d["to_vertex_collections"],
+                )
+
+        return self.db.graph(name)
 
     ########################################
     # Private: RDF -> ArangoDB (RPT & PGT) #
