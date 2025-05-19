@@ -165,7 +165,7 @@ class ArangoRDF(AbstractArangoRDF):
         include_adb_v_col_statements: bool = False,
         include_adb_v_key_statements: bool = False,
         include_adb_e_key_statements: bool = False,
-        namespace_prefix_collection: str | None = None,
+        namespace_prefix_collection: Optional[str] = None,
         **adb_export_kwargs: Any,
     ) -> RDFGraph:
         """Create an RDF Graph from an ArangoDB Graph via its Metagraph.
@@ -718,7 +718,7 @@ class ArangoRDF(AbstractArangoRDF):
         flatten_reified_triples: bool = True,
         overwrite_graph: bool = False,
         batch_size: Optional[int] = None,
-        namespace_prefix_collection: str | None = None,
+        namespace_prefix_collection: Optional[str] = None,
         **adb_import_kwargs: Any,
     ) -> ADBGraph:
         """Create an ArangoDB Graph from an RDF Graph using
