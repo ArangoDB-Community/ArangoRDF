@@ -296,7 +296,7 @@ class ArangoRDF(AbstractArangoRDF):
         # Re-bind the namespace prefixes of **rdf_graph**
         if namespace_prefix_collection:
             if not self.db.has_collection(namespace_prefix_collection):
-                m = f"Namespace Prefix Collection '{namespace_prefix_collection}' does not exist"
+                m = f"Namespace Prefix Collection '{namespace_prefix_collection}' does not exist"  # noqa: E501
                 raise ValueError(m)
 
             for doc in self.db.collection(namespace_prefix_collection):
