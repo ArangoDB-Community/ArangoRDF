@@ -4969,3 +4969,73 @@ def test_multiple_graphs_pgt() -> None:
     }
 
     db.delete_graph("PersonGraph", ignore_missing=True, drop_collections=True)
+
+
+@pytest.mark.parametrize(
+    "graph_name, rdf_graph",
+    [("NamespacePrefixTest", RDFGraph())],
+)
+def test_namespace_prefix_collection(graph_name: str, rdf_graph: RDFGraph) -> None:
+    # Create test data with namespaces
+    rdf_graph.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+        @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+        @prefix schema: <https://schema.org/> .
+
+        ex:alice a foaf:Person ;
+            schema:name "Alice" .
+        """,
+        format="turtle",
+    )
+
+    db.delete_graph(graph_name, drop_collections=True, ignore_missing=True)
+    db.delete_collection("namespaces", ignore_missing=True)
+
+    adbrdf.rdf_to_arangodb_by_pgt(
+        graph_name,
+        rdf_graph,
+        overwrite_graph=True,
+        namespace_prefix_collection="namespaces",
+    )
+
+    assert db.has_collection("namespaces")
+    assert db.collection("namespaces").count() >= 3
+
+    assert db.collection("namespaces").has(adbrdf.hash("http://example.com/"))
+    assert db.collection("namespaces").has(adbrdf.hash("http://xmlns.com/foaf/0.1/"))
+    assert db.collection("namespaces").has(adbrdf.hash("https://schema.org/"))
+
+    # Test ArangoDB to RDF without namespace prefix collection
+    rdf_graph_2 = adbrdf.arangodb_graph_to_rdf(graph_name, RDFGraph())
+
+    # Verify the namespaces were preserved
+    namespace_dict = {prefix: uri for prefix, uri in rdf_graph_2.namespaces()}
+    assert "ex" not in namespace_dict
+
+    # Test ArangoDB to RDF with namespace prefix collection
+    rdf_graph_3 = adbrdf.arangodb_graph_to_rdf(
+        graph_name, RDFGraph(), namespace_prefix_collection="namespaces"
+    )
+
+    # Verify the namespaces were preserved
+    namespace_dict = {prefix: uri for prefix, uri in rdf_graph_3.namespaces()}
+    assert "ns1" not in namespace_dict
+    assert namespace_dict["ex"] == URIRef("http://example.com/")
+    assert namespace_dict["foaf"] == URIRef("http://xmlns.com/foaf/0.1/")
+    assert namespace_dict["schema"] == URIRef("https://schema.org/")
+
+    # Verify the data was preserved with namespaced URIs
+    alice = URIRef("http://example.com/alice")
+    rdf_type = URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+    person = URIRef("http://xmlns.com/foaf/0.1/Person")
+    name = URIRef("https://schema.org/name")
+
+    assert (alice, rdf_type, person) in rdf_graph_3
+    assert (alice, name, Literal("Alice")) in rdf_graph_3
+
+    print(rdf_graph_3.serialize(format="turtle"))
+    print(rdf_graph_2.serialize(format="turtle"))
+
+    db.delete_graph(graph_name, drop_collections=True)
+    db.delete_collection("namespaces")

@@ -165,6 +165,7 @@ class ArangoRDF(AbstractArangoRDF):
         include_adb_v_col_statements: bool = False,
         include_adb_v_key_statements: bool = False,
         include_adb_e_key_statements: bool = False,
+        namespace_prefix_collection: Optional[str] = None,
         **adb_export_kwargs: Any,
     ) -> RDFGraph:
         """Create an RDF Graph from an ArangoDB Graph via its Metagraph.
@@ -220,6 +221,11 @@ class ArangoRDF(AbstractArangoRDF):
             NOTE: Enabling this option will impose Triple Reification on all
             ArangoDB Edges.
         :type include_adb_e_key_statements: bool
+        :param namespace_prefix_collection: The name of the ArangoDB Collection
+            to store the namespace prefixes of **rdf_graph**. Useful for re-constructing
+            the original RDF Graph from the ArangoDB Graph. Defaults to None,
+            which means that the namespace prefixes will not be stored.
+        :type namespace_prefix_collection: str | None
         :param adb_export_kwargs: Keyword arguments to specify AQL query options when
             fetching documents from the ArangoDB instance. Full parameter list:
             https://docs.python-arango.com/en/main/specs.html#arango.aql.AQL.execute
@@ -278,12 +284,23 @@ class ArangoRDF(AbstractArangoRDF):
         # PGT: Round-Tripping #
         #######################
 
+        # Map the labels of the Property Collection to their corresponding URIs
+        # e.g has_friend --> http://example.com/has_friend
         if self.db.has_collection("Property"):
             doc: Json
             for doc in self.db.collection("Property"):
                 if doc.keys() >= {"_uri", "_label"}:
                     # TODO: What if 2+ URIs have the same local name?
                     self.__uri_map[doc["_label"]] = URIRef(doc["_uri"])
+
+        # Re-bind the namespace prefixes of **rdf_graph**
+        if namespace_prefix_collection:
+            if not self.db.has_collection(namespace_prefix_collection):
+                m = f"Namespace Prefix Collection '{namespace_prefix_collection}' does not exist"  # noqa: E501
+                raise ValueError(m)
+
+            for doc in self.db.collection(namespace_prefix_collection):
+                self.__rdf_graph.bind(doc["prefix"], doc["uri"])
 
         ######################
         # Vertex Collections #
@@ -701,6 +718,7 @@ class ArangoRDF(AbstractArangoRDF):
         flatten_reified_triples: bool = True,
         overwrite_graph: bool = False,
         batch_size: Optional[int] = None,
+        namespace_prefix_collection: Optional[str] = None,
         **adb_import_kwargs: Any,
     ) -> ADBGraph:
         """Create an ArangoDB Graph from an RDF Graph using
@@ -768,6 +786,11 @@ class ArangoRDF(AbstractArangoRDF):
             process for every **batch_size** RDF triples/quads within **rdf_graph**.
             Defaults to None.
         :type batch_size: int | None
+        :param namespace_prefix_collection: The name of the ArangoDB Collection
+            to store the namespace prefixes of **rdf_graph**. Useful for re-constructing
+            the original RDF Graph from the ArangoDB Graph. Defaults to None,
+            which means that the namespace prefixes will not be stored.
+        :type namespace_prefix_collection: str | None
         :param adb_import_kwargs: Keyword arguments to specify additional
             parameters for the ArangoDB Data Ingestion process.
             The full parameter list is
@@ -783,6 +806,12 @@ class ArangoRDF(AbstractArangoRDF):
                 of triples is required.
             """
             raise TypeError(m)
+
+        namespace_prefixes = []
+        if namespace_prefix_collection:
+            namespace_prefixes = [
+                (prefix, uri) for prefix, uri in rdf_graph.namespaces()
+            ]
 
         self.__rdf_graph = rdf_graph
         self.__adb_key_statements = self.extract_adb_key_statements(rdf_graph)
@@ -930,6 +959,23 @@ class ArangoRDF(AbstractArangoRDF):
         with Live(Group(bar_progress, spinner_progress)):
             self.__pgt_process_rdf_lists(bar_progress)
             self.__insert_adb_docs(spinner_progress)
+
+        ###########################
+        # PGT: Namespace Prefixes #
+        ###########################
+
+        if namespace_prefix_collection:
+            if not self.__db.has_collection(namespace_prefix_collection):
+                self.__db.create_collection(namespace_prefix_collection)
+
+            docs = [
+                {"prefix": prefix, "uri": uri, "_key": self.hash(uri)}
+                for prefix, uri in namespace_prefixes
+            ]
+
+            self.__db.collection(namespace_prefix_collection).insert_many(
+                docs, overwrite=True
+            )
 
         return self.__pgt_create_adb_graph(name)
 
