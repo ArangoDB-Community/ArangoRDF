@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Callable, DefaultDict, Dict, List, Optional, Set, Tuple, Union
 
 import farmhash
+from arango.collection import StandardCollection
 from arango.cursor import Cursor
 from arango.database import StandardDatabase
 from arango.graph import Graph as ADBGraph
@@ -165,7 +166,7 @@ class ArangoRDF(AbstractArangoRDF):
         include_adb_v_col_statements: bool = False,
         include_adb_v_key_statements: bool = False,
         include_adb_e_key_statements: bool = False,
-        namespace_prefix_collection: str | None = None,
+        namespace_collection_name: Optional[str] = None,
         **adb_export_kwargs: Any,
     ) -> RDFGraph:
         """Create an RDF Graph from an ArangoDB Graph via its Metagraph.
@@ -221,11 +222,11 @@ class ArangoRDF(AbstractArangoRDF):
             NOTE: Enabling this option will impose Triple Reification on all
             ArangoDB Edges.
         :type include_adb_e_key_statements: bool
-        :param namespace_prefix_collection: The name of the ArangoDB Collection
+        :param namespace_collection_name: The name of the ArangoDB Collection
             to store the namespace prefixes of **rdf_graph**. Useful for re-constructing
             the original RDF Graph from the ArangoDB Graph. Defaults to None,
             which means that the namespace prefixes will not be stored.
-        :type namespace_prefix_collection: str | None
+        :type namespace_collection_name: str | None
         :param adb_export_kwargs: Keyword arguments to specify AQL query options when
             fetching documents from the ArangoDB instance. Full parameter list:
             https://docs.python-arango.com/en/main/specs.html#arango.aql.AQL.execute
@@ -294,12 +295,12 @@ class ArangoRDF(AbstractArangoRDF):
                     self.__uri_map[doc["_label"]] = URIRef(doc["_uri"])
 
         # Re-bind the namespace prefixes of **rdf_graph**
-        if namespace_prefix_collection:
-            if not self.db.has_collection(namespace_prefix_collection):
-                m = f"Namespace Prefix Collection '{namespace_prefix_collection}' does not exist"  # noqa: E501
+        if namespace_collection_name:
+            if not self.db.has_collection(namespace_collection_name):
+                m = f"Namespace Collection '{namespace_collection_name}' does not exist"  # noqa: E501
                 raise ValueError(m)
 
-            for doc in self.db.collection(namespace_prefix_collection):
+            for doc in self.db.collection(namespace_collection_name):
                 self.__rdf_graph.bind(doc["prefix"], doc["uri"])
 
         ######################
@@ -601,7 +602,7 @@ class ArangoRDF(AbstractArangoRDF):
         :type batch_size: int | None
         :param adb_import_kwargs: Keyword arguments to specify additional
             parameters for ArangoDB document insertion. Full parameter list:
-            https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.import_bulk
+            https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.insert_many
         :param adb_import_kwargs: Any
         :return: The ArangoDB Graph API wrapper.
         :rtype: arango.graph.Graph
@@ -718,7 +719,8 @@ class ArangoRDF(AbstractArangoRDF):
         flatten_reified_triples: bool = True,
         overwrite_graph: bool = False,
         batch_size: Optional[int] = None,
-        namespace_prefix_collection: str | None = None,
+        namespace_collection_name: Optional[str] = None,
+        iri_collection_name: Optional[str] = None,
         **adb_import_kwargs: Any,
     ) -> ADBGraph:
         """Create an ArangoDB Graph from an RDF Graph using
@@ -786,15 +788,25 @@ class ArangoRDF(AbstractArangoRDF):
             process for every **batch_size** RDF triples/quads within **rdf_graph**.
             Defaults to None.
         :type batch_size: int | None
-        :param namespace_prefix_collection: The name of the ArangoDB Collection
+        :param namespace_collection_name: The name of the ArangoDB Collection
             to store the namespace prefixes of **rdf_graph**. Useful for re-constructing
             the original RDF Graph from the ArangoDB Graph. Defaults to None,
             which means that the namespace prefixes will not be stored.
-        :type namespace_prefix_collection: str | None
+            Not included in the ArangoDB Graph Edge Definitions.
+        :type namespace_collection_name: str | None
+        :param iri_collection_name: If specified, in addition to storing the IRIs of
+            **rdf_graph** in their respective collection, the IRIs will also be stored in
+            the specified ArangoDB Collection to map to the collection name they correspond to.
+            This could be then used for multi-file imports, allowing ArangoRDF to
+            check if the IRIs of **rdf_graph** have already been imported into the
+            ArangoDB Graph to avoid going through the ArangoDB Collection Mapping
+            Process (for that IRI) again. Not included in the ArangoDB Graph
+            Edge Definitions.
+        :type iri_collection_name: str | None
         :param adb_import_kwargs: Keyword arguments to specify additional
             parameters for the ArangoDB Data Ingestion process.
             The full parameter list is
-            `here <https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.import_bulk>`_. # noqa: E501
+            `here <https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.insert_many>`_. # noqa: E501
         :return: The ArangoDB Graph API wrapper.
         :rtype: arango.graph.Graph
         """
@@ -808,13 +820,19 @@ class ArangoRDF(AbstractArangoRDF):
             raise TypeError(m)
 
         namespace_prefixes = []
-        if namespace_prefix_collection:
+        if namespace_collection_name:
             namespace_prefixes = [
                 (prefix, uri) for prefix, uri in rdf_graph.namespaces()
             ]
 
         self.__rdf_graph = rdf_graph
         self.__adb_key_statements = self.extract_adb_key_statements(rdf_graph)
+        self.__iri_collection: Optional[StandardCollection] = None
+        if iri_collection_name:
+            if not self.__db.has_collection(iri_collection_name):
+                self.__db.create_collection(iri_collection_name)
+
+            self.__iri_collection = self.__db.collection(iri_collection_name)
 
         # Reset the ArangoDB Config
         self.__adb_docs = defaultdict(lambda: defaultdict(dict))
@@ -964,18 +982,20 @@ class ArangoRDF(AbstractArangoRDF):
         # PGT: Namespace Prefixes #
         ###########################
 
-        if namespace_prefix_collection:
-            if not self.__db.has_collection(namespace_prefix_collection):
-                self.__db.create_collection(namespace_prefix_collection)
+        if namespace_collection_name:
+            if not self.__db.has_collection(namespace_collection_name):
+                self.__db.create_collection(namespace_collection_name)
 
             docs = [
                 {"prefix": prefix, "uri": uri, "_key": self.hash(uri)}
                 for prefix, uri in namespace_prefixes
             ]
 
-            self.__db.collection(namespace_prefix_collection).insert_many(
-                docs, overwrite=True
+            result = self.__db.collection(namespace_collection_name).insert_many(
+                docs, overwrite=True, raise_on_document_error=True
             )
+
+            logger.debug(result)
 
         return self.__pgt_create_adb_graph(name)
 
@@ -1051,15 +1071,137 @@ class ArangoRDF(AbstractArangoRDF):
                     if t in self.__adb_col_statements or len(class_set) == 0:
                         continue  # pragma: no cover # (false negative)
 
-                    adb_col = self.rdf_id_to_adb_label(
-                        self.__cntrl.identify_best_class(
-                            rdf_resource, class_set, self.__subclass_tree
-                        )
+                    best_class = self.__cntrl.identify_best_class(
+                        rdf_resource, class_set, self.__subclass_tree
                     )
+
+                    adb_col = self.rdf_id_to_adb_label(best_class)
 
                     self.__add_adb_col_statement(rdf_resource, adb_col)
 
         return self.__adb_col_statements
+
+    def migrate_unknown_resources(
+        self, graph_name: str, iri_collection_name: str, **kwargs: Any
+    ) -> Tuple[int, int]:
+        """RDF -> ArangoDB: Migrate all UnknownResource statements to their
+        respective ArangoDB Collection.
+
+        NOTE: This method is only available if the user has passed a
+        value to the **iri_collection** parameter of the
+        :func:`rdf_to_arangodb_by_pgt` method.
+
+        This method will migrate all UnknownResource statements to their
+        respective ArangoDB Collection based on if the same RDF Resource
+        exists in the **iri_collection**.
+
+        Recommended to run this method after :func:`rdf_to_arangodb_by_pgt`
+        if the user is not interested in maintaining the UnknownResource
+        statements.
+
+        :param graph_name: The name of the graph to migrate the Unknown Resources from.
+        :type graph_name: str
+        :param iri_collection_name: The name of the IRI collection to migrate
+            the Unknown Resources to.
+        :type iri_collection_name: str
+        :param kwargs: Keyword arguments passed to the AQL Query execution.
+        :type kwargs: Any
+
+        :return: The number of Unknown Resources migrated and the number
+            of edges updated.
+        :rtype: Tuple[int, int]
+        """
+        ur_collection_name = f"{graph_name}_UnknownResource"
+
+        ur_collection = self.__db.collection(ur_collection_name)
+        iri_collection = self.__db.collection(iri_collection_name)
+
+        if ur_collection.count() == 0:
+            logger.info("No Unknown Resources to migrate")
+            return 0, 0
+
+        if iri_collection.count() == 0:
+            logger.info("No IRI Collection to migrate to")
+            return 0, 0
+
+        old_ur_count = ur_collection.count()
+
+        query = """
+           FOR doc IN @@UR
+            LET collection = FIRST(
+                FOR iri IN @@IRI
+                    FILTER doc._key == iri._key
+                    LIMIT 1
+                    RETURN iri.collection
+            )
+            FILTER collection
+
+            LET edges = (
+                FOR v,e IN 1..1 ANY doc GRAPH @graph
+                    LET key_to_modify = e._from == doc._id ? "_from" : "_to"
+                    COLLECT e_col = PARSE_IDENTIFIER(e._id).collection
+                    INTO edges_to_modify = {
+                        _key: e._key,
+                        [key_to_modify]: CONCAT(collection, "/", doc._key)
+                    }
+
+                    RETURN {e_col, edges_to_modify}
+            )
+
+            LET data = UNSET(doc, "_id", "_rev")
+            REMOVE doc IN @@UR
+            RETURN {data, collection, edges}
+        """
+
+        bind_vars = {
+            "@UR": ur_collection_name,
+            "@IRI": iri_collection_name,
+            "graph": graph_name,
+        }
+
+        cursor = self.__db.aql.execute(
+            query, bind_vars=bind_vars, stream=True, **kwargs
+        )
+
+        edge_count = 0
+
+        with get_spinner_progress("(RDF → ADB): Migrate Unknown Resources") as sp:
+            sp.add_task("")
+
+            while not cursor.empty():
+                for result in cursor.batch():
+                    data = result["data"]
+                    collection = result["collection"]
+
+                    for edge_data in result["edges"]:
+                        edge_collection = edge_data["e_col"]
+                        edges_to_modify = edge_data["edges_to_modify"]
+                        edge_count += len(edges_to_modify)
+
+                        result = self.__db.collection(edge_collection).update_many(
+                            edges_to_modify,
+                            merge=True,
+                            raise_on_document_error=True,
+                        )
+
+                        logger.debug(result)
+
+                    self.__db.collection(collection).update(
+                        data, merge=True, silent=True
+                    )
+
+                cursor.batch().clear()
+                if cursor.has_more():
+                    cursor.fetch()
+
+        new_ur_count = ur_collection.count()
+
+        ur_count_diff = old_ur_count - new_ur_count
+
+        m = f"Migrated {ur_count_diff} Unknown Resources & updated {edge_count} edges"  # noqa: E501
+        logger.info(m)
+
+        return ur_count_diff, edge_count
 
     #######################################
     # Public: RDF -> ArangoDB (RPT & PGT) #
@@ -2025,10 +2167,16 @@ class ArangoRDF(AbstractArangoRDF):
             t_col = t_label = p_label
 
         else:
-            t_col = str(
-                self.__adb_col_statements.value(t, self.adb_col_uri)
-                or self.__UNKNOWN_RESOURCE
-            )
+            t_col = self.__adb_col_statements.value(t, self.adb_col_uri)
+
+            if t_col is None and self.__iri_collection is not None:
+                doc = self.__iri_collection.get(t_key)
+
+                if doc:
+                    t_col = str(doc["collection"])
+                    self.__add_adb_col_statement(t, t_col)  # for next iteration
+
+            t_col = str(t_col or self.__UNKNOWN_RESOURCE)
 
         return t, t_col, t_key, t_label
 
@@ -2146,6 +2294,13 @@ class ArangoRDF(AbstractArangoRDF):
 
         else:
             raise ValueError(f"Invalid type for RDF Term: {t}")  # pragma: no cover
+
+        if self.__iri_collection is not None and t_col != self.__UNKNOWN_RESOURCE:
+            iri_col = self.__iri_collection.name
+            self.__adb_docs[iri_col][t_key] = {
+                "_key": t_key,
+                "collection": t_col,
+            }
 
     def __pgt_process_rdf_literal(
         self,
@@ -3136,13 +3291,15 @@ class ArangoRDF(AbstractArangoRDF):
         :type spinner_progress: rich.progress.Progress
         :param adb_import_kwargs: Keyword arguments to specify additional
             parameters for ArangoDB document insertion. Full parameter list:
-            https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.import_bulk
+            https://docs.python-arango.com/en/main/specs.html#arango.collection.Collection.insert_many
         :param adb_import_kwargs: Any
         """
         if len(self.__adb_docs) == 0:
             return
 
-        adb_import_kwargs["on_duplicate"] = "update"
+        adb_import_kwargs["overwrite_mode"] = "update"
+        adb_import_kwargs["merge"] = True
+        # adb_import_kwargs["raise_on_document_error"] = True
 
         # Avoiding "RuntimeError: dictionary changed size during iteration"
         adb_cols = list(self.__adb_docs.keys())
@@ -3157,7 +3314,8 @@ class ArangoRDF(AbstractArangoRDF):
                 is_edge = col in self.__e_col_map
                 self.db.create_collection(col, edge=is_edge)
 
-            result = self.db.collection(col).import_bulk(doc_list, **adb_import_kwargs)
+            result = self.db.collection(col).insert_many(doc_list, **adb_import_kwargs)
+
             logger.debug(result)
 
             del self.__adb_docs[col]
