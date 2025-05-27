@@ -2176,9 +2176,11 @@ class ArangoRDF(AbstractArangoRDF):
                     t_col = str(doc["collection"])
                     self.__add_adb_col_statement(t, t_col)  # for next iteration
 
-            t_col = str(t_col or self.__UNKNOWN_RESOURCE)
+            if t_col is None:
+                logger.debug(f"Found unknown resource: {t} ({t_key})")
+                t_col = self.__UNKNOWN_RESOURCE
 
-        return t, t_col, t_key, t_label
+        return t, str(t_col), t_key, t_label
 
     def __pgt_rdf_val_to_adb_val(
         self,
