@@ -75,6 +75,24 @@ adbrdf.rdf_to_arangodb_by_rpt(name="BeatlesRPT", rdf_graph=beatles(), overwrite_
 adbrdf.rdf_to_arangodb_by_pgt(name="BeatlesPGT", rdf_graph=beatles(), overwrite_graph=True)
 ```
 
+RPT preserves the RDF Graph structure by transforming each RDF Statement into an ArangoDB Edge.
+
+PGT on the other hand ensures that Datatype Property Statements are mapped as ArangoDB Document Properties.
+
+```ttl
+@prefix ex: <http://example.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+ex:book ex:publish_date "1963-03-22"^^xsd:date .
+ex:book ex:pages "100"^^xsd:integer .
+ex:book ex:cover 20 .
+ex:book ex:index 55 .
+```
+
+| RPT | PGT |
+|:-------------------------:|:-------------------------:|
+| ![image](https://user-images.githubusercontent.com/43019056/232347662-ab48ebfb-e215-4aff-af28-a5915414a8fd.png) | ![image](https://user-images.githubusercontent.com/43019056/232347681-c899ef09-53c7-44de-861e-6a98d448b473.png) |
+
+
 ### ArangoDB to RDF
 
 ```py

@@ -4975,7 +4975,7 @@ def test_multiple_graphs_pgt() -> None:
     "graph_name, rdf_graph",
     [("NamespacePrefixTest", RDFGraph())],
 )
-def test_namespace_prefix_collection(graph_name: str, rdf_graph: RDFGraph) -> None:
+def test_namespace_collection(graph_name: str, rdf_graph: RDFGraph) -> None:
     # Create test data with namespaces
     rdf_graph.parse(
         data="""
@@ -4996,7 +4996,7 @@ def test_namespace_prefix_collection(graph_name: str, rdf_graph: RDFGraph) -> No
         graph_name,
         rdf_graph,
         overwrite_graph=True,
-        namespace_prefix_collection="namespaces",
+        namespace_collection_name="namespaces",
     )
 
     assert db.has_collection("namespaces")
@@ -5015,7 +5015,7 @@ def test_namespace_prefix_collection(graph_name: str, rdf_graph: RDFGraph) -> No
 
     # Test ArangoDB to RDF with namespace prefix collection
     rdf_graph_3 = adbrdf.arangodb_graph_to_rdf(
-        graph_name, RDFGraph(), namespace_prefix_collection="namespaces"
+        graph_name, RDFGraph(), namespace_collection_name="namespaces"
     )
 
     # Verify the namespaces were preserved
@@ -5039,3 +5039,226 @@ def test_namespace_prefix_collection(graph_name: str, rdf_graph: RDFGraph) -> No
 
     db.delete_graph(graph_name, drop_collections=True)
     db.delete_collection("namespaces")
+
+
+def test_pgt_iri_collection_and_migrate_unknown_resources() -> None:
+    db.delete_graph("Test", drop_collections=True, ignore_missing=True)
+    db.delete_collection("IRI_COLLECTION", ignore_missing=True)
+
+    g1 = RDFGraph()
+    g1.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+
+        ex:Alice a ex:Person .
+        ex:GreatBook a ex:Book .
+    """,
+        format="turtle",
+    )
+
+    g2 = RDFGraph()
+    g2.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+
+        ex:Alice ex:wrote ex:GreatBook .
+
+        ex:Alice ex:age 25 .
+        ex:GreatBook ex:title "The Great Novel" .
+    """,
+        format="turtle",
+    )
+
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g1, iri_collection_name="IRI_COLLECTION")
+
+    assert db.collection("IRI_COLLECTION").count() == 5
+    assert db.collection("IRI_COLLECTION").has(adbrdf.hash("http://example.com/Alice"))
+    assert db.collection("IRI_COLLECTION").has(
+        adbrdf.hash("http://example.com/GreatBook")
+    )
+    assert db.collection("IRI_COLLECTION").has(adbrdf.hash("http://example.com/Person"))
+    assert db.collection("IRI_COLLECTION").has(adbrdf.hash("http://example.com/Book"))
+    assert db.collection("IRI_COLLECTION").has(
+        adbrdf.hash("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+    )
+
+    # No IRI Collection is specified, so Unknown Resources must be manually migrated
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g2)
+
+    assert db.collection("IRI_COLLECTION").count() == 5
+    assert db.collection("Test_UnknownResource").count() == 2
+    assert db.collection("Test_UnknownResource").has(
+        adbrdf.hash("http://example.com/Alice")
+    )
+    assert db.collection("Test_UnknownResource").has(
+        adbrdf.hash("http://example.com/GreatBook")
+    )
+    edge = db.collection("wrote").random()
+    assert "UnknownResource/" in edge["_from"]
+    assert "UnknownResource/" in edge["_to"]
+
+    alice = db.collection("Test_UnknownResource").get(
+        adbrdf.hash("http://example.com/Alice")
+    )
+    assert alice["age"] == 25
+    alice_2 = db.collection("Person").random()
+    assert "age" not in alice_2
+
+    # Migrate Unknown Resources to IRI Collection
+    adbrdf.migrate_unknown_resources("Test", "IRI_COLLECTION")
+
+    assert db.collection("Test_UnknownResource").count() == 0
+    edge = db.collection("wrote").random()
+    assert "Person/" in edge["_from"]
+    assert "Book/" in edge["_to"]
+
+    alice = db.collection("Person").random()
+    assert alice["age"] == 25
+
+    book = db.collection("Book").random()
+    assert book["title"] == "The Great Novel"
+
+    db.delete_graph("Test", drop_collections=True)
+    db.delete_collection("IRI_COLLECTION")
+
+
+def test_pgt_iri_collection_back_to_back() -> None:
+    db.delete_graph("Test", drop_collections=True, ignore_missing=True)
+    db.delete_collection("IRI_COLLECTION", ignore_missing=True)
+
+    g1 = RDFGraph()
+    g1.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+
+        ex:Alice a ex:Person .
+        ex:GreatBook a ex:Book .
+    """,
+        format="turtle",
+    )
+
+    g2 = RDFGraph()
+    g2.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+
+        ex:Alice ex:wrote ex:GreatBook .
+
+        ex:Alice ex:age 25 .
+        ex:GreatBook ex:title "The Great Novel" .
+    """,
+        format="turtle",
+    )
+
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g1, iri_collection_name="IRI_COLLECTION")
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g2, iri_collection_name="IRI_COLLECTION")
+
+    assert db.collection("Test_UnknownResource").count() == 0
+    edge = db.collection("wrote").random()
+    assert "Person/" in edge["_from"]
+    assert "Book/" in edge["_to"]
+
+    alice = db.collection("Person").random()
+    assert alice["age"] == 25
+
+    book = db.collection("Book").random()
+    assert book["title"] == "The Great Novel"
+
+    db.delete_graph("Test", drop_collections=True)
+    db.delete_collection("IRI_COLLECTION")
+
+
+def test_pgt_iri_collection_back_to_back_with_unknown_resources() -> None:
+    db.delete_graph("Test", drop_collections=True, ignore_missing=True)
+    db.delete_collection("IRI_COLLECTION", ignore_missing=True)
+
+    g1 = RDFGraph()
+    g1.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+
+        ex:Alice a ex:Person ;
+            ex:name "Alice" ;
+            ex:age 25 ;
+            ex:worksAt ex:ACME ;
+            ex:reads ex:GreatBook .
+
+        ex:GreatBook ex:isBasedOn ex:Bob ;
+            ex:wasWrittenBy ex:Bob .
+
+        ex:A ex:isBasedOn ex:B .
+
+        ex:ACME a ex:Organization ;
+            ex:name "ACME Corp" .
+    """,
+        format="turtle",
+    )
+
+    g2 = RDFGraph()
+    g2.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+
+        ex:ACME ex:founded "2000" ;
+            ex:employs ex:Alice .
+
+        ex:A a ex:Thing .
+        ex:B a ex:Thing .
+
+        ex:GreatBook a ex:Book ;
+            ex:title "The Great Novel" .
+
+        ex:Bob a ex:Person .
+    """,
+        format="turtle",
+    )
+
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g1, iri_collection_name="IRI_COLLECTION")
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g2, iri_collection_name="IRI_COLLECTION")
+
+    assert db.collection("IRI_COLLECTION").count() == 20
+    assert db.collection("Test_UnknownResource").count() == 4
+    assert db.collection("Test_UnknownResource").has(
+        adbrdf.hash("http://example.com/A")
+    )
+    assert db.collection("Test_UnknownResource").has(
+        adbrdf.hash("http://example.com/B")
+    )
+    assert db.collection("Test_UnknownResource").has(
+        adbrdf.hash("http://example.com/GreatBook")
+    )
+    assert db.collection("Test_UnknownResource").has(
+        adbrdf.hash("http://example.com/Bob")
+    )
+
+    for edge in db.collection("isBasedOn").all():
+        assert "UnknownResource/" in edge["_from"]
+        assert "UnknownResource/" in edge["_to"]
+
+    for edge in db.collection("wasWrittenBy").all():
+        assert "UnknownResource/" in edge["_from"]
+        assert "UnknownResource/" in edge["_to"]
+
+    assert "UnknownResource/" in db.collection("reads").random()["_to"]
+
+    ur_count, edge_count = adbrdf.migrate_unknown_resources("Test", "IRI_COLLECTION")
+    assert ur_count == 4
+    assert edge_count == 7  # 1 edit for each _from/_to if UnknownResource is migrated
+
+    assert db.collection("Test_UnknownResource").count() == 0
+    assert db.collection("IRI_COLLECTION").count() == 20
+
+    assert db.collection("Book").random()["title"] == "The Great Novel"
+
+    for edge in db.collection("isBasedOn").all():
+        assert "Book/" in edge["_from"] or "Thing/" in edge["_from"]
+        assert "Person/" in edge["_to"] or "Thing/" in edge["_to"]
+
+    for edge in db.collection("wasWrittenBy").all():
+        assert "Book/" in edge["_from"]
+        assert "Person/" in edge["_to"]
+
+    assert "Book/" in db.collection("reads").random()["_to"]
+
+    db.delete_graph("Test", drop_collections=True)
+    db.delete_collection("IRI_COLLECTION")
