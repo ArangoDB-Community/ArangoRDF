@@ -1,3 +1,28 @@
+## 1.1.0 (2025-05-28)
+
+### New
+
+* `iri_collection` (#27) [Anthony Mahanna]
+
+  * new: `namespace_prefix_collection`
+
+  * fix: lint
+
+  * initial commit
+
+  * add: debug
+
+  * Update README.md
+
+* `namespace_prefix_collection` (#26) [Anthony Mahanna]
+
+  * new: `namespace_prefix_collection`
+
+  * fix: lint
+
+  * fix: lint pt2
+
+
 ## 1.0.2 (2025-04-03)
 
 ### Other
