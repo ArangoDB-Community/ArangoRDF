@@ -1,3 +1,10 @@
+## 1.0.2 (2025-04-03)
+
+### Other
+
+* Update: `__pgt_create_adb_graph` (#24) [Anthony Mahanna]
+
+
 ## 1.0.1 (2025-01-23)
 
 ### Other
