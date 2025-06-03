@@ -456,6 +456,7 @@ class ArangoRDF(AbstractArangoRDF):
             include_adb_v_col_statements,
             include_adb_v_key_statements,
             include_adb_e_key_statements,
+            namespace_collection_name,
             **adb_export_kwargs,
         )
 
