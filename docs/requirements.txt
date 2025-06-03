@@ -3,3 +3,4 @@ python-arango
 cityhash
 rdflib
 rich
+isodate
