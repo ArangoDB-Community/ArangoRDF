@@ -373,6 +373,7 @@ class ArangoRDF(AbstractArangoRDF):
         include_adb_v_col_statements: bool = False,
         include_adb_v_key_statements: bool = False,
         include_adb_e_key_statements: bool = False,
+        namespace_collection_name: Optional[str] = None,
         **adb_export_kwargs: Any,
     ) -> RDFGraph:
         """Create an RDF Graph from an ArangoDB Graph via its Collection Names.
@@ -425,6 +426,11 @@ class ArangoRDF(AbstractArangoRDF):
             NOTE: Enabling this option will impose Triple Reification on all
             ArangoDB Edges.
         :type include_adb_e_key_statements: bool
+        :param namespace_collection_name: The name of the ArangoDB Collection
+            to store the namespace prefixes of **rdf_graph**. Useful for re-constructing
+            the original RDF Graph from the ArangoDB Graph. Defaults to None,
+            which means that the namespace prefixes will not be stored.
+        :type namespace_collection_name: str | None
         :param adb_export_kwargs: Keyword arguments to specify AQL query options when
             fetching documents from the ArangoDB instance. Full parameter list:
             https://docs.python-arango.com/en/main/specs.html#arango.aql.AQL.execute
@@ -450,6 +456,7 @@ class ArangoRDF(AbstractArangoRDF):
             include_adb_v_col_statements,
             include_adb_v_key_statements,
             include_adb_e_key_statements,
+            namespace_collection_name,
             **adb_export_kwargs,
         )
 
@@ -463,6 +470,7 @@ class ArangoRDF(AbstractArangoRDF):
         include_adb_v_col_statements: bool = False,
         include_adb_v_key_statements: bool = False,
         include_adb_e_key_statements: bool = False,
+        namespace_collection_name: Optional[str] = None,
         **adb_export_kwargs: Any,
     ) -> RDFGraph:
         """Create an RDF Graph from an ArangoDB Graph via its Graph Name.
@@ -533,6 +541,7 @@ class ArangoRDF(AbstractArangoRDF):
             include_adb_v_col_statements,
             include_adb_v_key_statements,
             include_adb_e_key_statements,
+            namespace_collection_name,
             **adb_export_kwargs,
         )
 
