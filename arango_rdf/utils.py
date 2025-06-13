@@ -74,11 +74,10 @@ class Tree:
     def build_tree(self, current: Node, parent: str, depth: int = 0) -> None:
         self.nodes[current.name] = current
         for sub_val in self.submap[parent]:
-            child_node = Node(sub_val, depth + 1)
-
-            if child_node.name == parent:
+            if sub_val == parent:
                 continue
 
+            child_node = Node(sub_val, depth + 1)
             current.children.append(child_node)
             self.build_tree(child_node, child_node.name, depth + 1)
 
