@@ -909,7 +909,7 @@ class ArangoRDF(AbstractArangoRDF):
             # us to run the ArangoDB Collection Mapping algorithm
             # regardless of **write_adb_col_statements**
             self.__adb_col_statements = self.write_adb_col_statements(
-                self.__rdf_graph, self.__adb_col_statements
+                self.__rdf_graph, self.__adb_col_statements, iri_collection_name
             )
 
         ###########################
@@ -1012,6 +1012,7 @@ class ArangoRDF(AbstractArangoRDF):
         self,
         rdf_graph: RDFGraph,
         adb_col_statements: Optional[RDFGraph] = None,
+        iri_collection_name: Optional[str] = None,
     ) -> RDFGraph:
         """RDF -> ArangoDB (PGT): Run the ArangoDB Collection Mapping Process for
         **rdf_graph** to map RDF Resources to their respective ArangoDB Collection.
@@ -1051,6 +1052,17 @@ class ArangoRDF(AbstractArangoRDF):
 
         with get_spinner_progress("(RDF → ADB): Write Col Statements") as rp:
             rp.add_task("")
+
+            # 0. Add IRI Collection statements
+            if iri_collection_name:
+                if not self.__db.has_collection(iri_collection_name):
+                    m = f"Iri collection '{iri_collection_name}' does not exist"
+                    raise ValueError(m)
+
+                for doc in self.__db.collection(iri_collection_name):
+                    uri = URIRef(doc["_uri"])
+                    collection = str(doc["collection"])
+                    self.__add_adb_col_statement(uri, collection, True)
 
             # 1. RDF.type statements
             self.__explicit_type_map = self.__build_explicit_type_map(
@@ -2178,12 +2190,12 @@ class ArangoRDF(AbstractArangoRDF):
         else:
             t_col = self.__adb_col_statements.value(t, self.adb_col_uri)
 
-            if self.__iri_collection is not None:
+            if t_col is None and self.__iri_collection is not None:
                 doc = self.__iri_collection.get(t_key)
 
                 if doc:
                     t_col = str(doc["collection"])
-                    self.__add_adb_col_statement(t, t_col, True)  # for next iteration
+                    self.__add_adb_col_statement(t, t_col)  # for next iteration
 
             if t_col is None:
                 logger.debug(f"Found unknown resource: {t} ({t_key})")
@@ -2311,6 +2323,7 @@ class ArangoRDF(AbstractArangoRDF):
             self.__adb_docs[iri_col][t_key] = {
                 "_key": t_key,
                 "collection": t_col,
+                "_uri": str(t),
             }
 
     def __pgt_process_rdf_literal(
