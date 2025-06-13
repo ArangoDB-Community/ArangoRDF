@@ -1,3 +1,39 @@
+## 1.1.2 (2025-06-13)
+
+### Fix
+
+* Iri collection check (#30) [Anthony Mahanna]
+
+  * fix: iri collection check
+
+  * fix: lint
+
+  * fix: set `raise_on_document_error` to True by default
+
+  * fix: lint
+
+  * fix: logic
+
+  * fix: `build_tree`
+
+  * fix: build_tree
+
+### Other
+
+* Add: isodate. [Anthony Mahanna]
+
+
+## 1.1.1 (2025-06-03)
+
+### Fix
+
+* Missing param (#29) [Anthony Mahanna]
+
+  * fix: missing param
+
+  * fix: param
+
+
 ## 1.1.0 (2025-05-28)
 
 ### New
