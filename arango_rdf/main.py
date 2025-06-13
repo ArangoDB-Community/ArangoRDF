@@ -2178,12 +2178,12 @@ class ArangoRDF(AbstractArangoRDF):
         else:
             t_col = self.__adb_col_statements.value(t, self.adb_col_uri)
 
-            if t_col is None and self.__iri_collection is not None:
+            if self.__iri_collection is not None:
                 doc = self.__iri_collection.get(t_key)
 
                 if doc:
                     t_col = str(doc["collection"])
-                    self.__add_adb_col_statement(t, t_col)  # for next iteration
+                    self.__add_adb_col_statement(t, t_col, True)  # for next iteration
 
             if t_col is None:
                 logger.debug(f"Found unknown resource: {t} ({t_key})")

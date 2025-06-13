@@ -5034,9 +5034,6 @@ def test_namespace_collection(graph_name: str, rdf_graph: RDFGraph) -> None:
     assert (alice, rdf_type, person) in rdf_graph_3
     assert (alice, name, Literal("Alice")) in rdf_graph_3
 
-    print(rdf_graph_3.serialize(format="turtle"))
-    print(rdf_graph_2.serialize(format="turtle"))
-
     db.delete_graph(graph_name, drop_collections=True)
     db.delete_collection("namespaces")
 
@@ -5262,3 +5259,39 @@ def test_pgt_iri_collection_back_to_back_with_unknown_resources() -> None:
 
     db.delete_graph("Test", drop_collections=True)
     db.delete_collection("IRI_COLLECTION")
+
+def test_pgt_iri_collection_back_to_back_with_type_statements() -> None:
+    db.delete_graph("Test", drop_collections=True, ignore_missing=True)
+    db.delete_collection("IRI_COLLECTION", ignore_missing=True)
+
+    g1 = RDFGraph()
+    g1.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+
+        ex:Alice a ex:Person .
+        """,
+        format="turtle",
+    )
+
+    g2 = RDFGraph()
+    g2.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+        
+        ex:Alice a ex:Human .
+        """,
+        format="turtle",
+    )
+
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g1, iri_collection_name="IRI_COLLECTION")
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g2, iri_collection_name="IRI_COLLECTION")
+
+    assert db.document(f"IRI_COLLECTION/{adbrdf.hash('http://example.com/Alice')}")["collection"] == "Person"
+    assert db.collection("type").count() == 2
+    assert db.collection("Person").count() == 1
+    assert not db.has_collection("Human")
+
+    db.delete_graph("Test", drop_collections=True)
+    db.delete_collection("IRI_COLLECTION")
+
