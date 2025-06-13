@@ -75,6 +75,10 @@ class Tree:
         self.nodes[current.name] = current
         for sub_val in self.submap[parent]:
             child_node = Node(sub_val, depth + 1)
+
+            if child_node.name == parent:
+                continue
+
             current.children.append(child_node)
             self.build_tree(child_node, child_node.name, depth + 1)
 
