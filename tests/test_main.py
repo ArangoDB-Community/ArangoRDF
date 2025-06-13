@@ -5260,6 +5260,7 @@ def test_pgt_iri_collection_back_to_back_with_unknown_resources() -> None:
     db.delete_graph("Test", drop_collections=True)
     db.delete_collection("IRI_COLLECTION")
 
+
 def test_pgt_iri_collection_back_to_back_with_type_statements() -> None:
     db.delete_graph("Test", drop_collections=True, ignore_missing=True)
     db.delete_collection("IRI_COLLECTION", ignore_missing=True)
@@ -5287,11 +5288,15 @@ def test_pgt_iri_collection_back_to_back_with_type_statements() -> None:
     adbrdf.rdf_to_arangodb_by_pgt("Test", g1, iri_collection_name="IRI_COLLECTION")
     adbrdf.rdf_to_arangodb_by_pgt("Test", g2, iri_collection_name="IRI_COLLECTION")
 
-    assert db.document(f"IRI_COLLECTION/{adbrdf.hash('http://example.com/Alice')}")["collection"] == "Person"
+    assert (
+        db.document(f"IRI_COLLECTION/{adbrdf.hash('http://example.com/Alice')}")[
+            "collection"
+        ]
+        == "Person"
+    )
     assert db.collection("type").count() == 2
     assert db.collection("Person").count() == 1
     assert not db.has_collection("Human")
 
     db.delete_graph("Test", drop_collections=True)
     db.delete_collection("IRI_COLLECTION")
-
