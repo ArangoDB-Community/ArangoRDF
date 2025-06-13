@@ -909,7 +909,7 @@ class ArangoRDF(AbstractArangoRDF):
             # us to run the ArangoDB Collection Mapping algorithm
             # regardless of **write_adb_col_statements**
             self.__adb_col_statements = self.write_adb_col_statements(
-                self.__rdf_graph, self.__adb_col_statements
+                self.__rdf_graph, self.__adb_col_statements, iri_collection_name
             )
 
         ###########################
@@ -1012,6 +1012,7 @@ class ArangoRDF(AbstractArangoRDF):
         self,
         rdf_graph: RDFGraph,
         adb_col_statements: Optional[RDFGraph] = None,
+        iri_collection_name: Optional[str] = None,
     ) -> RDFGraph:
         """RDF -> ArangoDB (PGT): Run the ArangoDB Collection Mapping Process for
         **rdf_graph** to map RDF Resources to their respective ArangoDB Collection.
@@ -1051,6 +1052,17 @@ class ArangoRDF(AbstractArangoRDF):
 
         with get_spinner_progress("(RDF → ADB): Write Col Statements") as rp:
             rp.add_task("")
+
+            # 0. Add IRI Collection statements
+            if iri_collection_name:
+                if not self.__db.has_collection(iri_collection_name):
+                    m = f"Iri collection '{iri_collection_name}' does not exist"
+                    raise ValueError(m)
+
+                for doc in self.__db.collection(iri_collection_name):
+                    uri = URIRef(doc["_uri"])
+                    collection = str(doc["collection"])
+                    self.__add_adb_col_statement(uri, collection, True)
 
             # 1. RDF.type statements
             self.__explicit_type_map = self.__build_explicit_type_map(
@@ -2311,6 +2323,7 @@ class ArangoRDF(AbstractArangoRDF):
             self.__adb_docs[iri_col][t_key] = {
                 "_key": t_key,
                 "collection": t_col,
+                "_uri": str(t),
             }
 
     def __pgt_process_rdf_literal(
@@ -3310,7 +3323,8 @@ class ArangoRDF(AbstractArangoRDF):
 
         adb_import_kwargs["overwrite_mode"] = "update"
         adb_import_kwargs["merge"] = True
-        # adb_import_kwargs["raise_on_document_error"] = True
+        if "raise_on_document_error" not in adb_import_kwargs:
+            adb_import_kwargs["raise_on_document_error"] = True
 
         # Avoiding "RuntimeError: dictionary changed size during iteration"
         adb_cols = list(self.__adb_docs.keys())
