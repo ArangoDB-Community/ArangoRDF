@@ -5279,7 +5279,7 @@ def test_pgt_iri_collection_back_to_back_with_type_statements() -> None:
     g2.parse(
         data="""
         @prefix ex: <http://example.com/> .
-        
+
         ex:Alice a ex:Human .
         """,
         format="turtle",
