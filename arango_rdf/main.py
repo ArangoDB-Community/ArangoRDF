@@ -3310,7 +3310,8 @@ class ArangoRDF(AbstractArangoRDF):
 
         adb_import_kwargs["overwrite_mode"] = "update"
         adb_import_kwargs["merge"] = True
-        # adb_import_kwargs["raise_on_document_error"] = True
+        if "raise_on_document_error" not in adb_import_kwargs:
+            adb_import_kwargs["raise_on_document_error"] = True
 
         # Avoiding "RuntimeError: dictionary changed size during iteration"
         adb_cols = list(self.__adb_docs.keys())
