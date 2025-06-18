@@ -9,6 +9,7 @@ from rdflib import Graph as RDFGraph
 from rdflib import Literal, URIRef
 
 from arango_rdf import ArangoRDF
+from arango_rdf.exception import ArangoRDFImportException
 
 from .conftest import (
     adbrdf,
@@ -5300,3 +5301,51 @@ def test_pgt_iri_collection_back_to_back_with_type_statements() -> None:
 
     db.delete_graph("Test", drop_collections=True)
     db.delete_collection("IRI_COLLECTION")
+
+
+def test_pgt_import_exception_from_schema_violation() -> None:
+    db.delete_graph("Test", drop_collections=True, ignore_missing=True)
+    db.delete_collection("Person", ignore_missing=True)
+
+    db.create_collection("Person")
+    db.collection("Person").configure(
+        schema={
+            "rule": {
+                "type": "object",
+                "required": ["name", "age"],
+                "properties": {"name": {"type": "string"}, "age": {"type": "number"}},
+            },
+            "level": "strict",
+            "message": "Invalid Person document",
+        }
+    )
+
+    g = RDFGraph()
+    g.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+
+        ex:Alice a ex:Person .
+        """,
+        format="turtle",
+    )
+
+    with pytest.raises(ArangoRDFImportException) as e:
+        adbrdf.rdf_to_arangodb_by_pgt("Test", g)
+
+    assert "Invalid Person document" in str(e.value.error)
+    assert len(e.value.documents) == 1
+
+    g = RDFGraph()
+    g.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+
+        ex:Alice a ex:Person .
+        ex:Alice ex:name "Alice" .
+        ex:Alice ex:age 25 .
+        """,
+        format="turtle",
+    )
+
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g)
