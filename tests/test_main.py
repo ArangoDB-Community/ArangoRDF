@@ -5334,6 +5334,7 @@ def test_pgt_import_exception_from_schema_violation() -> None:
         adbrdf.rdf_to_arangodb_by_pgt("Test", g)
 
     assert "Invalid Person document" in str(e.value.error)
+    assert "Person" == e.value.collection
     assert len(e.value.documents) == 1
 
     g = RDFGraph()

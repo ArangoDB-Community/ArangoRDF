@@ -3350,7 +3350,7 @@ class ArangoRDF(AbstractArangoRDF):
                 e_str = str(e)
 
                 logger.error(f"Error inserting documents: {e_str}")
-                raise ArangoRDFImportException(e_str, list(doc_list))
+                raise ArangoRDFImportException(e_str, col, list(doc_list))
 
             logger.debug(f"Insert Result: {result}")
 

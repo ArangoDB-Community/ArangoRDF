@@ -10,14 +10,19 @@ class ArangoRDFException(Exception):
 class ArangoRDFImportException(ArangoRDFException):
     """Exception for import errors."""
 
-    def __init__(self, error: str, documents: Jsons) -> None:
+    def __init__(self, error: str, collection: str, documents: Jsons) -> None:
         """Initialize import exception.
 
         :param error: The error message from the failed import
         :type error: str
+        :param collection: The collection that failed to import
+        :type collection: str
         :param documents: The batch of documents that failed to import
         :type documents: list
         """
         self.error = error
+        self.collection = collection
         self.documents = documents
-        super().__init__(f"Import error: {error}. Failed documents: {documents}")
+        super().__init__(
+            f"Import error in {collection}: {error}. Failed documents: {documents}"
+        )
