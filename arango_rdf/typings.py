@@ -10,11 +10,12 @@ __all__ = [
     "TypeMap",
 ]
 
-from typing import Any, DefaultDict, Dict, Set, Tuple, Union
+from typing import Any, DefaultDict, Dict, List, Set, Tuple, Union
 
 from rdflib import BNode, Literal, URIRef
 
 Json = Dict[str, Any]
+Jsons = List[Json]
 ADBMetagraph = Dict[str, Dict[str, Set[str]]]
 
 # ADBDocsRPT = DefaultDict[str, List[Json]]

@@ -26,6 +26,7 @@ from rich.progress import Progress
 
 from .abc import AbstractArangoRDF
 from .controller import ArangoRDFController
+from .exception import ArangoRDFImportException
 from .typings import (
     ADBDocs,
     ADBMetagraph,
@@ -3339,9 +3340,19 @@ class ArangoRDF(AbstractArangoRDF):
                 is_edge = col in self.__e_col_map
                 self.db.create_collection(col, edge=is_edge)
 
-            result = self.db.collection(col).insert_many(doc_list, **adb_import_kwargs)
+            logger.debug(f"Inserting Documents: {doc_list}")
 
-            logger.debug(result)
+            try:
+                result = self.db.collection(col).insert_many(
+                    doc_list, **adb_import_kwargs
+                )
+            except Exception as e:
+                e_str = str(e)
+
+                logger.error(f"Error inserting documents: {e_str}")
+                raise ArangoRDFImportException(e_str, col, list(doc_list))
+
+            logger.debug(f"Insert Result: {result}")
 
             del self.__adb_docs[col]
 
