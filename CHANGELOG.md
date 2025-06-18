@@ -1,3 +1,18 @@
+## 1.1.3 (2025-06-18)
+
+### New
+
+* `ArangoRDFImportException` (#32) [Anthony Mahanna]
+
+  * new: `ArangoRDFImportException`
+
+  * new: `collection` field
+
+  * fix: test
+
+  * fix: test
+
+
 ## 1.1.2 (2025-06-13)
 
 ### Fix
