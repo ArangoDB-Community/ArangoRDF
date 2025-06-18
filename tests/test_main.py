@@ -5352,4 +5352,3 @@ def test_pgt_import_exception_from_schema_violation() -> None:
     adbrdf.rdf_to_arangodb_by_pgt("Test", g)
 
     db.delete_graph("Test", drop_collections=True)
-    db.delete_collection("Person")
