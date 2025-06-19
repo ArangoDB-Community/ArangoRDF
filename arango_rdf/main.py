@@ -704,6 +704,8 @@ class ArangoRDF(AbstractArangoRDF):
             for i, (s, p, o, *sg) in enumerate(statements((None, None, None)), 1):
                 bar_progress.advance(bar_progress_task)
 
+                logger.debug(f"RPT: {s} {p} {o} {sg}")
+
                 self.__rpt_process_subject_predicate_object(
                     s, p, o, sg, None, contextualize_statement_func
                 )
@@ -959,6 +961,8 @@ class ArangoRDF(AbstractArangoRDF):
         with Live(Group(bar_progress, spinner_progress)):
             for i, (s, p, o, *sg) in enumerate(statements((None, None, None)), 1):
                 bar_progress.advance(bar_progress_task)
+
+                logger.debug(f"PGT: {s} {p} {o} {sg}")
 
                 # Address the possibility of (s, p, o) being a part of the
                 # structure of an RDF Collection or an RDF Container.
