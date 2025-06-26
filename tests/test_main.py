@@ -5495,10 +5495,8 @@ def test_pgt_resource_collection_name_and_set_types_attribute() -> None:
             graph_name="Test", edge_collection_name="INVALID"
         )
 
-    assert (
-        "No edge definition found for 'INVALID' in graph 'Test'. Cannot migrate edges to attributes."
-        in str(e.value)
-    )
+    m = "No edge definition found for 'INVALID' in graph 'Test'. Cannot migrate edges to attributes."  # noqa: E501
+    assert m in str(e.value)
 
     with pytest.raises(ValueError) as e:
         adbrdf.migrate_edges_to_attributes(
