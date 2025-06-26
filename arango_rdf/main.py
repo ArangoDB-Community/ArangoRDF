@@ -1250,6 +1250,7 @@ class ArangoRDF(AbstractArangoRDF):
         graph_name: str,
         edge_collection_name: str,
         attribute_name: Optional[str] = None,
+        edge_direction: str = "OUTBOUND",
     ) -> int:
         """RDF --> ArangoDB (PGT): Migrate all edges in the specified edge collection to
         attributes. This method is useful when combined with the
@@ -1267,12 +1268,18 @@ class ArangoRDF(AbstractArangoRDF):
         :param attribute_name: The name of the attribute to migrate the edges to.
             Defaults to **edge_collection_name**, prefixed with an underscore (_).
         :type attribute_name: Optional[str]
+        :param edge_direction: The direction of the edges to migrate.
+            Defaults to **OUTBOUND**.
+        :type edge_direction: str
         :return: The number of documents updated.
         :rtype: int
         """
 
         if not self.db.has_graph(graph_name):
             raise ValueError(f"Graph '{graph_name}' does not exist")
+
+        if edge_direction.upper() not in {"OUTBOUND", "INBOUND", "ANY"}:
+            raise ValueError(f"Invalid edge direction: {edge_direction}")
 
         graph = self.db.graph(graph_name)
 
@@ -1294,7 +1301,7 @@ class ArangoRDF(AbstractArangoRDF):
             query = f"""
                 FOR doc IN @@v_col
                     LET labels = (
-                        FOR v IN 1 OUTBOUND doc @@e_col
+                        FOR v IN 1 {edge_direction} doc @@e_col
                             RETURN v._label
                     )
 

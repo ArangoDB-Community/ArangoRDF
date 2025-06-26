@@ -5459,4 +5459,52 @@ def test_pgt_resource_collection_name_and_set_types_attribute() -> None:
     for v in db.collection("Company"):
         assert set(v["foo"]) == {"Organization", "Company"}
 
+    count = adbrdf.migrate_edges_to_attributes(
+        graph_name="Test", edge_collection_name="friend"
+    )
+
+    alice = db.collection("Human").get(adbrdf.hash("http://example.com/Alice"))
+    assert alice["_friend"] == ["Bob"]
+
+    bob = db.collection("Human").get(adbrdf.hash("http://example.com/Bob"))
+    assert bob["_friend"] == []
+
+    assert count == 2
+
+    count = adbrdf.migrate_edges_to_attributes(
+        graph_name="Test", edge_collection_name="friend", edge_direction="ANY"
+    )
+
+    assert count == 2
+
+    alice = db.collection("Human").get(adbrdf.hash("http://example.com/Alice"))
+    assert alice["_friend"] == ["Bob"]
+
+    bob = db.collection("Human").get(adbrdf.hash("http://example.com/Bob"))
+    assert bob["_friend"] == ["Alice"]
+
+    with pytest.raises(ValueError) as e:
+        adbrdf.migrate_edges_to_attributes(
+            graph_name="Test", edge_collection_name="friend", edge_direction="INVALID"
+        )
+
+    assert "Invalid edge direction: INVALID" in str(e.value)
+
+    with pytest.raises(ValueError) as e:
+        adbrdf.migrate_edges_to_attributes(
+            graph_name="Test", edge_collection_name="INVALID"
+        )
+
+    assert (
+        "No edge definition found for 'INVALID' in graph 'Test'. Cannot migrate edges to attributes."
+        in str(e.value)
+    )
+
+    with pytest.raises(ValueError) as e:
+        adbrdf.migrate_edges_to_attributes(
+            graph_name="INVALID", edge_collection_name="friend"
+        )
+
+    assert "Graph 'INVALID' does not exist" in str(e.value)
+
     db.delete_graph("Test", drop_collections=True)
