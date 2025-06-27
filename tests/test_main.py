@@ -5039,9 +5039,9 @@ def test_namespace_collection(graph_name: str, rdf_graph: RDFGraph) -> None:
     db.delete_collection("namespaces")
 
 
-def test_pgt_iri_collection_and_migrate_unknown_resources() -> None:
+def test_pgt_uri_collection_and_migrate_unknown_resources() -> None:
     db.delete_graph("Test", drop_collections=True, ignore_missing=True)
-    db.delete_collection("IRI_COLLECTION", ignore_missing=True)
+    db.delete_collection("URI_COLLECTION", ignore_missing=True)
 
     g1 = RDFGraph()
     g1.parse(
@@ -5067,23 +5067,23 @@ def test_pgt_iri_collection_and_migrate_unknown_resources() -> None:
         format="turtle",
     )
 
-    adbrdf.rdf_to_arangodb_by_pgt("Test", g1, iri_collection_name="IRI_COLLECTION")
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g1, uri_map_collection_name="URI_COLLECTION")
 
-    assert db.collection("IRI_COLLECTION").count() == 5
-    assert db.collection("IRI_COLLECTION").has(adbrdf.hash("http://example.com/Alice"))
-    assert db.collection("IRI_COLLECTION").has(
+    assert db.collection("URI_COLLECTION").count() == 5
+    assert db.collection("URI_COLLECTION").has(adbrdf.hash("http://example.com/Alice"))
+    assert db.collection("URI_COLLECTION").has(
         adbrdf.hash("http://example.com/GreatBook")
     )
-    assert db.collection("IRI_COLLECTION").has(adbrdf.hash("http://example.com/Person"))
-    assert db.collection("IRI_COLLECTION").has(adbrdf.hash("http://example.com/Book"))
-    assert db.collection("IRI_COLLECTION").has(
+    assert db.collection("URI_COLLECTION").has(adbrdf.hash("http://example.com/Person"))
+    assert db.collection("URI_COLLECTION").has(adbrdf.hash("http://example.com/Book"))
+    assert db.collection("URI_COLLECTION").has(
         adbrdf.hash("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
     )
 
     # No IRI Collection is specified, so Unknown Resources must be manually migrated
     adbrdf.rdf_to_arangodb_by_pgt("Test", g2)
 
-    assert db.collection("IRI_COLLECTION").count() == 5
+    assert db.collection("URI_COLLECTION").count() == 5
     assert db.collection("Test_UnknownResource").count() == 2
     assert db.collection("Test_UnknownResource").has(
         adbrdf.hash("http://example.com/Alice")
@@ -5103,7 +5103,7 @@ def test_pgt_iri_collection_and_migrate_unknown_resources() -> None:
     assert "age" not in alice_2
 
     # Migrate Unknown Resources to IRI Collection
-    adbrdf.migrate_unknown_resources("Test", "IRI_COLLECTION")
+    adbrdf.migrate_unknown_resources("Test", "URI_COLLECTION")
 
     assert db.collection("Test_UnknownResource").count() == 0
     edge = db.collection("wrote").random()
@@ -5117,12 +5117,12 @@ def test_pgt_iri_collection_and_migrate_unknown_resources() -> None:
     assert book["title"] == "The Great Novel"
 
     db.delete_graph("Test", drop_collections=True)
-    db.delete_collection("IRI_COLLECTION")
+    db.delete_collection("URI_COLLECTION")
 
 
-def test_pgt_iri_collection_back_to_back() -> None:
+def test_pgt_uri_collection_back_to_back() -> None:
     db.delete_graph("Test", drop_collections=True, ignore_missing=True)
-    db.delete_collection("IRI_COLLECTION", ignore_missing=True)
+    db.delete_collection("URI_COLLECTION", ignore_missing=True)
 
     g1 = RDFGraph()
     g1.parse(
@@ -5148,8 +5148,8 @@ def test_pgt_iri_collection_back_to_back() -> None:
         format="turtle",
     )
 
-    adbrdf.rdf_to_arangodb_by_pgt("Test", g1, iri_collection_name="IRI_COLLECTION")
-    adbrdf.rdf_to_arangodb_by_pgt("Test", g2, iri_collection_name="IRI_COLLECTION")
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g1, uri_map_collection_name="URI_COLLECTION")
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g2, uri_map_collection_name="URI_COLLECTION")
 
     assert db.collection("Test_UnknownResource").count() == 0
     edge = db.collection("wrote").random()
@@ -5163,12 +5163,12 @@ def test_pgt_iri_collection_back_to_back() -> None:
     assert book["title"] == "The Great Novel"
 
     db.delete_graph("Test", drop_collections=True)
-    db.delete_collection("IRI_COLLECTION")
+    db.delete_collection("URI_COLLECTION")
 
 
-def test_pgt_iri_collection_back_to_back_with_unknown_resources() -> None:
+def test_pgt_uri_collection_back_to_back_with_unknown_resources() -> None:
     db.delete_graph("Test", drop_collections=True, ignore_missing=True)
-    db.delete_collection("IRI_COLLECTION", ignore_missing=True)
+    db.delete_collection("URI_COLLECTION", ignore_missing=True)
 
     g1 = RDFGraph()
     g1.parse(
@@ -5211,10 +5211,10 @@ def test_pgt_iri_collection_back_to_back_with_unknown_resources() -> None:
         format="turtle",
     )
 
-    adbrdf.rdf_to_arangodb_by_pgt("Test", g1, iri_collection_name="IRI_COLLECTION")
-    adbrdf.rdf_to_arangodb_by_pgt("Test", g2, iri_collection_name="IRI_COLLECTION")
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g1, uri_map_collection_name="URI_COLLECTION")
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g2, uri_map_collection_name="URI_COLLECTION")
 
-    assert db.collection("IRI_COLLECTION").count() == 20
+    assert db.collection("URI_COLLECTION").count() == 20
     assert db.collection("Test_UnknownResource").count() == 4
     assert db.collection("Test_UnknownResource").has(
         adbrdf.hash("http://example.com/A")
@@ -5239,12 +5239,12 @@ def test_pgt_iri_collection_back_to_back_with_unknown_resources() -> None:
 
     assert "UnknownResource/" in db.collection("reads").random()["_to"]
 
-    ur_count, edge_count = adbrdf.migrate_unknown_resources("Test", "IRI_COLLECTION")
+    ur_count, edge_count = adbrdf.migrate_unknown_resources("Test", "URI_COLLECTION")
     assert ur_count == 4
     assert edge_count == 7  # 1 edit for each _from/_to if UnknownResource is migrated
 
     assert db.collection("Test_UnknownResource").count() == 0
-    assert db.collection("IRI_COLLECTION").count() == 20
+    assert db.collection("URI_COLLECTION").count() == 20
 
     assert db.collection("Book").random()["title"] == "The Great Novel"
 
@@ -5259,12 +5259,12 @@ def test_pgt_iri_collection_back_to_back_with_unknown_resources() -> None:
     assert "Book/" in db.collection("reads").random()["_to"]
 
     db.delete_graph("Test", drop_collections=True)
-    db.delete_collection("IRI_COLLECTION")
+    db.delete_collection("URI_COLLECTION")
 
 
-def test_pgt_iri_collection_back_to_back_with_type_statements() -> None:
+def test_pgt_uri_collection_back_to_back_with_type_statements() -> None:
     db.delete_graph("Test", drop_collections=True, ignore_missing=True)
-    db.delete_collection("IRI_COLLECTION", ignore_missing=True)
+    db.delete_collection("URI_COLLECTION", ignore_missing=True)
 
     g1 = RDFGraph()
     g1.parse(
@@ -5286,11 +5286,11 @@ def test_pgt_iri_collection_back_to_back_with_type_statements() -> None:
         format="turtle",
     )
 
-    adbrdf.rdf_to_arangodb_by_pgt("Test", g1, iri_collection_name="IRI_COLLECTION")
-    adbrdf.rdf_to_arangodb_by_pgt("Test", g2, iri_collection_name="IRI_COLLECTION")
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g1, uri_map_collection_name="URI_COLLECTION")
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g2, uri_map_collection_name="URI_COLLECTION")
 
     assert (
-        db.document(f"IRI_COLLECTION/{adbrdf.hash('http://example.com/Alice')}")[
+        db.document(f"URI_COLLECTION/{adbrdf.hash('http://example.com/Alice')}")[
             "collection"
         ]
         == "Person"
@@ -5300,7 +5300,7 @@ def test_pgt_iri_collection_back_to_back_with_type_statements() -> None:
     assert not db.has_collection("Human")
 
     db.delete_graph("Test", drop_collections=True)
-    db.delete_collection("IRI_COLLECTION")
+    db.delete_collection("URI_COLLECTION")
 
 
 def test_pgt_import_exception_from_schema_violation() -> None:
@@ -5350,5 +5350,159 @@ def test_pgt_import_exception_from_schema_violation() -> None:
     )
 
     adbrdf.rdf_to_arangodb_by_pgt("Test", g)
+
+    db.delete_graph("Test", drop_collections=True)
+
+
+def test_pgt_resource_collection_name_and_set_types_attribute() -> None:
+    db.delete_graph("Test", drop_collections=True, ignore_missing=True)
+
+    g = RDFGraph()
+    g.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+
+        ex:Alice a ex:Person .
+        ex:Alice a ex:Human .
+        ex:Alice ex:name "Alice" .
+        ex:Alice ex:age 25 .
+
+        ex:Bob a ex:Person .
+        ex:Bob a ex:Human .
+        ex:Bob ex:name "Bob" .
+        ex:Bob ex:age 30 .
+
+        ex:Alice ex:friend ex:Bob .
+
+        ex:ACME a ex:Organization .
+        ex:ACME a ex:Company .
+        """,
+        format="turtle",
+    )
+
+    with pytest.raises(ValueError) as e:
+        adbrdf.rdf_to_arangodb_by_pgt(
+            "Test",
+            g,
+            resource_collection_name="Node",
+            uri_map_collection_name="URI_COLLECTION",
+        )
+
+    m = "Cannot specify both **uri_map_collection_name** and **resource_collection_name**."  # noqa: E501
+    assert m in str(e.value)
+
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g, resource_collection_name="Node")
+
+    assert not db.has_collection("Person")
+    assert not db.has_collection("Human")
+    assert not db.has_collection("Test_UnknownResource")
+    assert db.has_collection("Node")
+    assert db.collection("Node").count() == 3
+    assert db.collection("Node").has(adbrdf.hash("http://example.com/Alice"))
+    assert db.collection("Node").has(adbrdf.hash("http://example.com/Bob"))
+    assert db.collection("Node").has(adbrdf.hash("http://example.com/ACME"))
+
+    assert db.collection("Class").count() == 4
+    assert db.collection("Property").count() == 4
+
+    assert db.collection("friend").count() == 1
+    edge = db.collection("friend").random()
+    assert "Node/" in edge["_from"]
+    assert "Node/" in edge["_to"]
+
+    for edge in db.collection("type"):
+        assert "Node/" in edge["_from"]
+        assert "Class/" in edge["_to"]
+
+    for node in db.collection("Node"):
+        assert "_type" not in node
+
+    count = adbrdf.migrate_edges_to_attributes("Test", "type")
+
+    node_col = db.collection("Node")
+    assert set(node_col.get(adbrdf.hash("http://example.com/Alice"))["_type"]) == {
+        "Person",
+        "Human",
+    }
+    assert set(node_col.get(adbrdf.hash("http://example.com/Bob"))["_type"]) == {
+        "Person",
+        "Human",
+    }
+    assert set(node_col.get(adbrdf.hash("http://example.com/ACME"))["_type"]) == {
+        "Organization",
+        "Company",
+    }
+    assert count == 3
+
+    db.delete_graph("Test", drop_collections=True)
+
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g)
+
+    assert not db.has_collection("Node")
+    assert db.has_collection("Human")
+    assert not db.has_collection("Person")
+    assert db.has_collection("Company")
+    assert not db.has_collection("Organization")
+
+    for v in db.collection("Human"):
+        assert "_type" not in v
+
+    for v in db.collection("Company"):
+        assert "_type" not in v
+
+    count = adbrdf.migrate_edges_to_attributes("Test", "type", "foo")
+    assert count == 3
+
+    for v in db.collection("Human"):
+        assert set(v["foo"]) == {"Person", "Human"}
+
+    for v in db.collection("Company"):
+        assert set(v["foo"]) == {"Organization", "Company"}
+
+    count = adbrdf.migrate_edges_to_attributes(
+        graph_name="Test", edge_collection_name="friend"
+    )
+
+    alice = db.collection("Human").get(adbrdf.hash("http://example.com/Alice"))
+    assert alice["_friend"] == ["Bob"]
+
+    bob = db.collection("Human").get(adbrdf.hash("http://example.com/Bob"))
+    assert bob["_friend"] == []
+
+    assert count == 2
+
+    count = adbrdf.migrate_edges_to_attributes(
+        graph_name="Test", edge_collection_name="friend", edge_direction="ANY"
+    )
+
+    assert count == 2
+
+    alice = db.collection("Human").get(adbrdf.hash("http://example.com/Alice"))
+    assert alice["_friend"] == ["Bob"]
+
+    bob = db.collection("Human").get(adbrdf.hash("http://example.com/Bob"))
+    assert bob["_friend"] == ["Alice"]
+
+    with pytest.raises(ValueError) as e:
+        adbrdf.migrate_edges_to_attributes(
+            graph_name="Test", edge_collection_name="friend", edge_direction="INVALID"
+        )
+
+    assert "Invalid edge direction: INVALID" in str(e.value)
+
+    with pytest.raises(ValueError) as e:
+        adbrdf.migrate_edges_to_attributes(
+            graph_name="Test", edge_collection_name="INVALID"
+        )
+
+    m = "No edge definition found for 'INVALID' in graph 'Test'. Cannot migrate edges to attributes."  # noqa: E501
+    assert m in str(e.value)
+
+    with pytest.raises(ValueError) as e:
+        adbrdf.migrate_edges_to_attributes(
+            graph_name="INVALID", edge_collection_name="friend"
+        )
+
+    assert "Graph 'INVALID' does not exist" in str(e.value)
 
     db.delete_graph("Test", drop_collections=True)
