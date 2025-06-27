@@ -1296,9 +1296,13 @@ class ArangoRDF(AbstractArangoRDF):
         if not attribute_name:
             attribute_name = f"_{edge_collection_name}"
 
+        with_cols = set(target_e_d["to_vertex_collections"])
+        with_cols_str = "WITH " + ", ".join(with_cols)
+
         count = 0
         for v_col in target_e_d["from_vertex_collections"]:
             query = f"""
+                {with_cols_str}
                 FOR doc IN @@v_col
                     LET labels = (
                         FOR v IN 1 {edge_direction} doc @@e_col
