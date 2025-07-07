@@ -1291,9 +1291,6 @@ class ArangoRDF(AbstractArangoRDF):
         if edge_direction.upper() not in {"OUTBOUND", "INBOUND", "ANY"}:
             raise ValueError(f"Invalid edge direction: {edge_direction}")
 
-        if sort_clause is None:
-            sort_clause = ""
-
         if not return_clause:
             raise ValueError("**return_clause** cannot be empty")
 
@@ -1322,7 +1319,7 @@ class ArangoRDF(AbstractArangoRDF):
                 FOR doc IN @@v_col
                     LET labels = (
                         FOR v IN 1 {edge_direction} doc @@e_col
-                            SORT {sort_clause}
+                            {f"SORT {sort_clause}" if sort_clause else ""}
                             RETURN {return_clause}
                     )
 
