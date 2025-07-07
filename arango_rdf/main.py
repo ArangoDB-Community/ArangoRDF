@@ -1251,6 +1251,8 @@ class ArangoRDF(AbstractArangoRDF):
         edge_collection_name: str,
         attribute_name: Optional[str] = None,
         edge_direction: str = "OUTBOUND",
+        sort_clause: Optional[str] = "v._label",
+        return_clause: str = "v._label",
     ) -> int:
         """RDF --> ArangoDB (PGT): Migrate all edges in the specified edge collection to
         attributes. This method is useful when combined with the
@@ -1271,6 +1273,14 @@ class ArangoRDF(AbstractArangoRDF):
         :param edge_direction: The direction of the edges to migrate.
             Defaults to **OUTBOUND**.
         :type edge_direction: str
+        :param sort_clause: A SORT statement to order the traversed vertices.
+            Defaults to "v._label". If set to None, the vertex values will
+            be ordered based on their traversal order.
+        :type sort_clause: Optional[str]
+        :param return_clause: A RETURN statement to return the specific value
+            to add as an attribute from the traversed vertices.
+            Defaults to "v._label". Another option can be "v._uri".
+        :type return_clause: str
         :return: The number of documents updated.
         :rtype: int
         """
@@ -1280,6 +1290,12 @@ class ArangoRDF(AbstractArangoRDF):
 
         if edge_direction.upper() not in {"OUTBOUND", "INBOUND", "ANY"}:
             raise ValueError(f"Invalid edge direction: {edge_direction}")
+
+        if sort_clause is None:
+            sort_clause = ""
+
+        if not return_clause:
+            raise ValueError("**return_clause** cannot be empty")
 
         graph = self.db.graph(graph_name)
 
@@ -1306,7 +1322,8 @@ class ArangoRDF(AbstractArangoRDF):
                 FOR doc IN @@v_col
                     LET labels = (
                         FOR v IN 1 {edge_direction} doc @@e_col
-                            RETURN v._label
+                            SORT {sort_clause}
+                            RETURN {return_clause}
                     )
 
                     UPDATE doc WITH {{{attribute_name}: labels}} IN @@v_col
