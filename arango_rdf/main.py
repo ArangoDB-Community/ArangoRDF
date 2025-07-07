@@ -732,7 +732,8 @@ class ArangoRDF(AbstractArangoRDF):
         overwrite_graph: bool = False,
         batch_size: Optional[int] = None,
         namespace_collection_name: Optional[str] = None,
-        iri_collection_name: Optional[str] = None,
+        uri_map_collection_name: Optional[str] = None,
+        resource_collection_name: Optional[str] = None,
         **adb_import_kwargs: Any,
     ) -> ADBGraph:
         """Create an ArangoDB Graph from an RDF Graph using
@@ -806,15 +807,22 @@ class ArangoRDF(AbstractArangoRDF):
             which means that the namespace prefixes will not be stored.
             Not included in the ArangoDB Graph Edge Definitions.
         :type namespace_collection_name: str | None
-        :param iri_collection_name: If specified, in addition to storing the IRIs of
-            **rdf_graph** in their respective collection, the IRIs will also be stored in
+        :param uri_map_collection_name: If specified, in addition to storing the URIs of
+            **rdf_graph** in their respective collection, the URIs will also be stored in
             the specified ArangoDB Collection to map to the collection name they correspond to.
             This could be then used for multi-file imports, allowing ArangoRDF to
-            check if the IRIs of **rdf_graph** have already been imported into the
+            check if the URIs of **rdf_graph** have already been imported into the
             ArangoDB Graph to avoid going through the ArangoDB Collection Mapping
-            Process (for that IRI) again. Not included in the ArangoDB Graph
-            Edge Definitions.
-        :type iri_collection_name: str | None
+            Process (for that URI) again. Not included in the ArangoDB Graph
+            Edge Definitions. Cannot be used in conjunction with **resource_collection_name**.
+        :type uri_map_collection_name: str | None
+        :param resource_collection_name: If specified, will use this name as the
+            ArangoDB Collection to store **all** RDF Resources, except Class and Property.
+            This is useful for cases where you want to combine both RPT and PGT behavior, where
+            rdf:type statements are stored as both edges and optionally as a property (i.e _types list),
+            but not used for the ArangoDB Collection Mapping Process. Defaults to None.
+            Cannot be used in conjunction with **uri_map_collection_name**.
+        :type resource_collection_name: str | None
         :param adb_import_kwargs: Keyword arguments to specify additional
             parameters for the ArangoDB Data Ingestion process.
             The full parameter list is
@@ -839,12 +847,23 @@ class ArangoRDF(AbstractArangoRDF):
 
         self.__rdf_graph = rdf_graph
         self.__adb_key_statements = self.extract_adb_key_statements(rdf_graph)
-        self.__iri_collection: Optional[StandardCollection] = None
-        if iri_collection_name:
-            if not self.__db.has_collection(iri_collection_name):
-                self.__db.create_collection(iri_collection_name)
+        self.__uri_map_collection: Optional[StandardCollection] = None
+        if uri_map_collection_name:
+            if resource_collection_name:
+                m = "Cannot specify both **uri_map_collection_name** and **resource_collection_name**."  # noqa: E501
+                raise ValueError(m)
 
-            self.__iri_collection = self.__db.collection(iri_collection_name)
+            if not self.__db.has_collection(uri_map_collection_name):
+                self.__db.create_collection(uri_map_collection_name)
+
+            self.__uri_map_collection = self.__db.collection(uri_map_collection_name)
+
+        self.__resource_collection: Optional[StandardCollection] = None
+        if resource_collection_name:
+            if not self.__db.has_collection(resource_collection_name):
+                self.__db.create_collection(resource_collection_name)
+
+            self.__resource_collection = self.__db.collection(resource_collection_name)
 
         # Reset the ArangoDB Config
         self.__adb_docs = defaultdict(lambda: defaultdict(dict))
@@ -887,11 +906,8 @@ class ArangoRDF(AbstractArangoRDF):
 
         rdf_graph_has_adb_col_statements = (None, self.adb_col_uri, None) in rdf_graph
         if adb_col_statements and rdf_graph_has_adb_col_statements:
-            m = """
-                Ambiguity Error: Cannot specify both **adb_col_statements**
-                and **rdf_graph** with ArangoDB Collection statements.
-            """
-            raise Exception(m)
+            m = "Cannot specify both **adb_col_statements** and **rdf_graph** with ArangoDB Collection statements."  # noqa: E501
+            raise ValueError(m)
 
         elif adb_col_statements:
             self.__adb_col_statements = adb_col_statements
@@ -912,7 +928,7 @@ class ArangoRDF(AbstractArangoRDF):
             # us to run the ArangoDB Collection Mapping algorithm
             # regardless of **write_adb_col_statements**
             self.__adb_col_statements = self.write_adb_col_statements(
-                self.__rdf_graph, self.__adb_col_statements, iri_collection_name
+                self.__rdf_graph, self.__adb_col_statements, uri_map_collection_name
             )
 
         ###########################
@@ -1017,7 +1033,7 @@ class ArangoRDF(AbstractArangoRDF):
         self,
         rdf_graph: RDFGraph,
         adb_col_statements: Optional[RDFGraph] = None,
-        iri_collection_name: Optional[str] = None,
+        uri_map_collection_name: Optional[str] = None,
     ) -> RDFGraph:
         """RDF -> ArangoDB (PGT): Run the ArangoDB Collection Mapping Process for
         **rdf_graph** to map RDF Resources to their respective ArangoDB Collection.
@@ -1058,13 +1074,13 @@ class ArangoRDF(AbstractArangoRDF):
         with get_spinner_progress("(RDF → ADB): Write Col Statements") as rp:
             rp.add_task("")
 
-            # 0. Add IRI Collection statements
-            if iri_collection_name:
-                if not self.__db.has_collection(iri_collection_name):
-                    m = f"Iri collection '{iri_collection_name}' does not exist"
+            # 0. Add URI Collection statements
+            if uri_map_collection_name:
+                if not self.__db.has_collection(uri_map_collection_name):
+                    m = f"URI collection '{uri_map_collection_name}' does not exist"
                     raise ValueError(m)
 
-                for doc in self.__db.collection(iri_collection_name):
+                for doc in self.__db.collection(uri_map_collection_name):
                     uri = URIRef(doc["_uri"])
                     collection = str(doc["collection"])
                     self.__add_adb_col_statement(uri, collection, True)
@@ -1108,18 +1124,18 @@ class ArangoRDF(AbstractArangoRDF):
         return self.__adb_col_statements
 
     def migrate_unknown_resources(
-        self, graph_name: str, iri_collection_name: str, **kwargs: Any
+        self, graph_name: str, uri_map_collection_name: str, **kwargs: Any
     ) -> Tuple[int, int]:
-        """RDF -> ArangoDB: Migrate all UnknownResource statements to their
+        """RDF -> ArangoDB (PGT): Migrate all UnknownResource statements to their
         respective ArangoDB Collection.
 
         NOTE: This method is only available if the user has passed a
-        value to the **iri_collection** parameter of the
+        value to the **uri_map_collection_name** parameter of the
         :func:`rdf_to_arangodb_by_pgt` method.
 
         This method will migrate all UnknownResource statements to their
         respective ArangoDB Collection based on if the same RDF Resource
-        exists in the **iri_collection**.
+        exists in the **uri_map_collection_name**.
 
         Recommended to run this method after :func:`rdf_to_arangodb_by_pgt`
         if the user is not interested in maintaining the UnknownResource
@@ -1127,9 +1143,9 @@ class ArangoRDF(AbstractArangoRDF):
 
         :param graph_name: The name of the graph to migrate the Unknown Resources from.
         :type graph_name: str
-        :param iri_collection_name: The name of the IRI collection to migrate
+        :param uri_map_collection_name: The name of the URI collection to migrate
             the Unknown Resources to.
-        :type iri_collection_name: str
+        :type uri_map_collection_name: str
         :param kwargs: Keyword arguments passed to the AQL Query execution.
         :type kwargs: Any
 
@@ -1140,14 +1156,14 @@ class ArangoRDF(AbstractArangoRDF):
         ur_collection_name = f"{graph_name}_UnknownResource"
 
         ur_collection = self.__db.collection(ur_collection_name)
-        iri_collection = self.__db.collection(iri_collection_name)
+        uri_map_collection = self.__db.collection(uri_map_collection_name)
 
         if ur_collection.count() == 0:
             logger.info("No Unknown Resources to migrate")
             return 0, 0
 
-        if iri_collection.count() == 0:
-            logger.info("No IRI Collection to migrate to")
+        if uri_map_collection.count() == 0:
+            logger.info("No URI Collection to migrate to")
             return 0, 0
 
         old_ur_count = ur_collection.count()
@@ -1155,10 +1171,10 @@ class ArangoRDF(AbstractArangoRDF):
         query = """
            FOR doc IN @@UR
             LET collection = FIRST(
-                FOR iri IN @@IRI
-                    FILTER doc._key == iri._key
+                FOR uri IN @@URI
+                    FILTER doc._key == uri._key
                     LIMIT 1
-                    RETURN iri.collection
+                    RETURN uri.collection
             )
             FILTER collection
 
@@ -1181,7 +1197,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         bind_vars = {
             "@UR": ur_collection_name,
-            "@IRI": iri_collection_name,
+            "@URI": uri_map_collection_name,
             "graph": graph_name,
         }
 
@@ -1228,6 +1244,98 @@ class ArangoRDF(AbstractArangoRDF):
         logger.info(m)
 
         return ur_count_diff, edge_count
+
+    def migrate_edges_to_attributes(
+        self,
+        graph_name: str,
+        edge_collection_name: str,
+        attribute_name: Optional[str] = None,
+        edge_direction: str = "OUTBOUND",
+        sort_clause: Optional[str] = "v._label",
+        return_clause: str = "v._label",
+    ) -> int:
+        """RDF --> ArangoDB (PGT): Migrate all edges in the specified edge collection to
+        attributes. This method is useful when combined with the
+        **resource_collection_name** parameter of the :func:`rdf_to_arangodb_by_pgt`
+        method.
+
+        NOTE: It is recommended to run this method with **edge_collection_name** set
+        to **"type"** after :func:`rdf_to_arangodb_by_pgt` if the user has set the
+        **resource_collection_name** parameter.
+
+        :param graph_name: The name of the graph to migrate the edges from.
+        :type graph_name: str
+        :param edge_collection_name: The name of the edge collection to migrate.
+        :type edge_collection_name: str
+        :param attribute_name: The name of the attribute to migrate the edges to.
+            Defaults to **edge_collection_name**, prefixed with an underscore (_).
+        :type attribute_name: Optional[str]
+        :param edge_direction: The direction of the edges to migrate.
+            Defaults to **OUTBOUND**.
+        :type edge_direction: str
+        :param sort_clause: A SORT statement to order the traversed vertices.
+            Defaults to "v._label". If set to None, the vertex values will
+            be ordered based on their traversal order.
+        :type sort_clause: Optional[str]
+        :param return_clause: A RETURN statement to return the specific value
+            to add as an attribute from the traversed vertices.
+            Defaults to "v._label". Another option can be "v._uri".
+        :type return_clause: str
+        :return: The number of documents updated.
+        :rtype: int
+        """
+
+        if not self.db.has_graph(graph_name):
+            raise ValueError(f"Graph '{graph_name}' does not exist")
+
+        if edge_direction.upper() not in {"OUTBOUND", "INBOUND", "ANY"}:
+            raise ValueError(f"Invalid edge direction: {edge_direction}")
+
+        if not return_clause:
+            raise ValueError("**return_clause** cannot be empty")
+
+        graph = self.db.graph(graph_name)
+
+        target_e_d = {}
+        for e_d in graph.edge_definitions():
+            if e_d["edge_collection"] == edge_collection_name:
+                target_e_d = e_d
+                break
+
+        if not target_e_d:
+            m = f"No edge definition found for '{edge_collection_name}' in graph '{graph_name}'. Cannot migrate edges to attributes."  # noqa: E501
+            raise ValueError(m)
+
+        if not attribute_name:
+            attribute_name = f"_{edge_collection_name}"
+
+        with_cols = set(target_e_d["to_vertex_collections"])
+        with_cols_str = "WITH " + ", ".join(with_cols)
+
+        count = 0
+        for v_col in target_e_d["from_vertex_collections"]:
+            query = f"""
+                {with_cols_str}
+                FOR doc IN @@v_col
+                    LET labels = (
+                        FOR v IN 1 {edge_direction} doc @@e_col
+                            {f"SORT {sort_clause}" if sort_clause else ""}
+                            RETURN {return_clause}
+                    )
+
+                    UPDATE doc WITH {{{attribute_name}: labels}} IN @@v_col
+            """
+
+            self.db.aql.execute(
+                query, bind_vars={"@v_col": v_col, "@e_col": edge_collection_name}
+            )
+
+            count += self.db.collection(v_col).count()
+
+        m = f"Propagated {count} type statements as attributes"
+        logger.info(m)
+
+        return count
 
     #######################################
     # Public: RDF -> ArangoDB (RPT & PGT) #
@@ -2195,12 +2303,17 @@ class ArangoRDF(AbstractArangoRDF):
         else:
             t_col = self.__adb_col_statements.value(t, self.adb_col_uri)
 
-            if t_col is None and self.__iri_collection is not None:
-                doc = self.__iri_collection.get(t_key)
+            if self.__resource_collection is not None:
+                if str(t_col) not in {"Class", "Property"}:
+                    t_col = self.__resource_collection.name
 
-                if doc:
-                    t_col = str(doc["collection"])
-                    self.__add_adb_col_statement(t, t_col)  # for next iteration
+            elif self.__uri_map_collection is not None:
+                if t_col is None:
+                    doc = self.__uri_map_collection.get(t_key)
+
+                    if doc:
+                        t_col = str(doc["collection"])
+                        self.__add_adb_col_statement(t, t_col)  # for next iteration
 
             if t_col is None:
                 logger.debug(f"Found unknown resource: {t} ({t_key})")
@@ -2308,6 +2421,17 @@ class ArangoRDF(AbstractArangoRDF):
                 "_rdftype": "URIRef",
             }
 
+            if (
+                self.__uri_map_collection is not None
+                and t_col != self.__UNKNOWN_RESOURCE
+            ):
+                uri_col = self.__uri_map_collection.name
+                self.__adb_docs[uri_col][t_key] = {
+                    "_key": t_key,
+                    "collection": t_col,
+                    "_uri": str(t),
+                }
+
         elif type(t) is BNode:
             self.__adb_docs[t_col][t_key] = {
                 "_key": t_key,
@@ -2322,14 +2446,6 @@ class ArangoRDF(AbstractArangoRDF):
 
         else:
             raise ValueError(f"Invalid type for RDF Term: {t}")  # pragma: no cover
-
-        if self.__iri_collection is not None and t_col != self.__UNKNOWN_RESOURCE:
-            iri_col = self.__iri_collection.name
-            self.__adb_docs[iri_col][t_key] = {
-                "_key": t_key,
-                "collection": t_col,
-                "_uri": str(t),
-            }
 
     def __pgt_process_rdf_literal(
         self,
@@ -2735,21 +2851,25 @@ class ArangoRDF(AbstractArangoRDF):
         :rtype: arango.graph.Graph
         """
         edge_definitions: List[Dict[str, Union[str, List[str]]]] = []
-
         all_v_cols: Set[str] = set()
         non_orphan_v_cols: Set[str] = set()
 
-        for col in self.__adb_col_statements.objects(
-            subject=None, predicate=self.adb_col_uri, unique=True
-        ):
-            all_v_cols.add(str(col))
+        if self.__resource_collection is not None:
+            all_v_cols.add(self.__resource_collection.name)
+            all_v_cols.add("Class")
+            all_v_cols.add("Property")
+        else:
+            for col in self.__adb_col_statements.objects(
+                subject=None, predicate=self.adb_col_uri, unique=True
+            ):
+                all_v_cols.add(str(col))
 
-        # TODO: Revisit the following
-        # This discard prevents these collections
-        # from appearing as empty collections in the graph
-        # (they don't actually hold any documents)
-        all_v_cols.discard("Statement")
-        all_v_cols.discard("List")
+            # TODO: Revisit the following
+            # This discard prevents these collections
+            # from appearing as empty collections in the graph
+            # (they don't actually hold any documents)
+            all_v_cols.discard("Statement")
+            all_v_cols.discard("List")
 
         for e_col, v_cols in self.__e_col_map.items():
             edge_definitions.append(
@@ -2764,10 +2884,12 @@ class ArangoRDF(AbstractArangoRDF):
                 c for c in v_cols["from"] | v_cols["to"] if c not in self.__e_col_map
             }
 
-        orphan_v_cols = list(all_v_cols ^ non_orphan_v_cols ^ {self.__UNKNOWN_RESOURCE})
+        orphan_v_cols = all_v_cols ^ non_orphan_v_cols
+        if self.__resource_collection is None:
+            orphan_v_cols = orphan_v_cols ^ {self.__UNKNOWN_RESOURCE}
 
         if not self.db.has_graph(name):
-            return self.db.create_graph(name, edge_definitions, orphan_v_cols)
+            return self.db.create_graph(name, edge_definitions, list(orphan_v_cols))
 
         old_edge_definitions = {
             edge_def["edge_collection"]: edge_def
