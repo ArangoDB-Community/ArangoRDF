@@ -1,3 +1,40 @@
+## 1.2.1 (2025-07-09)
+
+### New
+
+* `ignored_attributes` param (#35) [Anthony Mahanna]
+
+  * new: `ignored_attributes` param
+
+  * fix: flake
+
+
+## 1.2.0 (2025-07-07)
+
+### New
+
+* `resource_collection_name`, `migrate_edges_to_attributes()`, `uri_map_collection_name` (#34) [Anthony Mahanna]
+
+  * new: `resource_collection_name`, `migrate_edges_to_attributes`
+
+  * new: `edge_direction` param
+
+  * fix: lint
+
+  * fix: with statement
+
+  * new: `sort_clause`, `return_clause`
+
+  * fix: sort_clause
+
+
+## 1.1.4 (2025-06-19)
+
+### New
+
+* `logger.debug` statement. [Anthony Mahanna]
+
+
 ## 1.1.3 (2025-06-18)
 
 ### New
