@@ -1983,6 +1983,8 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
         name, type(rdf_graph)(), include_adb_v_col_statements=True
     )
 
+    assert (None, URIRef("http://example.com/name"), None) in rdf_graph_2
+
     adb_col_statements_1 = adbrdf.write_adb_col_statements(rdf_graph)
     adb_col_statements_2 = adbrdf.extract_adb_col_statements(rdf_graph_2)
     assert len(subtract_graphs(adb_col_statements_1, adb_col_statements_2)) == 0
@@ -1990,6 +1992,14 @@ def test_pgt_case_2_1(name: str, rdf_graph: RDFGraph) -> None:
 
     assert len(subtract_graphs(rdf_graph, rdf_graph_2)) == 0
     assert len(subtract_graphs(rdf_graph_2, rdf_graph)) == 0
+
+    rdf_graph_3 = adbrdf.arangodb_graph_to_rdf(
+        name,
+        type(rdf_graph)(),
+        ignored_attributes={"name"},
+    )
+
+    assert (None, URIRef("http://example.com/name"), None) not in rdf_graph_3
 
     db.delete_graph(name, drop_collections=True)
 
@@ -4614,6 +4624,20 @@ def test_adb_doc_with_dict_property(name: str) -> None:
         RDFGraph(),
         dict_conversion_mode="static",
         metagraph={"vertexCollections": {"TestDoc": {"foo"}}},
+    )
+
+    with pytest.raises(ValueError) as e:
+        adbrdf.arangodb_to_rdf(
+            name,
+            RDFGraph(),
+            dict_conversion_mode="static",
+            metagraph={"vertexCollections": {"TestDoc": {"foo"}}},
+            ignored_attributes={"foo"},
+        )
+
+    assert (
+        "**ignored_attributes** cannot be used if **explicit_metagraph** is True"
+        in str(e.value)
     )
 
     assert len(rdf_graph_2) == 1

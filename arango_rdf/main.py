@@ -168,6 +168,7 @@ class ArangoRDF(AbstractArangoRDF):
         include_adb_v_key_statements: bool = False,
         include_adb_e_key_statements: bool = False,
         namespace_collection_name: Optional[str] = None,
+        ignored_attributes: Optional[Set[str]] = None,
         **adb_export_kwargs: Any,
     ) -> RDFGraph:
         """Create an RDF Graph from an ArangoDB Graph via its Metagraph.
@@ -228,6 +229,11 @@ class ArangoRDF(AbstractArangoRDF):
             the original RDF Graph from the ArangoDB Graph. Defaults to None,
             which means that the namespace prefixes will not be stored.
         :type namespace_collection_name: str | None
+        :param ignored_attributes: The set of ArangoDB Document attributes to ignore
+            when transferring ArangoDB Documents into RDF. Defaults to None,
+            which means that all attributes will be transferred. Cannot be used
+            if **explicit_metagraph** is True.
+        :type ignored_attributes: Set[str] | None
         :param adb_export_kwargs: Keyword arguments to specify AQL query options when
             fetching documents from the ArangoDB instance. Full parameter list:
             https://docs.python-arango.com/en/main/specs.html#arango.aql.AQL.execute
@@ -235,6 +241,10 @@ class ArangoRDF(AbstractArangoRDF):
         :return: The RDF representation of the ArangoDB Graph.
         :rtype: rdflib.graph.Graph
         """
+        if explicit_metagraph and ignored_attributes:
+            msg = "**ignored_attributes** cannot be used if **explicit_metagraph** is True"  # noqa: E501
+            raise ValueError(msg)
+
         list_conversion_modes = {"serialize", "collection", "container", "static"}
         if list_conversion_mode not in list_conversion_modes:
             msg = f"Invalid **list_conversion_mode** parameter: {list_conversion_mode}"
@@ -320,7 +330,12 @@ class ArangoRDF(AbstractArangoRDF):
 
             # 1. Fetch ArangoDB vertices
             v_col_cursor, v_col_size = self.__fetch_adb_docs(
-                v_col, False, atribs, explicit_metagraph, **adb_export_kwargs
+                v_col,
+                False,
+                atribs,
+                explicit_metagraph,
+                ignored_attributes,
+                **adb_export_kwargs,
             )
 
             # 2. Process ArangoDB vertices
@@ -346,7 +361,12 @@ class ArangoRDF(AbstractArangoRDF):
 
             # 1. Fetch ArangoDB edges
             e_col_cursor, e_col_size = self.__fetch_adb_docs(
-                e_col, True, atribs, explicit_metagraph, **adb_export_kwargs
+                e_col,
+                True,
+                atribs,
+                explicit_metagraph,
+                ignored_attributes,
+                **adb_export_kwargs,
             )
 
             # 2. Process ArangoDB edges
@@ -375,6 +395,7 @@ class ArangoRDF(AbstractArangoRDF):
         include_adb_v_key_statements: bool = False,
         include_adb_e_key_statements: bool = False,
         namespace_collection_name: Optional[str] = None,
+        ignored_attributes: Optional[Set[str]] = None,
         **adb_export_kwargs: Any,
     ) -> RDFGraph:
         """Create an RDF Graph from an ArangoDB Graph via its Collection Names.
@@ -432,6 +453,10 @@ class ArangoRDF(AbstractArangoRDF):
             the original RDF Graph from the ArangoDB Graph. Defaults to None,
             which means that the namespace prefixes will not be stored.
         :type namespace_collection_name: str | None
+        :param ignored_attributes: The set of ArangoDB Document attributes to ignore
+            when transferring ArangoDB Documents into RDF. Defaults to None,
+            which means that all attributes will be transferred.
+        :type ignored_attributes: Set[str] | None
         :param adb_export_kwargs: Keyword arguments to specify AQL query options when
             fetching documents from the ArangoDB instance. Full parameter list:
             https://docs.python-arango.com/en/main/specs.html#arango.aql.AQL.execute
@@ -458,6 +483,7 @@ class ArangoRDF(AbstractArangoRDF):
             include_adb_v_key_statements,
             include_adb_e_key_statements,
             namespace_collection_name,
+            ignored_attributes,
             **adb_export_kwargs,
         )
 
@@ -472,6 +498,7 @@ class ArangoRDF(AbstractArangoRDF):
         include_adb_v_key_statements: bool = False,
         include_adb_e_key_statements: bool = False,
         namespace_collection_name: Optional[str] = None,
+        ignored_attributes: Optional[Set[str]] = None,
         **adb_export_kwargs: Any,
     ) -> RDFGraph:
         """Create an RDF Graph from an ArangoDB Graph via its Graph Name.
@@ -520,6 +547,15 @@ class ArangoRDF(AbstractArangoRDF):
             NOTE: Enabling this option will impose Triple Reification on all
             ArangoDB Edges.
         :type include_adb_e_key_statements: bool
+        :param namespace_collection_name: The name of the ArangoDB Collection
+            to store the namespace prefixes of **rdf_graph**. Useful for re-constructing
+            the original RDF Graph from the ArangoDB Graph. Defaults to None,
+            which means that the namespace prefixes will not be stored.
+        :type namespace_collection_name: str | None
+        :param ignored_attributes: The set of ArangoDB Document attributes to ignore
+            when transferring ArangoDB Documents into RDF. Defaults to None,
+            which means that all attributes will be transferred.
+        :type ignored_attributes: Set[str] | None
         :param adb_export_kwargs: Keyword arguments to specify AQL query options when
             fetching documents from the ArangoDB instance. Full parameter list:
             https://docs.python-arango.com/en/main/specs.html#arango.aql.AQL.execute
@@ -543,6 +579,7 @@ class ArangoRDF(AbstractArangoRDF):
             include_adb_v_key_statements,
             include_adb_e_key_statements,
             namespace_collection_name,
+            ignored_attributes,
             **adb_export_kwargs,
         )
 
@@ -1421,6 +1458,7 @@ class ArangoRDF(AbstractArangoRDF):
         is_edge: bool,
         attributes: Set[str],
         explicit_metagraph: bool,
+        ignored_attributes: Optional[Set[str]],
         **adb_export_kwargs: Any,
     ) -> Tuple[Cursor, int]:
         """ArangoDB -> RDF: Fetches ArangoDB documents within a collection.
@@ -1435,17 +1473,30 @@ class ArangoRDF(AbstractArangoRDF):
             specified when fetching the documents of the collection **col**.
             If False, all document attributes are included.
         :type explicit_metagraph: bool
+        :param ignored_attributes: The set of ArangoDB Document attributes to ignore
+            when transferring ArangoDB Documents into RDF. Defaults to None,
+            which means that all attributes will be transferred. Cannot be used
+            if **explicit_metagraph** is True.
+        :type ignored_attributes: Set[str] | None
         :param adb_export_kwargs: Keyword arguments to specify AQL query options when
             fetching documents from the ArangoDB instance.
         :type adb_export_kwargs: Any
         :return: The document cursor along with the total collection size.
         :rtype: Tuple[arango.cursor.Cursor, int]
         """
+        if explicit_metagraph and ignored_attributes:
+            msg = "**ignored_attributes** cannot be used if **explicit_metagraph** is True"  # noqa: E501
+            raise ValueError(msg)
+
         aql_return_value = "doc"
+
         if explicit_metagraph:
             default_keys = ["_id", "_key"]
             default_keys += ["_from", "_to"] if is_edge else []
             aql_return_value = f"KEEP(doc, {list(attributes) + default_keys})"
+
+        if ignored_attributes:
+            aql_return_value = f"UNSET(doc, {list(ignored_attributes)})"
 
         col_size: int = self.__db.collection(col).count()
 
