@@ -242,7 +242,7 @@ class ArangoRDF(AbstractArangoRDF):
         :rtype: rdflib.graph.Graph
         """
         if explicit_metagraph and ignored_attributes:
-            msg = "**ignored_attributes** cannot be used if **explicit_metagraph** is True"
+            msg = "**ignored_attributes** cannot be used if **explicit_metagraph** is True"  # noqa: E501
             raise ValueError(msg)
 
         list_conversion_modes = {"serialize", "collection", "container", "static"}
@@ -1485,7 +1485,7 @@ class ArangoRDF(AbstractArangoRDF):
         :rtype: Tuple[arango.cursor.Cursor, int]
         """
         if explicit_metagraph and ignored_attributes:
-            msg = "**ignored_attributes** cannot be used if **explicit_metagraph** is True"
+            msg = "**ignored_attributes** cannot be used if **explicit_metagraph** is True"  # noqa: E501
             raise ValueError(msg)
 
         aql_return_value = "doc"
