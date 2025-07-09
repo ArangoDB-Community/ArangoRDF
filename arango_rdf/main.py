@@ -1312,8 +1312,8 @@ class ArangoRDF(AbstractArangoRDF):
         edge_collection_name: str,
         attribute_name: Optional[str] = None,
         edge_direction: str = "OUTBOUND",
-        sort_clause: Optional[str] = "v._label",
-        return_clause: str = "v._label",
+        sort_clause: Optional[str] = None,
+        return_clause: Optional[str] = None,
     ) -> int:
         """RDF --> ArangoDB (PGT): Migrate all edges in the specified edge collection to
         attributes. This method is useful when combined with the
@@ -1336,12 +1336,13 @@ class ArangoRDF(AbstractArangoRDF):
             Defaults to **OUTBOUND**.
         :type edge_direction: str
         :param sort_clause: A SORT statement to order the traversed vertices.
-            Defaults to "v._label". If set to None, the vertex values will
-            be ordered based on their traversal order.
+            Defaults to f"v.{self.__rdf_attribute_prefix}label". If set to None,
+            the vertex values will be ordered based on their traversal order.
         :type sort_clause: Optional[str]
         :param return_clause: A RETURN statement to return the specific value
             to add as an attribute from the traversed vertices.
-            Defaults to "v._label". Another option can be "v._uri".
+            Defaults to f"v.{self.__rdf_attribute_prefix}label".
+            Another option can be f"v.{self.__rdf_attribute_prefix}uri".
         :type return_clause: str
         :return: The number of documents updated.
         :rtype: int
@@ -1352,9 +1353,6 @@ class ArangoRDF(AbstractArangoRDF):
 
         if edge_direction.upper() not in {"OUTBOUND", "INBOUND", "ANY"}:
             raise ValueError(f"Invalid edge direction: {edge_direction}")
-
-        if not return_clause:
-            raise ValueError("**return_clause** cannot be empty")
 
         graph = self.db.graph(graph_name)
 
@@ -1370,6 +1368,12 @@ class ArangoRDF(AbstractArangoRDF):
 
         if not attribute_name:
             attribute_name = f"{self.__rdf_attribute_prefix}{edge_collection_name}"
+
+        if not sort_clause:
+            sort_clause = f"v.{self.__rdf_label_attr}"
+
+        if not return_clause:
+            return_clause = f"v.{self.__rdf_label_attr}"
 
         with_cols = set(target_e_d["to_vertex_collections"])
         with_cols_str = "WITH " + ", ".join(with_cols)

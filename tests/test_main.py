@@ -317,9 +317,9 @@ def test_rpt_case_3_1(name: str, rdf_graph: RDFGraph) -> None:
     LITERAL_COL = adb_graph.vertex_collection(f"{name}_Literal")
     assert LITERAL_COL.has(_date)
     assert LITERAL_COL.has(_100)
-    assert LITERAL_COL.get(_100)["_datatype"] == _xsd_integer
+    assert LITERAL_COL.get(_100)["$datatype"] == _xsd_integer
     assert LITERAL_COL.has(_20)
-    assert LITERAL_COL.get(_20)["_datatype"] == _xsd_integer
+    assert LITERAL_COL.get(_20)["$datatype"] == _xsd_integer
     assert LITERAL_COL.has(_55)
 
     STATEMENT_COL = adb_graph.edge_collection(f"{name}_Statement")
@@ -369,9 +369,9 @@ def test_rpt_case_3_2(name: str, rdf_graph: RDFGraph) -> None:
 
     LITERAL_COL = adb_graph.vertex_collection(f"{name}_Literal")
     assert LITERAL_COL.has(_book_en)
-    assert LITERAL_COL.get(_book_en)["_lang"] == "en"
+    assert LITERAL_COL.get(_book_en)["$lang"] == "en"
     assert LITERAL_COL.has(_book_da)
-    assert LITERAL_COL.get(_book_da)["_lang"] == "da"
+    assert LITERAL_COL.get(_book_da)["$lang"] == "da"
 
     STATEMENT_COL = adb_graph.edge_collection(f"{name}_Statement")
     assert STATEMENT_COL.has(adbrdf.hash(f"{_book}-{_englishtitle}-{_book_en}"))
@@ -542,13 +542,13 @@ def test_rpt_case_6(name: str, rdf_graph: RDFGraph) -> None:
 
     STATEMENT_COL = adb_graph.edge_collection(f"{name}_Statement")
     e1 = STATEMENT_COL.get(adbrdf.hash(f"{_monica}-{_type}-{_entity}"))
-    assert e1["_sub_graph_uri"] == graph1
+    assert e1["$sub_graph_uri"] == graph1
     e2 = STATEMENT_COL.get(adbrdf.hash(f"{_monica}-{_hasSkill}-{_management}"))
-    assert e2["_sub_graph_uri"] == graph1
+    assert e2["$sub_graph_uri"] == graph1
     e3 = STATEMENT_COL.get(adbrdf.hash(f"{_monica}-{_type}-{_person}"))
-    assert e3["_sub_graph_uri"] == graph2
+    assert e3["$sub_graph_uri"] == graph2
     e4 = STATEMENT_COL.get(adbrdf.hash(f"{_person}-{_subClassOf}-{_entity}"))
-    assert e4["_sub_graph_uri"] == graph2
+    assert e4["$sub_graph_uri"] == graph2
 
     v_count, e_count = get_adb_graph_count(name)
     assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
@@ -1708,41 +1708,41 @@ def test_rpt_case_15_4(name: str, rdf_graph: RDFGraph) -> None:
 
     edge = STATEMENT_COL.get(_mary_likes_matt_05)
     assert edge is not None
-    assert edge["_sub_graph_uri"] == graph1
+    assert edge["$sub_graph_uri"] == graph1
 
     edge = STATEMENT_COL.get(
         adbrdf.hash(f"{_mary_likes_matt_05}-{_certainty}-{_certainty_val_05}")
     )
     assert edge is not None
-    assert edge["_sub_graph_uri"] == graph1
+    assert edge["$sub_graph_uri"] == graph1
 
     edge = STATEMENT_COL.get(_mary_likes_matt_075)
     assert edge is not None
-    assert edge["_sub_graph_uri"] == graph2
+    assert edge["$sub_graph_uri"] == graph2
 
     edge = STATEMENT_COL.get(
         adbrdf.hash(f"{_mary_likes_matt_075}-{_certainty}-{_certainty_val_075}")
     )
     assert edge is not None
-    assert edge["_sub_graph_uri"] == graph2
+    assert edge["$sub_graph_uri"] == graph2
 
     edge = STATEMENT_COL.get(_mary_likes_matt_1)
     assert edge is not None
-    assert "_sub_graph_uri" not in edge
+    assert "$sub_graph_uri" not in edge
 
     edge = STATEMENT_COL.get(
         adbrdf.hash(f"{_mary_likes_matt_1}-{_certainty}-{_certainty_val_1}")
     )
     assert edge is not None
-    assert "_sub_graph_uri" not in edge
+    assert "$sub_graph_uri" not in edge
 
     edge = STATEMENT_COL.get(_john_said_mary_likes_matt_05)
     assert edge is not None
-    assert edge["_sub_graph_uri"] == graph2
+    assert edge["$sub_graph_uri"] == graph2
 
     edge = STATEMENT_COL.get(_john_said_mary_likes_matt_05)
     assert edge is not None
-    assert edge["_sub_graph_uri"] == graph2
+    assert edge["$sub_graph_uri"] == graph2
 
     v_count, e_count = get_adb_graph_count(name)
     assert v_count == NUM_URIREFS + NUM_BNODES + NUM_LITERALS
@@ -2434,19 +2434,19 @@ def test_pgt_case_6(name: str, rdf_graph: RDFGraph) -> None:
         adbrdf.hash(f"{_monica}-{_hasSkill}-{_management}")
     )
 
-    assert edge["_sub_graph_uri"] == "http://example.com/Graph1"
+    assert edge["$sub_graph_uri"] == "http://example.com/Graph1"
 
     edge = adb_graph.edge_collection("type").get(
         adbrdf.hash(f"{_monica}-{_type}-{_person}")
     )
 
-    assert edge["_sub_graph_uri"] == "http://example.com/Graph2"
+    assert edge["$sub_graph_uri"] == "http://example.com/Graph2"
 
     edge = adb_graph.edge_collection("type").get(
         adbrdf.hash(f"{_monica}-{_type}-{_entity}")
     )
 
-    assert edge["_sub_graph_uri"] == "http://example.com/Graph1"
+    assert edge["$sub_graph_uri"] == "http://example.com/Graph1"
 
     assert adb_graph.edge_collection("subClassOf").has(
         adbrdf.hash(f"{_person}-{_subClassOf}-{_entity}")
@@ -4186,18 +4186,18 @@ def test_pgt_case_15_4(name: str, rdf_graph: RDFGraph) -> None:
     col = adb_graph.edge_collection("likes")
     assert col.has(_mary_likes_matt_05)
     assert col.get(_mary_likes_matt_05)["certainty"] == 0.5
-    assert col.get(_mary_likes_matt_05)["_sub_graph_uri"] == graph1
+    assert col.get(_mary_likes_matt_05)["$sub_graph_uri"] == graph1
     assert col.has(_mary_likes_matt_075)
     assert col.get(_mary_likes_matt_075)["certainty"] == 0.75
-    assert col.get(_mary_likes_matt_075)["_sub_graph_uri"] == graph2
+    assert col.get(_mary_likes_matt_075)["$sub_graph_uri"] == graph2
     assert col.has(_mary_likes_matt_1)
     assert col.get(_mary_likes_matt_1)["certainty"] == 1
-    assert "_sub_graph_uri" not in col.get(_mary_likes_matt_1)
+    assert "$sub_graph_uri" not in col.get(_mary_likes_matt_1)
 
     col = adb_graph.edge_collection("said")
     assert col.has(_john_said_mary_likes_matt_05)
     assert col.get(_john_said_mary_likes_matt_05)["foo"] == "bar"
-    assert col.get(_john_said_mary_likes_matt_05)["_sub_graph_uri"] == graph2
+    assert col.get(_john_said_mary_likes_matt_05)["$sub_graph_uri"] == graph2
 
     v_count, e_count = get_adb_graph_count(name)
     assert v_count == UNIQUE_NODES
@@ -5439,20 +5439,20 @@ def test_pgt_resource_collection_name_and_set_types_attribute() -> None:
         assert "Class/" in edge["_to"]
 
     for node in db.collection("Node"):
-        assert "_type" not in node
+        assert "$type" not in node
 
     count = adbrdf.migrate_edges_to_attributes("Test", "type")
 
     node_col = db.collection("Node")
-    assert set(node_col.get(adbrdf.hash("http://example.com/Alice"))["_type"]) == {
+    assert set(node_col.get(adbrdf.hash("http://example.com/Alice"))["$type"]) == {
         "Person",
         "Human",
     }
-    assert set(node_col.get(adbrdf.hash("http://example.com/Bob"))["_type"]) == {
+    assert set(node_col.get(adbrdf.hash("http://example.com/Bob"))["$type"]) == {
         "Person",
         "Human",
     }
-    assert set(node_col.get(adbrdf.hash("http://example.com/ACME"))["_type"]) == {
+    assert set(node_col.get(adbrdf.hash("http://example.com/ACME"))["$type"]) == {
         "Organization",
         "Company",
     }
@@ -5469,10 +5469,10 @@ def test_pgt_resource_collection_name_and_set_types_attribute() -> None:
     assert not db.has_collection("Organization")
 
     for v in db.collection("Human"):
-        assert "_type" not in v
+        assert "$type" not in v
 
     for v in db.collection("Company"):
-        assert "_type" not in v
+        assert "$type" not in v
 
     count = adbrdf.migrate_edges_to_attributes("Test", "type", "foo")
     assert count == 3
@@ -5488,10 +5488,10 @@ def test_pgt_resource_collection_name_and_set_types_attribute() -> None:
     )
 
     alice = db.collection("Human").get(adbrdf.hash("http://example.com/Alice"))
-    assert alice["_friend"] == ["Bob"]
+    assert alice["$friend"] == ["Bob"]
 
     bob = db.collection("Human").get(adbrdf.hash("http://example.com/Bob"))
-    assert bob["_friend"] == []
+    assert bob["$friend"] == []
 
     assert count == 2
 
@@ -5502,10 +5502,10 @@ def test_pgt_resource_collection_name_and_set_types_attribute() -> None:
     assert count == 2
 
     alice = db.collection("Human").get(adbrdf.hash("http://example.com/Alice"))
-    assert alice["_friend"] == ["Bob"]
+    assert alice["$friend"] == ["Bob"]
 
     bob = db.collection("Human").get(adbrdf.hash("http://example.com/Bob"))
-    assert bob["_friend"] == ["Alice"]
+    assert bob["$friend"] == ["Alice"]
 
     with pytest.raises(ValueError) as e:
         adbrdf.migrate_edges_to_attributes(
