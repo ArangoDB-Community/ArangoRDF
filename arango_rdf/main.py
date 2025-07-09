@@ -63,6 +63,10 @@ class ArangoRDF(AbstractArangoRDF):
     :param logging_lvl: Defaults to logging.INFO. Other useful options are
         logging.DEBUG (more verbose), and logging.WARNING (less verbose).
     :type logging_lvl: str | int
+    :param rdf_attribute_prefix: The prefix for RDF attributes (e.g., $uri, $value, $rdftype, etc.).
+        Defaults to "$". Previously, an underscore "_", was used as the prefix,
+        which resulted in these attributes being treated as ArangoDB system attribute.
+    :type rdf_attribute_prefix: str
     :raise TypeError: On invalid parameter types
     """
 
@@ -71,6 +75,7 @@ class ArangoRDF(AbstractArangoRDF):
         db: StandardDatabase,
         controller: ArangoRDFController = ArangoRDFController(),
         logging_lvl: Union[str, int] = logging.INFO,
+        rdf_attribute_prefix: str = "$",
     ):
         self.set_logging(logging_lvl)
 
@@ -85,6 +90,18 @@ class ArangoRDF(AbstractArangoRDF):
         self.__db = db
         self.__cntrl = controller
         self.__cntrl.db = db
+
+        # Set the RDF attribute prefix
+        self.__rdf_attribute_prefix = rdf_attribute_prefix
+
+        # RDF attribute names using the configurable prefix
+        self.__rdf_uri_attr = f"{rdf_attribute_prefix}uri"
+        self.__rdf_value_attr = f"{rdf_attribute_prefix}value"
+        self.__rdf_type_attr = f"{rdf_attribute_prefix}rdftype"
+        self.__rdf_label_attr = f"{rdf_attribute_prefix}label"
+        self.__rdf_sub_graph_uri_attr = f"{rdf_attribute_prefix}sub_graph_uri"
+        self.__rdf_lang_attr = f"{rdf_attribute_prefix}lang"
+        self.__rdf_datatype_attr = f"{rdf_attribute_prefix}datatype"
 
         # An RDF to ArangoDB variable used as a buffer
         # to store the to-be-inserted ArangoDB documents (RDF-to-ArangoDB).
@@ -147,6 +164,10 @@ class ArangoRDF(AbstractArangoRDF):
     @property
     def controller(self) -> ArangoRDFController:
         return self.__cntrl  # pragma: no cover
+
+    @property
+    def rdf_attribute_prefix(self) -> str:
+        return self.__rdf_attribute_prefix  # pragma: no cover
 
     def set_logging(self, level: Union[int, str]) -> None:
         logger.setLevel(level)
@@ -281,13 +302,13 @@ class ArangoRDF(AbstractArangoRDF):
             "_id",
             "_key",
             "_rev",
-            "_rdftype",
-            "_uri",
-            "_value",
-            "_label",
             "_from",
             "_to",
-            "_sub_graph_uri",
+            self.__rdf_type_attr,
+            self.__rdf_uri_attr,
+            self.__rdf_value_attr,
+            self.__rdf_label_attr,
+            self.__rdf_sub_graph_uri_attr,
         }
 
         adb_e_cols = set(metagraph.get("edgeCollections", {}))
@@ -301,9 +322,11 @@ class ArangoRDF(AbstractArangoRDF):
         if self.db.has_collection("Property"):
             doc: Json
             for doc in self.db.collection("Property"):
-                if doc.keys() >= {"_uri", "_label"}:
+                if doc.keys() >= {self.__rdf_uri_attr, self.__rdf_label_attr}:
                     # TODO: What if 2+ URIs have the same local name?
-                    self.__uri_map[doc["_label"]] = URIRef(doc["_uri"])
+                    self.__uri_map[doc[self.__rdf_label_attr]] = URIRef(
+                        doc[self.__rdf_uri_attr]
+                    )
 
         # Re-bind the namespace prefixes of **rdf_graph**
         if namespace_collection_name:
@@ -1118,7 +1141,7 @@ class ArangoRDF(AbstractArangoRDF):
                     raise ValueError(m)
 
                 for doc in self.__db.collection(uri_map_collection_name):
-                    uri = URIRef(doc["_uri"])
+                    uri = URIRef(doc[self.__rdf_uri_attr])
                     collection = str(doc["collection"])
                     self.__add_adb_col_statement(uri, collection, True)
 
@@ -1305,7 +1328,8 @@ class ArangoRDF(AbstractArangoRDF):
         :param edge_collection_name: The name of the edge collection to migrate.
         :type edge_collection_name: str
         :param attribute_name: The name of the attribute to migrate the edges to.
-            Defaults to **edge_collection_name**, prefixed with an underscore (_).
+            Defaults to **edge_collection_name**, prefixed with the
+            **rdf_attribute_prefix** parameter set in the constructor.
         :type attribute_name: Optional[str]
         :param edge_direction: The direction of the edges to migrate.
             Defaults to **OUTBOUND**.
@@ -1344,7 +1368,7 @@ class ArangoRDF(AbstractArangoRDF):
             raise ValueError(m)
 
         if not attribute_name:
-            attribute_name = f"_{edge_collection_name}"
+            attribute_name = f"{self.__rdf_attribute_prefix}{edge_collection_name}"
 
         with_cols = set(target_e_d["to_vertex_collections"])
         with_cols_str = "WITH " + ", ".join(with_cols)
@@ -1580,7 +1604,7 @@ class ArangoRDF(AbstractArangoRDF):
         if type(term) is Literal:
             return term
 
-        sg = URIRef(adb_v.get("_sub_graph_uri", "")) or None
+        sg = URIRef(adb_v.get(self.__rdf_sub_graph_uri_attr, "")) or None
         self.__unpack_adb_doc(adb_v, v_col, term, sg)
 
         if self.__infer_type_from_adb_v_col:
@@ -1625,12 +1649,12 @@ class ArangoRDF(AbstractArangoRDF):
         """
         _from: str = adb_e["_from"]
         _to: str = adb_e["_to"]
-        _uri = adb_e.get("_uri", "")
+        _uri = adb_e.get(self.__rdf_uri_attr, "")
 
         subject = self.__get_rdf_term_of_adb_doc(_from)
         predicate = URIRef(_uri) or e_col_uri
         object = self.__get_rdf_term_of_adb_doc(_to)
-        sg = URIRef(adb_e.get("_sub_graph_uri", "")) or None
+        sg = URIRef(adb_e.get(self.__rdf_sub_graph_uri_attr, "")) or None
 
         # TODO: Revisit when rdflib introduces RDF-star support
         # edge_uri = (subject, predicate, object, sg)
@@ -1668,12 +1692,12 @@ class ArangoRDF(AbstractArangoRDF):
         :rtype: URIRef | BNode | Literal
         """
         key_map = {
-            "URIRef": "_uri",
-            "Literal": "_value",
+            "URIRef": self.__rdf_uri_attr,
+            "Literal": self.__rdf_value_attr,
             "BNode": "_key",
         }
 
-        rdf_type = doc.get("_rdftype", "URIRef")  # Default to URIRef
+        rdf_type = doc.get(self.__rdf_type_attr, "URIRef")  # Default to URIRef
         val = doc.get(key_map[rdf_type], f"{self.__graph_ns}/{col}#{doc['_key']}")
 
         if rdf_type == "URIRef":
@@ -1683,11 +1707,11 @@ class ArangoRDF(AbstractArangoRDF):
             return BNode(val)
 
         elif rdf_type == "Literal":
-            if "_lang" in doc:
-                return Literal(val, lang=doc["_lang"])
+            if self.__rdf_lang_attr in doc:
+                return Literal(val, lang=doc[self.__rdf_lang_attr])
 
-            elif "_datatype" in doc:
-                return Literal(val, datatype=doc["_datatype"])
+            elif self.__rdf_datatype_attr in doc:
+                return Literal(val, datatype=doc[self.__rdf_datatype_attr])
 
             else:
                 return Literal(val)
@@ -2008,9 +2032,9 @@ class ArangoRDF(AbstractArangoRDF):
 
             self.__adb_docs[t_col][t_key] = {
                 "_key": t_key,
-                "_uri": t_str,
-                "_label": t_label,
-                "_rdftype": "URIRef",
+                self.__rdf_uri_attr: t_str,
+                self.__rdf_label_attr: t_label,
+                self.__rdf_type_attr: "URIRef",
             }
 
         elif type(t) is BNode:
@@ -2018,8 +2042,8 @@ class ArangoRDF(AbstractArangoRDF):
 
             self.__adb_docs[t_col][t_key] = {
                 "_key": t_key,
-                "_label": "",
-                "_rdftype": "BNode",
+                self.__rdf_label_attr: "",
+                self.__rdf_type_attr: "BNode",
             }
 
         elif type(t) is Literal:
@@ -2028,18 +2052,20 @@ class ArangoRDF(AbstractArangoRDF):
             t_label = t_value
 
             self.__adb_docs[t_col][t_key] = {
-                "_value": t_value,
-                "_label": t_label,  # TODO: REVISIT
-                "_rdftype": "Literal",
+                self.__rdf_value_attr: t_value,
+                self.__rdf_label_attr: t_label,  # TODO: REVISIT
+                self.__rdf_type_attr: "Literal",
             }
 
             if self.__use_hashed_literals_as_keys:
                 self.__adb_docs[t_col][t_key]["_key"] = t_key
 
             if t.language:
-                self.__adb_docs[t_col][t_key]["_lang"] = t.language
+                self.__adb_docs[t_col][t_key][self.__rdf_lang_attr] = t.language
             elif t.datatype:
-                self.__adb_docs[t_col][t_key]["_datatype"] = str(t.datatype)
+                self.__adb_docs[t_col][t_key][self.__rdf_datatype_attr] = str(
+                    t.datatype
+                )
 
         else:
             raise ValueError(f"Unable to process {t}")  # pragma: no cover
@@ -2467,9 +2493,9 @@ class ArangoRDF(AbstractArangoRDF):
         elif type(t) is URIRef:
             self.__adb_docs[t_col][t_key] = {
                 "_key": t_key,
-                "_uri": str(t),
-                "_label": t_label,
-                "_rdftype": "URIRef",
+                self.__rdf_uri_attr: str(t),
+                self.__rdf_label_attr: t_label,
+                self.__rdf_type_attr: "URIRef",
             }
 
             if (
@@ -2480,14 +2506,14 @@ class ArangoRDF(AbstractArangoRDF):
                 self.__adb_docs[uri_col][t_key] = {
                     "_key": t_key,
                     "collection": t_col,
-                    "_uri": str(t),
+                    self.__rdf_uri_attr: str(t),
                 }
 
         elif type(t) is BNode:
             self.__adb_docs[t_col][t_key] = {
                 "_key": t_key,
-                "_label": "",
-                "_rdftype": "BNode",
+                self.__rdf_label_attr: "",
+                self.__rdf_type_attr: "BNode",
             }
 
         elif type(t) is Literal and all([s_col, s_key, p_label]):
@@ -2534,7 +2560,7 @@ class ArangoRDF(AbstractArangoRDF):
         self.__pgt_rdf_val_to_adb_val(doc, p_label, val, process_val_as_serialized_list)
 
         if sg_str:
-            doc["_sub_graph_uri"] = sg_str
+            doc[self.__rdf_sub_graph_uri_attr] = sg_str
 
     def __pgt_process_object(
         self, s_meta: RDFTermMeta, p_meta: RDFTermMeta, o_meta: RDFTermMeta, sg_str: str
@@ -3162,13 +3188,13 @@ class ArangoRDF(AbstractArangoRDF):
             "_key": key,
             "_from": _from,
             "_to": _to,
-            "_uri": _uri,
-            "_label": _label,
-            "_rdftype": "URIRef",
+            self.__rdf_uri_attr: _uri,
+            self.__rdf_label_attr: _label,
+            self.__rdf_type_attr: "URIRef",
         }
 
         if _sg:
-            self.__adb_docs[col][key]["_sub_graph_uri"] = _sg
+            self.__adb_docs[col][key][self.__rdf_sub_graph_uri_attr] = _sg
 
     def __build_explicit_type_map(
         self, adb_adb_col_statement: Callable[..., None] = empty_func
