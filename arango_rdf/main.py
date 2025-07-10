@@ -63,10 +63,10 @@ class ArangoRDF(AbstractArangoRDF):
     :param logging_lvl: Defaults to logging.INFO. Other useful options are
         logging.DEBUG (more verbose), and logging.WARNING (less verbose).
     :type logging_lvl: str | int
-    :param rdf_attribute_prefix: The prefix for RDF attributes (e.g., $uri, $value,
-        $rdftype, etc.). Defaults to "$". Previously, an underscore "_", was used as
-        the prefix, which resulted in these attributes being treated as
-        ArangoDB system attributes.
+    :param rdf_attribute_prefix: The prefix for RDF attributes (e.g., _uri, _value,
+        _rdftype, etc.). Defaults to the original "_" symbol, but please NOTE
+        that using an underscore "_", results in these attributes being treated
+        as ArangoDB system attributes. Using "$" is an alternative non-system prefix.
     :type rdf_attribute_prefix: str
     :raise TypeError: On invalid parameter types
     """
@@ -76,7 +76,7 @@ class ArangoRDF(AbstractArangoRDF):
         db: StandardDatabase,
         controller: ArangoRDFController = ArangoRDFController(),
         logging_lvl: Union[str, int] = logging.INFO,
-        rdf_attribute_prefix: str = "$",
+        rdf_attribute_prefix: str = "_",
     ):
         self.set_logging(logging_lvl)
 
