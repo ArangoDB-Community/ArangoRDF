@@ -1,3 +1,18 @@
+## 1.2.2 (2025-07-10)
+
+### New
+
+* `rdf_attribute_prefix` (#37) [Anthony Mahanna]
+
+  * new: `rdf_attribute_prefix`
+
+  * fix: flake
+
+  * fix: tests
+
+  * fix: use original `_` as default prefix
+
+
 ## 1.2.1 (2025-07-09)
 
 ### New
