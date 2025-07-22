@@ -32,7 +32,7 @@ classifiers = [
 
 dependencies = [
     "rdflib>=6.0.0",
-    "python-arango~=8.0",
+    "python-arango>=8.1.7,<9",
     "cityhash>=0.4.6",
     "requests>=2.27.1",
     "rich>=12.5.1",
