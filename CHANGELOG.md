@@ -1,3 +1,10 @@
+## 1.2.3 (2025-07-22)
+
+### Other
+
+* Update: arango (#40) [Anthony Mahanna]
+
+
 ## 1.2.2 (2025-07-10)
 
 ### New
