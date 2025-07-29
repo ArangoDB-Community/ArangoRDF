@@ -5573,8 +5573,6 @@ def test_pgt_predicate_collection_name() -> None:
 
     db.delete_graph("Test", drop_collections=True)
 
-    breakpoint()
-
     adbrdf.rdf_to_arangodb_by_pgt(
         "Test", g, predicate_collection_name="Edge", resource_collection_name="Node"
     )
