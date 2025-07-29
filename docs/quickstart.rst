@@ -37,6 +37,25 @@ Quickstart
    # 2. Property Graph Transformation (PGT) 
    adbrdf.rdf_to_arangodb_by_pgt(name="BeatlesPGT", rdf_graph=beatles(), overwrite_graph=True)
 
+We now also offer a third transformation approach:
+
+1. `Labeled Property Graph Transformation (LPG) <./rdf_to_arangodb_lpg.html>`_
+
+This approach is useful when you want to combine the benefits of RPT and PGT:
+
+- Uses one ArangoDB Collection for all RDF Resources
+- Uses one ArangoDB Collection for all RDF Statements
+- Stores literal statements as ArangoDB Document Properties
+
+.. code-block:: python
+
+   adbrdf.rdf_to_arangodb_by_lpg(name="BeatlesLPG", rdf_graph=beatles(), overwrite_graph=True)
+
+   # Apply RDF type statements as ArangoDB Document Attributes
+   adbrdf.migrate_edges_to_attributes(
+       "BeatlesLPG", "Edge", "_type", filter_clause="e._label == 'type'"
+   )
+
 **RDF to ArangoDB**
 
 .. code-block:: python

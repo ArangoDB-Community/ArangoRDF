@@ -92,6 +92,23 @@ ex:book ex:index 55 .
 |:-------------------------:|:-------------------------:|
 | ![image](https://user-images.githubusercontent.com/43019056/232347662-ab48ebfb-e215-4aff-af28-a5915414a8fd.png) | ![image](https://user-images.githubusercontent.com/43019056/232347681-c899ef09-53c7-44de-861e-6a98d448b473.png) |
 
+We also offer a third transformation approach:
+
+1. [Labeled Property Graph Transformation (LPG)](https://arangordf.readthedocs.io/en/latest/rdf_to_arangodb_lpg.html)
+
+This is useful when you want to combine the benefits of RPT and PGT:
+1. Uses 1 ArangoDB Collection for all RDF Resources
+2. Uses 1 ArangoDB Collection for all RDF Statements
+3. Stores literal statements as ArangoDB Document Properties
+
+```py
+adbrdf.rdf_to_arangodb_by_lpg(name="BeatlesLPG", rdf_graph=beatles(), overwrite_graph=True)
+
+# Apply RDF type statements as ArangoDB Document Attributes
+adbrdf.migrate_edges_to_attributes(
+    "BeatlesLPG", "Edge", "_type", filter_clause="e._label == 'type'"
+)
+```
 
 ### ArangoDB to RDF
 

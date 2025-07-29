@@ -156,6 +156,11 @@ class ArangoRDF(AbstractArangoRDF):
         self.__rdfs_domain_key = self.rdf_id_to_adb_key(self.__rdfs_domain_str)
         self.__rdfs_range_key = self.rdf_id_to_adb_key(self.__rdfs_range_str)
 
+        # Custom ArangoDB Collections
+        self.__resource_collection: Optional[StandardCollection] = None
+        self.__predicate_collection: Optional[StandardCollection] = None
+        self.__uri_map_collection: Optional[StandardCollection] = None
+
         logger.info(f"Instantiated ArangoRDF with database '{db.name}'")
 
     @property
@@ -708,6 +713,10 @@ class ArangoRDF(AbstractArangoRDF):
         if overwrite_graph:
             self.db.delete_graph(name, ignore_missing=True, drop_collections=True)
 
+        self.__predicate_collection = None
+        self.__resource_collection = None
+        self.__uri_map_collection = None
+
         #################################
         # Graph Contextualization (WIP) #
         #################################
@@ -795,6 +804,7 @@ class ArangoRDF(AbstractArangoRDF):
         namespace_collection_name: Optional[str] = None,
         uri_map_collection_name: Optional[str] = None,
         resource_collection_name: Optional[str] = None,
+        predicate_collection_name: Optional[str] = None,
         **adb_import_kwargs: Any,
     ) -> ADBGraph:
         """Create an ArangoDB Graph from an RDF Graph using
@@ -884,6 +894,12 @@ class ArangoRDF(AbstractArangoRDF):
             but not used for the ArangoDB Collection Mapping Process. Defaults to None.
             Cannot be used in conjunction with **uri_map_collection_name**.
         :type resource_collection_name: str | None
+        :param predicate_collection_name: If specified, will use this name as the
+            ArangoDB Collection to store all Edges. This is useful for cases
+            where you want to combine both RPT and PGT behavior, where the predicate
+            label is **not** used as the ArangoDB Collection name, but rather as a
+            property of the Edge. Defaults to None.
+        :type predicate_collection_name: str | None
         :param adb_import_kwargs: Keyword arguments to specify additional
             parameters for the ArangoDB Data Ingestion process.
             The full parameter list is
@@ -908,7 +924,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         self.__rdf_graph = rdf_graph
         self.__adb_key_statements = self.extract_adb_key_statements(rdf_graph)
-        self.__uri_map_collection: Optional[StandardCollection] = None
+        self.__uri_map_collection = None
         if uri_map_collection_name:
             if resource_collection_name:
                 m = "Cannot specify both **uri_map_collection_name** and **resource_collection_name**."  # noqa: E501
@@ -919,12 +935,21 @@ class ArangoRDF(AbstractArangoRDF):
 
             self.__uri_map_collection = self.__db.collection(uri_map_collection_name)
 
-        self.__resource_collection: Optional[StandardCollection] = None
+        self.__resource_collection = None
         if resource_collection_name:
             if not self.__db.has_collection(resource_collection_name):
                 self.__db.create_collection(resource_collection_name)
 
             self.__resource_collection = self.__db.collection(resource_collection_name)
+
+        self.__predicate_collection = None
+        if predicate_collection_name:
+            if not self.__db.has_collection(predicate_collection_name):
+                self.__db.create_collection(predicate_collection_name, edge=True)
+
+            self.__predicate_collection = self.__db.collection(
+                predicate_collection_name
+            )
 
         # Reset the ArangoDB Config
         self.__adb_docs = defaultdict(lambda: defaultdict(dict))
@@ -954,12 +979,17 @@ class ArangoRDF(AbstractArangoRDF):
 
             self.__rdf_graph = self.__load_meta_ontology(self.__rdf_graph)
 
-            self.__e_col_map["type"]["from"].add("Property")
-            self.__e_col_map["type"]["from"].add("Class")
-            self.__e_col_map["type"]["to"].add("Class")
-            for label in ["domain", "range"]:
-                self.__e_col_map[label]["from"].add("Property")
-                self.__e_col_map[label]["to"].add("Class")
+            if self.__predicate_collection is not None:
+                col = self.__predicate_collection.name
+            else:
+                col = "type"
+                for label in ["domain", "range"]:
+                    self.__e_col_map[label]["from"].add("Property")
+                    self.__e_col_map[label]["to"].add("Class")
+
+            self.__e_col_map[col]["from"].add("Property")
+            self.__e_col_map[col]["from"].add("Class")
+            self.__e_col_map[col]["to"].add("Class")
 
         ##################################
         # ArangoDB Collection Statements #
@@ -1314,6 +1344,7 @@ class ArangoRDF(AbstractArangoRDF):
         edge_direction: str = "OUTBOUND",
         sort_clause: Optional[str] = None,
         return_clause: Optional[str] = None,
+        filter_clause: Optional[str] = None,
     ) -> int:
         """RDF --> ArangoDB (PGT): Migrate all edges in the specified edge collection to
         attributes. This method is useful when combined with the
@@ -1344,6 +1375,9 @@ class ArangoRDF(AbstractArangoRDF):
             Defaults to f"v.{self.__rdf_attribute_prefix}label".
             Another option can be f"v.{self.__rdf_attribute_prefix}uri".
         :type return_clause: str
+        :param filter_clause: A FILTER statement to filter the traversed
+            edges & target vertices. Defaults to None.
+        :type filter_clause: Optional[str]
         :return: The number of documents updated.
         :rtype: int
         """
@@ -1384,7 +1418,8 @@ class ArangoRDF(AbstractArangoRDF):
                 {with_cols_str}
                 FOR doc IN @@v_col
                     LET labels = (
-                        FOR v IN 1 {edge_direction} doc @@e_col
+                        FOR v, e IN 1 {edge_direction} doc @@e_col
+                            {f"FILTER {filter_clause}" if filter_clause else ""}
                             {f"SORT {sort_clause}" if sort_clause else ""}
                             RETURN {return_clause}
                     )
@@ -1403,9 +1438,78 @@ class ArangoRDF(AbstractArangoRDF):
 
         return count
 
-    #######################################
-    # Public: RDF -> ArangoDB (RPT & PGT) #
-    #######################################
+    #################################
+    # Public: RDF -> ArangoDB (LPG) #
+    #################################
+
+    def rdf_to_arangodb_by_lpg(
+        self,
+        name: str,
+        rdf_graph: RDFGraph,
+        resource_collection_name: str = "Node",
+        predicate_collection_name: str = "Edge",
+        **pgt_kwargs: Any,
+    ) -> ADBGraph:
+        """RDF -> ArangoDB (LPG): Convert an RDF Graph into an ArangoDB Graph using
+        the Labeled Property Graph (LPG) model.
+
+        NOTE: It is highly recommend to use the :func:`migrate_edges_to_attributes`
+        method after this function to apply the RDF type statements as attributes
+        to the ArangoDB Documents in order to follow the LPG model.
+
+        .. code-block:: python
+            from arango_rdf import ArangoRDF
+
+            adbrdf = ArangoRDF(db)
+
+            adbrdf.rdf_to_arangodb_by_lpg("Test", rdf_graph)
+
+            # Traverse all edges in the "Edge" collection labeled as "type",
+            # and apply the RDF type statements as a list of strings to to the
+            # ArangoDB Documents.
+            adbrdf.migrate_edges_to_attributes(
+                "Test", "Edge", "_type", filter_clause="e._label == 'type'"
+            )
+
+        This function is just a wrapper around the :func:`rdf_to_arangodb_by_pgt`
+        method, but with the following differences:
+        - Parameter **resource_collection_name** is required, defaults to **"Node"**
+        - Parameter **predicate_collection_name** is required, defaults to **"Edge"**
+
+        :param name: The name of the ArangoDB Graph.
+        :type name: str
+        :param rdf_graph: The RDF Graph to convert.
+        :type rdf_graph: RDFGraph
+        :param resource_collection_name: The name of the ArangoDB Collection to store
+            the RDF Resources in.
+        :type resource_collection_name: str
+        :param predicate_collection_name: The name of the ArangoDB Collection to store
+            the RDF Predicates in.
+        :type predicate_collection_name: str
+        :param pgt_kwargs: Keyword arguments to pass to the
+            :func:`rdf_to_arangodb_by_pgt` method.
+        :type pgt_kwargs: Any
+        :return: The ArangoDB Graph.
+        :rtype: arango.graph.Graph
+        """
+
+        if not resource_collection_name:
+            raise ValueError("Parameter **resource_collection_name** is required")
+
+        if not predicate_collection_name:
+            raise ValueError("Parameter **predicate_collection_name** is required")
+
+        return self.rdf_to_arangodb_by_pgt(
+            name,
+            rdf_graph,
+            resource_collection_name=resource_collection_name,
+            predicate_collection_name=predicate_collection_name,
+            **pgt_kwargs,
+        )
+
+    ###########################################
+    # Public: RDF -> ArangoDB (RPT, PGT, LPG) #
+    ###########################################
 
     def rdf_id_to_adb_key(self, rdf_id: str, rdf_term: Optional[RDFTerm] = None) -> str:
         """RDF -> ArangoDB: Convert an RDF Resource ID string into an ArangoDB Key via
@@ -2489,6 +2593,10 @@ class ArangoRDF(AbstractArangoRDF):
 
         if t in self.__reified_subject_map:
             _from, _, _to = self.__reified_subject_map[t]
+
+            if self.__predicate_collection is not None:
+                t_col = self.__predicate_collection.name
+
             self.__adb_docs[t_col][t_key] = {
                 "_key": t_key,
                 "_from": _from,
@@ -2642,14 +2750,22 @@ class ArangoRDF(AbstractArangoRDF):
         _from = f"{s_col}/{s_key}"
         _to = f"{o_col}/{o_key}"
 
+        # local name of predicate URI is used as the collection name
+        # if **predicate_collection_name** is not specified
+        e_col = (
+            self.__predicate_collection.name
+            if self.__predicate_collection is not None
+            else p_label
+        )
+
         if reified_subject:
             e_key = self.rdf_id_to_adb_key(str(reified_subject), reified_subject)
-            self.__reified_subject_map[reified_subject] = (_from, p_label, _to)
+            self.__reified_subject_map[reified_subject] = (_from, e_col, _to)
         else:
             e_key = self.hash(f"{s_key}-{p_key}-{o_key}")
 
         self.__add_adb_edge(
-            p_label,  # local name of predicate URI is used as the collection name
+            e_col,
             e_key,
             _from,
             _to,
@@ -2658,8 +2774,8 @@ class ArangoRDF(AbstractArangoRDF):
             sg_str,
         )
 
-        self.__e_col_map[p_label]["from"].add(s_col)
-        self.__e_col_map[p_label]["to"].add(o_col)
+        self.__e_col_map[e_col]["from"].add(s_col)
+        self.__e_col_map[e_col]["to"].add(o_col)
 
     def __pgt_object_is_head_of_rdf_list(self, o: RDFTerm) -> bool:
         """RDF -> ArangoDB (PGT): Return True if the RDF Object *o*
@@ -3005,9 +3121,9 @@ class ArangoRDF(AbstractArangoRDF):
 
         return self.db.graph(name)
 
-    ########################################
-    # Private: RDF -> ArangoDB (RPT & PGT) #
-    ########################################
+    ############################################
+    # Private: RDF -> ArangoDB (RPT, PGT, LPG) #
+    ############################################
 
     def __load_meta_ontology(self, rdf_graph: RDFGraph) -> RDFConjunctiveGraph:
         """RDF -> ArangoDB: Load the RDF, RDFS, and OWL
@@ -3187,6 +3303,9 @@ class ArangoRDF(AbstractArangoRDF):
         :param _sg: The URI string of the Sub Graph associated to this edge (if any).
         :type _sg: str
         """
+
+        if self.__predicate_collection is not None:
+            col = self.__predicate_collection.name
 
         self.__adb_docs[col][key] = {
             **self.__adb_docs[col][key],
@@ -3664,6 +3783,15 @@ class ArangoRDF(AbstractArangoRDF):
             "range": (self.__rdfs_range_str, self.__rdfs_range_key),
         }
 
+        e_col_type = (
+            self.__predicate_collection.name
+            if self.__predicate_collection is not None and is_pgt
+            else "type"
+        )
+
+        if is_pgt:
+            self.__e_col_map[e_col_type]["to"].add("Class")
+
         for t, t_col, t_key, t_label, dr_label in dr_meta:
             if type(t) is Literal:
                 continue
@@ -3688,8 +3816,7 @@ class ArangoRDF(AbstractArangoRDF):
                     )
 
                 if is_pgt:
-                    self.__e_col_map["type"]["from"].add(t_col)
-                    self.__e_col_map["type"]["to"].add("Class")
+                    self.__e_col_map[e_col_type]["from"].add(t_col)
 
             # Domain/Range Introspection
             # TODO: REVISIT CONDITIONS FOR INTROSPECTION

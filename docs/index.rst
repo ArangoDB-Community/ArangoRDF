@@ -77,4 +77,5 @@ Contents
    quickstart
    rdf_to_arangodb_rpt
    rdf_to_arangodb_pgt
+   rdf_to_arangodb_lpg
    specs
