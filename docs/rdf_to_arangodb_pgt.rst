@@ -101,10 +101,10 @@ As a result, the RDF-star Graph above can be processed with ArangoRDF as follows
     adbrdf.rdf_to_arangodb_by_pgt(name="DataPGT", rdf_graph=rdf_graph, overwrite_graph=True)
 
 
-ArangoDB Collection Mapping Process
-====================================
+PGT Collection Mapping Process
+==============================
 
-The **ArangoDB Collection Mapping Process** is defined as the algorithm used to map
+The **PGT Collection Mapping Process** is defined as the algorithm used to map
 RDF Resources to ArangoDB Collections. In PGT, the ArangoDB Collections generated are
 are based on the ``rdf:type`` nature of the RDF Resource / Statement.
 

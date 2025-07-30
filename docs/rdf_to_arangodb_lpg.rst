@@ -46,7 +46,7 @@ The type information is encoded as ordinary edges so that the conversion stays p
 shown below.
 
 Basic Usage
------------
+===========
 
 .. code-block:: python
 
@@ -83,7 +83,8 @@ Delete them if you do not need them any more.
 LPG Collection Mapping Process
 ==============================
 
-With LPG the mapping rules are intentionally simple:
+The **LPG Collection Mapping Process** is defined as the algorithm used to map
+RDF Resources to ArangoDB Collections. In LPG, the mapping rules are intentionally simple:
 
 1. **Vertex Collection** – All RDF resources (IRIs & blank nodes) are stored in the
    collection **``Node``** (customisable via ``resource_collection_name``).
@@ -103,7 +104,7 @@ straight-forward and behave like a classic labeled property graph.
 
 
 Further Reading
----------------
+===============
 
 * API Reference –
   :py:meth:`arango_rdf.main.ArangoRDF.rdf_to_arangodb_by_lpg`
