@@ -1458,6 +1458,7 @@ class ArangoRDF(AbstractArangoRDF):
         to the ArangoDB Documents in order to follow the LPG model.
 
         .. code-block:: python
+
             from arango_rdf import ArangoRDF
 
             adbrdf = ArangoRDF(db)
