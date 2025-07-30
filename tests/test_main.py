@@ -5530,3 +5530,128 @@ def test_pgt_resource_collection_name_and_set_types_attribute() -> None:
     assert "Graph 'INVALID' does not exist" in str(e.value)
 
     db.delete_graph("Test", drop_collections=True)
+
+
+def test_pgt_predicate_collection_name() -> None:
+    db.delete_graph("Test", drop_collections=True, ignore_missing=True)
+
+    g = RDFGraph()
+    g.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+
+        ex:Alice a ex:Person .
+        ex:Alice ex:name "Alice" .
+        ex:Alice ex:age 25 .
+
+        ex:Bob a ex:Person .
+        ex:Bob ex:name "Bob" .
+        ex:Bob ex:age 30 .
+
+        ex:Alice ex:friend ex:Bob .
+        """,
+        format="turtle",
+    )
+
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g, predicate_collection_name="Edge")
+
+    assert not db.has_collection("type")
+    assert not db.has_collection("friend")
+    assert db.has_collection("Edge")
+    assert db.has_collection("Class")
+    assert db.has_collection("Person")
+    assert db.has_collection("Property")
+
+    assert db.collection("Edge").count() == 3
+    for edge in db.collection("Edge"):
+        assert "Person" in edge["_from"]
+        assert "Person" in edge["_to"] or "Class" in edge["_to"]
+        assert edge["_label"] in {"friend", "type"}
+
+    assert db.collection("Person").count() == 2
+    assert not db.has_collection("Node")
+
+    db.delete_graph("Test", drop_collections=True)
+
+    adbrdf.rdf_to_arangodb_by_pgt(
+        "Test", g, predicate_collection_name="Edge", resource_collection_name="Node"
+    )
+
+    assert not db.has_collection("type")
+    assert not db.has_collection("friend")
+    assert db.has_collection("Edge")
+    assert db.has_collection("Node")
+    assert db.has_collection("Class")
+    assert db.has_collection("Property")
+
+    assert db.collection("Edge").count() == 3
+    for edge in db.collection("Edge"):
+        assert "Node" in edge["_from"]
+        assert "Node" in edge["_to"] or "Class" in edge["_to"]
+        assert edge["_label"] in {"friend", "type"}
+
+    assert db.collection("Node").count() == 2
+    assert not db.has_collection("Person")
+
+    db.delete_graph("Test", drop_collections=True)
+
+
+def test_lpg() -> None:
+    db.delete_graph("Test", drop_collections=True, ignore_missing=True)
+
+    g = RDFGraph()
+    g.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+
+        ex:Alice a ex:Person .
+        ex:Alice ex:name "Alice" .
+        ex:Alice ex:age 25 .
+
+        ex:Bob a ex:Person .
+        ex:Bob ex:name "Bob" .
+        ex:Bob ex:age 30 .
+
+        ex:Alice ex:friend ex:Bob .
+        """,
+        format="turtle",
+    )
+
+    adbrdf.rdf_to_arangodb_by_lpg("Test", g)
+
+    assert db.collection("Node").count() == 2
+    assert db.collection("Edge").count() == 3
+
+    for node in db.collection("Node"):
+        assert "_type" not in node
+
+    adbrdf.migrate_edges_to_attributes(
+        "Test", "Edge", "_type", filter_clause="e._label == 'type'"
+    )
+
+    for node in db.collection("Node"):
+        assert node["_type"] == ["Person"]
+
+    db.delete_graph("Test", drop_collections=True)
+
+
+@pytest.mark.parametrize(
+    "name, rdf_graph",
+    [("Case_12_1_LPG", get_rdf_graph("cases/12_1.ttl"))],
+)
+def test_lpg_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
+    db.delete_graph("Test", drop_collections=True, ignore_missing=True)
+
+    adbrdf.rdf_to_arangodb_by_lpg("Test", rdf_graph)
+
+    assert db.collection("Node").count() == 2
+    assert db.collection("Edge").count() == 2
+    assert db.collection("Class").count() == 1
+    assert db.collection("Property").count() == 2
+    assert not db.has_collection("writer")
+
+    for edge in db.collection("Edge"):
+        assert edge["_from"].split("/")[0] in {"Edge", "Node"}
+        assert edge["_to"].split("/")[0] in {"Class", "Node"}
+
+    db.delete_graph("Test", drop_collections=True)
