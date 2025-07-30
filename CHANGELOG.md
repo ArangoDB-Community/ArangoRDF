@@ -1,3 +1,14 @@
+## 1.3.0 (2025-07-30)
+
+### New
+
+* LPG Transformation (#42) [Anthony Mahanna]
+
+  * new: LPG Transformation
+
+  * rm: bp
+
+
 ## 1.2.3 (2025-07-22)
 
 ### Other
