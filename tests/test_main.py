@@ -5655,3 +5655,66 @@ def test_lpg_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
         assert edge["_to"].split("/")[0] in {"Class", "Node"}
 
     db.delete_graph("Test", drop_collections=True)
+
+
+def test_pgt_second_order_edge_collection_name() -> None:
+    db.delete_graph("Test", drop_collections=True, ignore_missing=True)
+
+    g = RDFGraph()
+    g.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+        ex:Alice a ex:Human .
+        
+        ex:Bob a ex:Person .
+        
+        ex:Charlie a ex:Animal .
+        
+        ex:Dana a ex:Entity .
+        
+        ex:Eve a ex:Human .
+        ex:Eve a ex:Person .
+
+        ex:Fred a ex:Human .
+        ex:Fred a ex:Individual .
+
+        ex:Human rdfs:subClassOf ex:Animal .
+        ex:Person rdfs:subClassOf ex:Individual .
+        ex:Animal rdfs:subClassOf ex:Entity .
+        ex:Individual rdfs:subClassOf ex:Entity .
+        """,
+        format="turtle",
+    )
+
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g, resource_collection_name="Node")
+
+    assert db.collection("subClassOf").count() == 4
+
+    adbrdf.migrate_edges_to_attributes(
+        "Test",
+        edge_collection_name="type",
+        second_order_edge_collection_name="subClassOf",
+        second_order_depth=10,
+    )
+
+    alice = db.collection("Node").get(adbrdf.hash("http://example.com/Alice"))
+    assert set(alice["_type"]) == {"Human", "Animal", "Entity"}
+
+    bob = db.collection("Node").get(adbrdf.hash("http://example.com/Bob"))
+    assert set(bob["_type"]) == {"Person", "Individual", "Entity"}
+
+    charlie = db.collection("Node").get(adbrdf.hash("http://example.com/Charlie"))
+    assert set(charlie["_type"]) == {"Animal", "Entity"}
+
+    dana = db.collection("Node").get(adbrdf.hash("http://example.com/Dana"))
+    assert set(dana["_type"]) == {"Entity"}
+
+    eve = db.collection("Node").get(adbrdf.hash("http://example.com/Eve"))
+    assert set(eve["_type"]) == {"Human", "Person", "Animal", "Individual", "Entity"}
+
+    fred = db.collection("Node").get(adbrdf.hash("http://example.com/Fred"))
+    assert set(fred["_type"]) == {"Human", "Individual", "Entity", "Animal"}
+
+    db.delete_graph("Test", drop_collections=True)

@@ -1345,6 +1345,9 @@ class ArangoRDF(AbstractArangoRDF):
         sort_clause: Optional[str] = None,
         return_clause: Optional[str] = None,
         filter_clause: Optional[str] = None,
+        with_collections: Optional[List[str]] = None,
+        second_order_edge_collection_name: Optional[str] = None,
+        second_order_depth: Optional[int] = None,
     ) -> int:
         """RDF --> ArangoDB (PGT): Migrate all edges in the specified edge collection to
         attributes. This method is useful when combined with the
@@ -1378,9 +1381,23 @@ class ArangoRDF(AbstractArangoRDF):
         :param filter_clause: A FILTER statement to filter the traversed
             edges & target vertices. Defaults to None.
         :type filter_clause: Optional[str]
+        :param with_collections: A list of collections to include in the WITH clause.
+            Defaults to the target edge collection's
+            **to_vertex_collections** property based off its edge definition.
+        :type with_collections: Optional[List[str]]
+        :param second_order_edge_collection_name: In addition to the **edge_collection_name**,
+            it is possible to traverse the edges of the second order edge collection to apply
+            the same attribute to the original target verticies. A common use case is to
+            set **edge_collection_name** to **"type"** and **second_order_edge_collection_name**
+            to **"subClassOf"** for inferring the **_type** attribute. Defaults to None.
+        :type second_order_edge_collection_name: Optional[str]
+        :param second_order_depth: The depth of the second order traversal. Defaults to 1.
+            This parameter is only used if **second_order_edge_collection_name** is set.
+        :type second_order_depth: Optional[int]
         :return: The number of documents updated.
         :rtype: int
         """
+        bind_vars = {"@e_col": edge_collection_name}
 
         if not self.db.has_graph(graph_name):
             raise ValueError(f"Graph '{graph_name}' does not exist")
@@ -1409,27 +1426,54 @@ class ArangoRDF(AbstractArangoRDF):
         if not return_clause:
             return_clause = f"v.{self.__rdf_label_attr}"
 
-        with_cols = set(target_e_d["to_vertex_collections"])
-        with_cols_str = "WITH " + ", ".join(with_cols)
+        with_collections_set = (
+            set(with_collections)
+            if with_collections
+            else set(target_e_d["to_vertex_collections"])
+        )
+
+        with_cols_str = "WITH " + ", ".join(with_collections_set)
+
+        second_order_labels_query = "[]"
+        if second_order_edge_collection_name is not None:
+            second_order_depth = (
+                second_order_depth if isinstance(second_order_depth, int) else 1
+            )
+
+            second_order_labels_query = f"""
+            (
+                FOR start IN 1..1 {edge_direction} doc @@e_col
+                    FOR v, e IN 1..{second_order_depth} {edge_direction} start @@second_order_e_col
+                        {f"FILTER {filter_clause}" if filter_clause else ""}
+                        {f"SORT {sort_clause}" if sort_clause else ""}
+                        RETURN {return_clause}
+            )
+            """
+
+            bind_vars["@second_order_e_col"] = second_order_edge_collection_name
 
         count = 0
         for v_col in target_e_d["from_vertex_collections"]:
             query = f"""
                 {with_cols_str}
                 FOR doc IN @@v_col
-                    LET labels = (
+                    LET first_order_labels = (
                         FOR v, e IN 1 {edge_direction} doc @@e_col
                             {f"FILTER {filter_clause}" if filter_clause else ""}
                             {f"SORT {sort_clause}" if sort_clause else ""}
                             RETURN {return_clause}
                     )
 
+                    LET second_order_labels = {second_order_labels_query}
+
+                    LET labels = UNION_DISTINCT(first_order_labels, second_order_labels)
+
                     UPDATE doc WITH {{{attribute_name}: labels}} IN @@v_col
             """
 
-            self.db.aql.execute(
-                query, bind_vars={"@v_col": v_col, "@e_col": edge_collection_name}
-            )
+            bind_vars["@v_col"] = v_col
+
+            self.db.aql.execute(query, bind_vars=bind_vars)
 
             count += self.db.collection(v_col).count()
 
