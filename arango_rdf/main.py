@@ -1452,15 +1452,23 @@ class ArangoRDF(AbstractArangoRDF):
                 second_order_depth if isinstance(second_order_depth, int) else 1
             )
 
+            second_order_filter_clause = (
+                f"FILTER {second_order_filter_clause}"
+                if second_order_filter_clause
+                else ""
+            )
+
+            second_order_sort_clause = (
+                f"SORT {second_order_sort_clause}" if second_order_sort_clause else ""
+            )
+
             second_order_labels_query = f"""
             (
                 FOR start IN 1..1 {edge_direction} doc @@e_col
                     FOR v, e IN 1..{second_order_depth} {edge_direction}
                     start @@second_order_e_col
-                        {f"FILTER {second_order_filter_clause}"
-                        if second_order_filter_clause else ""}
-                        {f"SORT {second_order_sort_clause}"
-                        if second_order_sort_clause else ""}
+                        {second_order_filter_clause}
+                        {second_order_sort_clause}
                         RETURN {return_clause}
             )
             """
