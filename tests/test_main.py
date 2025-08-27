@@ -5667,13 +5667,13 @@ def test_pgt_second_order_edge_collection_name() -> None:
         @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
         ex:Alice a ex:Human .
-        
+
         ex:Bob a ex:Person .
-        
+
         ex:Charlie a ex:Animal .
-        
+
         ex:Dana a ex:Entity .
-        
+
         ex:Eve a ex:Human .
         ex:Eve a ex:Person .
 

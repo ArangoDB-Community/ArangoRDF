@@ -1348,6 +1348,8 @@ class ArangoRDF(AbstractArangoRDF):
         with_collections: Optional[List[str]] = None,
         second_order_edge_collection_name: Optional[str] = None,
         second_order_depth: Optional[int] = None,
+        second_order_filter_clause: Optional[str] = None,
+        second_order_sort_clause: Optional[str] = None,
     ) -> int:
         """RDF --> ArangoDB (PGT): Migrate all edges in the specified edge collection to
         attributes. This method is useful when combined with the
@@ -1385,15 +1387,25 @@ class ArangoRDF(AbstractArangoRDF):
             Defaults to the target edge collection's
             **to_vertex_collections** property based off its edge definition.
         :type with_collections: Optional[List[str]]
-        :param second_order_edge_collection_name: In addition to the **edge_collection_name**,
-            it is possible to traverse the edges of the second order edge collection to apply
-            the same attribute to the original target verticies. A common use case is to
-            set **edge_collection_name** to **"type"** and **second_order_edge_collection_name**
-            to **"subClassOf"** for inferring the **_type** attribute. Defaults to None.
+        :param second_order_edge_collection_name: In addition to the
+            **edge_collection_name**, it is possible to traverse the edges of the
+            second order edge collection to apply the same attribute to the original
+            target verticies. A common use case is to set **edge_collection_name** to
+            **"type"** and **second_order_edge_collection_name** to **"subClassOf"**
+            for inferring the **_type** attribute. Defaults to None.
         :type second_order_edge_collection_name: Optional[str]
-        :param second_order_depth: The depth of the second order traversal. Defaults to 1.
-            This parameter is only used if **second_order_edge_collection_name** is set.
+        :param second_order_depth: The depth of the second order traversal.
+            Defaults to 1. This parameter is only used if
+            **second_order_edge_collection_name** is set.
         :type second_order_depth: Optional[int]
+        :param second_order_filter_clause: A FILTER statement to filter the second order
+            traversed edges & target vertices. Defaults to None. This parameter is only
+            used if **second_order_edge_collection_name** is set.
+        :type second_order_filter_clause: Optional[str]
+        :param second_order_sort_clause: A SORT statement to order the second order
+            traversed vertices. Defaults to None. This parameter is only used if
+            **second_order_edge_collection_name** is set.
+        :type second_order_sort_clause: Optional[str]
         :return: The number of documents updated.
         :rtype: int
         """
@@ -1443,9 +1455,12 @@ class ArangoRDF(AbstractArangoRDF):
             second_order_labels_query = f"""
             (
                 FOR start IN 1..1 {edge_direction} doc @@e_col
-                    FOR v, e IN 1..{second_order_depth} {edge_direction} start @@second_order_e_col
-                        {f"FILTER {filter_clause}" if filter_clause else ""}
-                        {f"SORT {sort_clause}" if sort_clause else ""}
+                    FOR v, e IN 1..{second_order_depth} {edge_direction}
+                    start @@second_order_e_col
+                        {f"FILTER {second_order_filter_clause}"
+                        if second_order_filter_clause else ""}
+                        {f"SORT {second_order_sort_clause}"
+                        if second_order_sort_clause else ""}
                         RETURN {return_clause}
             )
             """
