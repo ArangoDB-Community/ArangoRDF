@@ -1465,6 +1465,8 @@ class ArangoRDF(AbstractArangoRDF):
             second_order_labels_query = f"""
             (
                 FOR start IN 1..1 {edge_direction} doc @@e_col
+                    {f"FILTER {filter_clause}" if filter_clause else ""}
+                    {f"SORT {sort_clause}" if sort_clause else ""}
                     FOR v, e IN 1..{second_order_depth} {edge_direction}
                     start @@second_order_e_col
                         {second_order_filter_clause}
