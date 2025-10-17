@@ -1,4 +1,5 @@
 import os
+import pytest
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, Set, Tuple
@@ -51,6 +52,17 @@ def pytest_configure(config: Any) -> None:
 
     global adbrdf
     adbrdf = ArangoRDF(db)
+
+
+@pytest.fixture(autouse=True)
+def reset_arango_db():
+    global db
+    for g in db.graphs():
+        db.delete_graph(g["name"], drop_collections=True)
+
+    for c in db.collections():
+        if c["system"] == False:
+            db.delete_collection(c["name"])
 
 
 def arango_restore(path_to_data: str) -> None:
