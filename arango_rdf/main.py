@@ -1014,7 +1014,6 @@ class ArangoRDF(AbstractArangoRDF):
         if overwrite_graph:
             self.db.delete_graph(name, ignore_missing=True, drop_collections=True)
 
-        # if self.__resource_collection is None:
         if write_adb_col_statements or contextualize_graph:
             # Enabling Graph Contextualization forces
             # us to run the ArangoDB Collection Mapping algorithm
@@ -1126,6 +1125,7 @@ class ArangoRDF(AbstractArangoRDF):
         rdf_graph: RDFGraph,
         adb_col_statements: Optional[RDFGraph] = None,
         uri_map_collection_name: Optional[str] = None,
+        
     ) -> RDFGraph:
         """RDF -> ArangoDB (PGT): Run the ArangoDB Collection Mapping Process for
         **rdf_graph** to map RDF Resources to their respective ArangoDB Collection.
@@ -1197,6 +1197,13 @@ class ArangoRDF(AbstractArangoRDF):
             # 4. (Optional) Create the type map for Graph Contextualization
             if self.__contextualize_graph:
                 self.__type_map = self.__combine_type_map_and_dr_map()
+
+            # If the resource collection is not None, we don't need to run the
+            # ArangoDB Collection Mapping Process to completion, since we will
+            # be using the resource collection for all RDF Resources except for
+            # Class and Property.
+            if self.__resource_collection is not None:
+                return self.__adb_col_statements
 
             # 5. Finalize **adb_col_statements**
             for rdf_map in [self.__explicit_type_map, self.__domain_range_map]:
