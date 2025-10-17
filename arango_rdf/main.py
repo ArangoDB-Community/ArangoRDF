@@ -1014,7 +1014,8 @@ class ArangoRDF(AbstractArangoRDF):
         if overwrite_graph:
             self.db.delete_graph(name, ignore_missing=True, drop_collections=True)
 
-        if self.__resource_collection is None and (write_adb_col_statements or contextualize_graph):
+        # if self.__resource_collection is None:
+        if write_adb_col_statements or contextualize_graph:
             # Enabling Graph Contextualization forces
             # us to run the ArangoDB Collection Mapping algorithm
             # regardless of **write_adb_col_statements**
@@ -2349,29 +2350,37 @@ class ArangoRDF(AbstractArangoRDF):
             `ArangoRDF.__insert_adb_docs()`.
         :type adb_import_kwargs: Dict[str, Any]
         """
-        # TODO: Revisit FILTER clauses
-        # We rely on the FILTER clauses to make sure no literal
-        # statements belonging to RDF Lists are processed,
-        # as that is handled in another step (which also needs work...)
-        query = f"""
-            PREFIX rdf: <{RDF}>
+        # Pre-compute blacklist sets
+        rdf_list_subjects = set()
+        
+        # Collect RDF list subjects
+        for s in self.__rdf_graph.subjects(RDF.first, None):
+            rdf_list_subjects.add(s)
+        for s in self.__rdf_graph.subjects(RDF.rest, None):
+            rdf_list_subjects.add(s)
+        
+        # Use string patterns (same as your __pgt_statement_is_part_of_rdf_list method)
+        rdf_ns = str(RDF)
+        container_pattern_n = re.compile(f"^{re.escape(rdf_ns)}_[0-9]+$")
+        container_pattern_li = re.compile(f"^{re.escape(rdf_ns)}li$")
+        
+        # Direct iteration with efficient filtering
+        literal_pairs = set()  # Use set to avoid duplicates automatically
+        
+        for s, p, o in self.__rdf_graph:
+            if not isinstance(o, Literal):
+                continue
 
-            SELECT ?subject ?predicate
-            WHERE {{
-                ?subject ?predicate ?object .
-                FILTER isLiteral(?object)
-                FILTER NOT EXISTS {{ ?subject rdf:first ?anyObject }}
-                FILTER NOT EXISTS {{ ?subject rdf:rest ?anyObject }}
-                FILTER (!regex(str(?predicate), "^{RDF}_[0-9]+$"))
-                FILTER (!regex(str(?predicate), "^{RDF}li$"))
-            }}
-            GROUP BY ?subject ?predicate
-        """
-
-        with get_spinner_progress("(RDF → ADB): PGT [RDF Literals (Query)]") as sp:
-            sp.add_task("")
-
-            data = self.__rdf_graph.query(query)
+            if s in rdf_list_subjects:
+                continue
+                
+            p_str = str(p)
+            if container_pattern_n.match(p_str) or container_pattern_li.match(p_str):
+                continue
+                
+            literal_pairs.add((s, p))
+        
+        data = list(literal_pairs)
 
         s: RDFTerm
         p: URIRef
@@ -2380,7 +2389,7 @@ class ArangoRDF(AbstractArangoRDF):
         total = len(data)
         batch_size = batch_size or total
         bar_progress = get_bar_progress("(RDF → ADB): PGT [RDF Literals]", "#EF7D00")
-        bar_progress_task = bar_progress.add_task("", total=total - 1)
+        bar_progress_task = bar_progress.add_task("", total=total)
         spinner_progress = get_import_spinner_progress("    ")
 
         statements = (
