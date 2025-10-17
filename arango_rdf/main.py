@@ -151,9 +151,6 @@ class ArangoRDF(AbstractArangoRDF):
         # A mapping of Reified Subjects to their corresponding ArangoDB Edge.
         self.__reified_subject_map: Dict[Union[URIRef, BNode], Tuple[str, str, str]]
 
-        # Metadata cache for performance optimization
-        self.__term_metadata_cache: Dict[str, RDFTermMeta] = {}
-
         # Commonly used URIs
         self.__rdfs_resource_str = str(RDFS.Resource)
         self.__rdfs_class_str = str(RDFS.Class)
@@ -921,8 +918,6 @@ class ArangoRDF(AbstractArangoRDF):
             """
             raise TypeError(m)
 
-        self.clear_term_metadata_cache()
-
         namespace_prefixes = []
         if namespace_collection_name:
             namespace_prefixes = [
@@ -1128,8 +1123,6 @@ class ArangoRDF(AbstractArangoRDF):
             )
 
             logger.debug(result)
-
-        self.clear_term_metadata_cache()
 
         return self.__pgt_create_adb_graph(name)
 
@@ -2526,12 +2519,7 @@ class ArangoRDF(AbstractArangoRDF):
         if isinstance(t, Literal):
             return t, "", "", ""  # No other metadata needed
 
-        # Check cache first
         t_str = str(t)
-        if t_str in self.__term_metadata_cache:
-            return self.__term_metadata_cache[t_str]
-
-        # Compute metadata if not cached
         t_col = ""
         t_key = self.rdf_id_to_adb_key(t_str, t)
         t_label = self.rdf_id_to_adb_label(t_str)
@@ -2559,18 +2547,7 @@ class ArangoRDF(AbstractArangoRDF):
                 logger.debug(f"Found unknown resource: {t} ({t_key})")
                 t_col = self.__UNKNOWN_RESOURCE
 
-        # Cache the result and return
-        result = t, str(t_col), t_key, t_label
-        self.__term_metadata_cache[t_str] = result
-        return result
-
-    def clear_term_metadata_cache(self) -> None:
-        """Clear the metadata cache to free memory.
-
-        Useful for long-running operations or when processing multiple
-        graphs to prevent excessive memory usage.
-        """
-        self.__term_metadata_cache.clear()
+        return t, str(t_col), t_key, t_label
 
     def __pgt_rdf_val_to_adb_val(
         self,
