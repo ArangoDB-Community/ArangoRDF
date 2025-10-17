@@ -12,7 +12,7 @@ from typing import Any, Callable, DefaultDict, Dict, List, Optional, Set, Tuple,
 import farmhash
 from arango.collection import StandardCollection
 from arango.cursor import Cursor
-from arango.database import StandardDatabase
+from arango.database import AsyncDatabase, StandardDatabase
 from arango.graph import Graph as ADBGraph
 from isodate import Duration
 from rdflib import RDF, RDFS, XSD, BNode
@@ -77,6 +77,7 @@ class ArangoRDF(AbstractArangoRDF):
         controller: ArangoRDFController = ArangoRDFController(),
         logging_lvl: Union[str, int] = logging.INFO,
         rdf_attribute_prefix: str = "_",
+        insert_async: bool = False,
     ):
         self.set_logging(logging_lvl)
 
@@ -88,9 +89,13 @@ class ArangoRDF(AbstractArangoRDF):
             msg = "**controller** parameter must inherit from ArangoRDFController"
             raise TypeError(msg)
 
-        self.__db = db
-        self.__cntrl = controller
-        self.__cntrl.db = db
+        self.db: StandardDatabase = db
+        self.async_db: AsyncDatabase = db.begin_async_execution(return_result=False)
+        self.insert_async = insert_async
+
+        self.controller: ArangoRDFController = controller
+        self.controller.db: StandardDatabase = db
+        self.controller.async_db: AsyncDatabase = self.async_db
 
         # Set the RDF attribute prefix
         self.__rdf_attribute_prefix = rdf_attribute_prefix
@@ -141,6 +146,9 @@ class ArangoRDF(AbstractArangoRDF):
         # A mapping of Reified Subjects to their corresponding ArangoDB Edge.
         self.__reified_subject_map: Dict[Union[URIRef, BNode], Tuple[str, str, str]]
 
+        # Metadata cache for performance optimization
+        self.__term_metadata_cache: Dict[str, RDFTermMeta] = {}
+
         # Commonly used URIs
         self.__rdfs_resource_str = str(RDFS.Resource)
         self.__rdfs_class_str = str(RDFS.Class)
@@ -162,14 +170,6 @@ class ArangoRDF(AbstractArangoRDF):
         self.__uri_map_collection: Optional[StandardCollection] = None
 
         logger.info(f"Instantiated ArangoRDF with database '{db.name}'")
-
-    @property
-    def db(self) -> StandardDatabase:
-        return self.__db  # pragma: no cover
-
-    @property
-    def controller(self) -> ArangoRDFController:
-        return self.__cntrl  # pragma: no cover
 
     @property
     def rdf_attribute_prefix(self) -> str:
@@ -916,6 +916,8 @@ class ArangoRDF(AbstractArangoRDF):
             """
             raise TypeError(m)
 
+        self.clear_term_metadata_cache()
+
         namespace_prefixes = []
         if namespace_collection_name:
             namespace_prefixes = [
@@ -930,26 +932,24 @@ class ArangoRDF(AbstractArangoRDF):
                 m = "Cannot specify both **uri_map_collection_name** and **resource_collection_name**."  # noqa: E501
                 raise ValueError(m)
 
-            if not self.__db.has_collection(uri_map_collection_name):
-                self.__db.create_collection(uri_map_collection_name)
+            if not self.db.has_collection(uri_map_collection_name):
+                self.db.create_collection(uri_map_collection_name)
 
-            self.__uri_map_collection = self.__db.collection(uri_map_collection_name)
+            self.__uri_map_collection = self.db.collection(uri_map_collection_name)
 
         self.__resource_collection = None
         if resource_collection_name:
-            if not self.__db.has_collection(resource_collection_name):
-                self.__db.create_collection(resource_collection_name)
+            if not self.db.has_collection(resource_collection_name):
+                self.db.create_collection(resource_collection_name)
 
-            self.__resource_collection = self.__db.collection(resource_collection_name)
+            self.__resource_collection = self.db.collection(resource_collection_name)
 
         self.__predicate_collection = None
         if predicate_collection_name:
-            if not self.__db.has_collection(predicate_collection_name):
-                self.__db.create_collection(predicate_collection_name, edge=True)
+            if not self.db.has_collection(predicate_collection_name):
+                self.db.create_collection(predicate_collection_name, edge=True)
 
-            self.__predicate_collection = self.__db.collection(
-                predicate_collection_name
-            )
+            self.__predicate_collection = self.db.collection(predicate_collection_name)
 
         # Reset the ArangoDB Config
         self.__adb_docs = defaultdict(lambda: defaultdict(dict))
@@ -1097,26 +1097,28 @@ class ArangoRDF(AbstractArangoRDF):
         bar_progress = get_bar_progress("(RDF → ADB): PGT [RDF Lists]", "#EF7D00")
         with Live(Group(bar_progress, spinner_progress)):
             self.__pgt_process_rdf_lists(bar_progress)
-            self.__insert_adb_docs(spinner_progress)
+            self.__insert_adb_docs(spinner_progress, **adb_import_kwargs)
 
         ###########################
         # PGT: Namespace Prefixes #
         ###########################
 
         if namespace_collection_name:
-            if not self.__db.has_collection(namespace_collection_name):
-                self.__db.create_collection(namespace_collection_name)
+            if not self.db.has_collection(namespace_collection_name):
+                self.db.create_collection(namespace_collection_name)
 
             docs = [
                 {"prefix": prefix, "uri": uri, "_key": self.hash(uri)}
                 for prefix, uri in namespace_prefixes
             ]
 
-            result = self.__db.collection(namespace_collection_name).insert_many(
+            result = self.db.collection(namespace_collection_name).insert_many(
                 docs, overwrite=True, raise_on_document_error=True
             )
 
             logger.debug(result)
+
+        self.clear_term_metadata_cache()
 
         return self.__pgt_create_adb_graph(name)
 
@@ -1125,7 +1127,6 @@ class ArangoRDF(AbstractArangoRDF):
         rdf_graph: RDFGraph,
         adb_col_statements: Optional[RDFGraph] = None,
         uri_map_collection_name: Optional[str] = None,
-        
     ) -> RDFGraph:
         """RDF -> ArangoDB (PGT): Run the ArangoDB Collection Mapping Process for
         **rdf_graph** to map RDF Resources to their respective ArangoDB Collection.
@@ -1161,18 +1162,18 @@ class ArangoRDF(AbstractArangoRDF):
         self.__adb_col_statements.bind("adb", self.__adb_ns)
 
         self.__rdf_graph = rdf_graph
-        self.__cntrl.rdf_graph = rdf_graph
+        self.controller.rdf_graph = rdf_graph
 
         with get_spinner_progress("(RDF → ADB): Write Col Statements") as rp:
             rp.add_task("")
 
             # 0. Add URI Collection statements
             if uri_map_collection_name:
-                if not self.__db.has_collection(uri_map_collection_name):
+                if not self.db.has_collection(uri_map_collection_name):
                     m = f"URI collection '{uri_map_collection_name}' does not exist"
                     raise ValueError(m)
 
-                for doc in self.__db.collection(uri_map_collection_name):
+                for doc in self.db.collection(uri_map_collection_name):
                     uri = URIRef(doc[self.__rdf_uri_attr])
                     collection = str(doc["collection"])
                     self.__add_adb_col_statement(uri, collection, True)
@@ -1212,7 +1213,7 @@ class ArangoRDF(AbstractArangoRDF):
                     if t in self.__adb_col_statements or len(class_set) == 0:
                         continue  # pragma: no cover # (false negative)
 
-                    best_class = self.__cntrl.identify_best_class(
+                    best_class = self.controller.identify_best_class(
                         rdf_resource, class_set, self.__subclass_tree
                     )
 
@@ -1254,8 +1255,8 @@ class ArangoRDF(AbstractArangoRDF):
         """
         ur_collection_name = f"{graph_name}_UnknownResource"
 
-        ur_collection = self.__db.collection(ur_collection_name)
-        uri_map_collection = self.__db.collection(uri_map_collection_name)
+        ur_collection = self.db.collection(ur_collection_name)
+        uri_map_collection = self.db.collection(uri_map_collection_name)
 
         if ur_collection.count() == 0:
             logger.info("No Unknown Resources to migrate")
@@ -1300,9 +1301,7 @@ class ArangoRDF(AbstractArangoRDF):
             "graph": graph_name,
         }
 
-        cursor = self.__db.aql.execute(
-            query, bind_vars=bind_vars, stream=True, **kwargs
-        )
+        cursor = self.db.aql.execute(query, bind_vars=bind_vars, stream=True, **kwargs)
 
         edge_count = 0
 
@@ -1319,7 +1318,7 @@ class ArangoRDF(AbstractArangoRDF):
                         edges_to_modify = edge_data["edges_to_modify"]
                         edge_count += len(edges_to_modify)
 
-                        result = self.__db.collection(edge_collection).update_many(
+                        result = self.db.collection(edge_collection).update_many(
                             edges_to_modify,
                             merge=True,
                             raise_on_document_error=True,
@@ -1327,9 +1326,7 @@ class ArangoRDF(AbstractArangoRDF):
 
                         logger.debug(result)
 
-                    self.__db.collection(collection).update(
-                        data, merge=True, silent=True
-                    )
+                    self.db.collection(collection).update(data, merge=True, silent=True)
 
                 cursor.batch().clear()
                 if cursor.has_more():
@@ -1640,12 +1637,12 @@ class ArangoRDF(AbstractArangoRDF):
         if ignored_attributes:
             aql_return_value = f"UNSET(doc, {list(ignored_attributes)})"
 
-        col_size: int = self.__db.collection(col).count()
+        col_size: int = self.db.collection(col).count()
 
         with get_spinner_progress(f"(ADB → RDF): Export '{col}' ({col_size})") as sp:
             sp.add_task("")
 
-            cursor: Cursor = self.__db.aql.execute(
+            cursor: Cursor = self.db.aql.execute(
                 f"FOR doc IN @@col RETURN {aql_return_value}",
                 bind_vars={"@col": col},
                 **{**adb_export_kwargs, **{"stream": True}},
@@ -2359,34 +2356,34 @@ class ArangoRDF(AbstractArangoRDF):
         """
         # Pre-compute blacklist sets
         rdf_list_subjects = set()
-        
+
         # Collect RDF list subjects
         for s in self.__rdf_graph.subjects(RDF.first, None):
             rdf_list_subjects.add(s)
         for s in self.__rdf_graph.subjects(RDF.rest, None):
             rdf_list_subjects.add(s)
-        
+
         # Use string patterns (same as your __pgt_statement_is_part_of_rdf_list method)
         rdf_ns = str(RDF)
         container_pattern_n = re.compile(f"^{re.escape(rdf_ns)}_[0-9]+$")
         container_pattern_li = re.compile(f"^{re.escape(rdf_ns)}li$")
-        
+
         # Direct iteration with efficient filtering
         literal_pairs = set()  # Use set to avoid duplicates automatically
-        
+
         for s, p, o in self.__rdf_graph:
             if not isinstance(o, Literal):
                 continue
 
             if s in rdf_list_subjects:
                 continue
-                
+
             p_str = str(p)
             if container_pattern_n.match(p_str) or container_pattern_li.match(p_str):
                 continue
-                
+
             literal_pairs.add((s, p))
-        
+
         data = list(literal_pairs)
 
         s: RDFTerm
@@ -2405,15 +2402,22 @@ class ArangoRDF(AbstractArangoRDF):
             else self.__rdf_graph.triples
         )
 
+        # Optimization: track processed terms to avoid duplicate work
+        processed_terms = set()
+
         with Live(Group(bar_progress, spinner_progress)):
             for i, (s, p) in enumerate(data, 1):
                 bar_progress.update(bar_progress_task, advance=1)
 
                 s_meta = self.__pgt_get_term_metadata(s)
+                # if s not in processed_terms:
                 self.__pgt_process_rdf_term(s_meta)
+                # processed_terms.add(s)
 
                 p_meta = self.__pgt_get_term_metadata(p)
+                # if p not in processed_terms:
                 self.__pgt_process_rdf_term(p_meta)
+                # processed_terms.add(p)
 
                 _, s_col, s_key, _ = s_meta
                 _, _, _, p_label = p_meta
@@ -2491,10 +2495,16 @@ class ArangoRDF(AbstractArangoRDF):
             Collection name, Document Key, and Document label.
         :rtype: Tuple[URIRef | BNode | Literal, str, str, str]
         """
+        # Quick return for Literals (no caching needed)
         if type(t) is Literal:
             return t, "", "", ""  # No other metadata needed
 
+        # Check cache first
         t_str = str(t)
+        if t_str in self.__term_metadata_cache:
+            return self.__term_metadata_cache[t_str]
+
+        # Compute metadata if not cached
         t_col = ""
         t_key = self.rdf_id_to_adb_key(t_str, t)
         t_label = self.rdf_id_to_adb_label(t_str)
@@ -2522,7 +2532,18 @@ class ArangoRDF(AbstractArangoRDF):
                 logger.debug(f"Found unknown resource: {t} ({t_key})")
                 t_col = self.__UNKNOWN_RESOURCE
 
-        return t, str(t_col), t_key, t_label
+        # Cache the result and return
+        result = t, str(t_col), t_key, t_label
+        self.__term_metadata_cache[t_str] = result
+        return result
+
+    def clear_term_metadata_cache(self) -> None:
+        """Clear the metadata cache to free memory.
+
+        Useful for long-running operations or when processing multiple
+        graphs to prevent excessive memory usage.
+        """
+        self.__term_metadata_cache.clear()
 
     def __pgt_rdf_val_to_adb_val(
         self,
@@ -3666,8 +3687,11 @@ class ArangoRDF(AbstractArangoRDF):
         if len(self.__adb_docs) == 0:
             return
 
+        db = self.async_db if self.insert_async else self.db
+
         adb_import_kwargs["overwrite_mode"] = "update"
         adb_import_kwargs["merge"] = True
+
         if "raise_on_document_error" not in adb_import_kwargs:
             adb_import_kwargs["raise_on_document_error"] = True
 
@@ -3687,9 +3711,7 @@ class ArangoRDF(AbstractArangoRDF):
             logger.debug(f"Inserting Documents: {doc_list}")
 
             try:
-                result = self.db.collection(col).insert_many(
-                    doc_list, **adb_import_kwargs
-                )
+                result = db.collection(col).insert_many(doc_list, **adb_import_kwargs)
             except Exception as e:
                 e_str = str(e)
 
