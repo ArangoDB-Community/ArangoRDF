@@ -109,6 +109,11 @@ class ArangoRDF(AbstractArangoRDF):
         self.__rdf_lang_attr = f"{rdf_attribute_prefix}lang"
         self.__rdf_datatype_attr = f"{rdf_attribute_prefix}datatype"
 
+        # Pre-compile regex patterns for container predicates
+        rdf_ns = str(RDF)
+        self.__container_pattern_n = re.compile(f"^{re.escape(rdf_ns)}_[0-9]+$")
+        self.__container_pattern_li = re.compile(f"^{re.escape(rdf_ns)}li$")
+
         # An RDF to ArangoDB variable used as a buffer
         # to store the to-be-inserted ArangoDB documents (RDF-to-ArangoDB).
         self.__adb_docs: ADBDocs
@@ -1035,6 +1040,12 @@ class ArangoRDF(AbstractArangoRDF):
                 adb_import_kwargs,
             )
 
+        ##############################
+        # PGT: Pre-compute RDF lists #
+        ##############################
+
+        self.__precompute_rdf_list_info()
+
         ###########################
         # PGT: Literal Statements #
         ###########################
@@ -1073,8 +1084,8 @@ class ArangoRDF(AbstractArangoRDF):
 
                 # Address the possibility of (s, p, o) being a part of the
                 # structure of an RDF Collection or an RDF Container.
-                # TODO: Move out of loop, into a pre-processing step
-                rdf_list_col = self.__pgt_statement_is_part_of_rdf_list(s, p)
+                # Uses pre-computed RDF list information
+                rdf_list_col = self.__is_rdf_list_statement(s, p)
                 if rdf_list_col:
                     key = self.rdf_id_to_adb_label(str(p))
                     doc = self.__rdf_list_data[rdf_list_col][s]
@@ -1121,6 +1132,47 @@ class ArangoRDF(AbstractArangoRDF):
         self.clear_term_metadata_cache()
 
         return self.__pgt_create_adb_graph(name)
+
+    def __precompute_rdf_list_info(self) -> None:
+        """Pre-compute RDF list information for optimization.
+
+        Collects all RDF list subjects categorized by type once
+        to avoid repeated computation in processing loops.
+        """
+        # Pre-compute collection subjects (RDF.first, RDF.rest)
+        self.__rdf_collection_subjects = set()
+        for s in self.__rdf_graph.subjects(RDF.first, None):
+            self.__rdf_collection_subjects.add(s)
+        for s in self.__rdf_graph.subjects(RDF.rest, None):
+            self.__rdf_collection_subjects.add(s)
+            
+        # Pre-compute container subjects (container predicates _1, li, etc.)
+        self.__rdf_container_subjects = set()
+        for s, p, o in self.__rdf_graph:
+            if isinstance(s, BNode):
+                p_str = str(p)
+                if self.__container_pattern_n.match(p_str) or self.__container_pattern_li.match(p_str):
+                    self.__rdf_container_subjects.add(s)
+
+        # Combined set for backward compatibility and general filtering
+        self.__rdf_list_subjects = self.__rdf_collection_subjects | self.__rdf_container_subjects
+
+    def __is_rdf_list_statement(self, s: RDFTerm, p: URIRef) -> str:
+        """Returns the list type or empty string if not a list statement.
+
+        :param s: The RDF Subject
+        :param p: The RDF Predicate
+        :return: The list type or empty string if not a list statement
+        """
+        # O(1) lookups using pre-computed categorized sets
+        if s in self.__rdf_collection_subjects and p in {RDF.first, RDF.rest}:
+            return "_COLLECTION_BNODE"
+            
+        if s in self.__rdf_container_subjects:
+            # Already pre-computed as container subject, no need for regex
+            return "_CONTAINER_BNODE"
+
+        return ""
 
     def write_adb_col_statements(
         self,
@@ -1716,7 +1768,7 @@ class ArangoRDF(AbstractArangoRDF):
         term = self.__adb_doc_to_rdf_term(adb_v, v_col)
         self.__term_map[adb_v["_id"]] = term
 
-        if type(term) is Literal:
+        if isinstance(term, Literal):
             return term
 
         sg = URIRef(adb_v.get(self.__rdf_sub_graph_uri_attr, "")) or None
@@ -1987,7 +2039,7 @@ class ArangoRDF(AbstractArangoRDF):
         :type sg: URIRef | None
         """
 
-        if type(val) is list:
+        if isinstance(val, list):
             if self.__list_conversion == "static":
                 for v in val:
                     self.__adb_val_to_rdf_val(col, s, p, v, sg)
@@ -2016,7 +2068,7 @@ class ArangoRDF(AbstractArangoRDF):
                 val = json.dumps(val)
                 self.__add_to_rdf_graph(s, p, Literal(val), sg)
 
-        elif type(val) is dict:
+        elif isinstance(val, dict):
             if self.__dict_conversion == "static":
                 bnode = BNode()
                 self.__add_to_rdf_graph(s, p, bnode, sg)
@@ -2141,7 +2193,7 @@ class ArangoRDF(AbstractArangoRDF):
 
             # TODO: Populate adb docs? Or uncessary?
 
-        elif type(t) is URIRef:
+        elif isinstance(t, URIRef):
             t_col = self.__URIREF_COL
             t_label = self.rdf_id_to_adb_label(t_str)
 
@@ -2152,7 +2204,7 @@ class ArangoRDF(AbstractArangoRDF):
                 self.__rdf_type_attr: "URIRef",
             }
 
-        elif type(t) is BNode:
+        elif isinstance(t, BNode):
             t_col = self.__BNODE_COL
 
             self.__adb_docs[t_col][t_key] = {
@@ -2161,7 +2213,7 @@ class ArangoRDF(AbstractArangoRDF):
                 self.__rdf_type_attr: "BNode",
             }
 
-        elif type(t) is Literal:
+        elif isinstance(t, Literal):
             t_col = self.__LITERAL_COL
             t_value = self.__get_literal_val(t, t_str)
             t_label = t_value
@@ -2354,32 +2406,14 @@ class ArangoRDF(AbstractArangoRDF):
             `ArangoRDF.__insert_adb_docs()`.
         :type adb_import_kwargs: Dict[str, Any]
         """
-        # Pre-compute blacklist sets
-        rdf_list_subjects = set()
-
-        # Collect RDF list subjects
-        for s in self.__rdf_graph.subjects(RDF.first, None):
-            rdf_list_subjects.add(s)
-        for s in self.__rdf_graph.subjects(RDF.rest, None):
-            rdf_list_subjects.add(s)
-
-        # Use string patterns (same as your __pgt_statement_is_part_of_rdf_list method)
-        rdf_ns = str(RDF)
-        container_pattern_n = re.compile(f"^{re.escape(rdf_ns)}_[0-9]+$")
-        container_pattern_li = re.compile(f"^{re.escape(rdf_ns)}li$")
-
-        # Direct iteration with efficient filtering
         literal_pairs = set()  # Use set to avoid duplicates automatically
 
         for s, p, o in self.__rdf_graph:
             if not isinstance(o, Literal):
                 continue
 
-            if s in rdf_list_subjects:
-                continue
-
-            p_str = str(p)
-            if container_pattern_n.match(p_str) or container_pattern_li.match(p_str):
+            # Use pre-computed RDF list information (includes both collections and containers)
+            if s in self.__rdf_list_subjects:
                 continue
 
             literal_pairs.add((s, p))
@@ -2402,22 +2436,15 @@ class ArangoRDF(AbstractArangoRDF):
             else self.__rdf_graph.triples
         )
 
-        # Optimization: track processed terms to avoid duplicate work
-        processed_terms = set()
-
         with Live(Group(bar_progress, spinner_progress)):
             for i, (s, p) in enumerate(data, 1):
                 bar_progress.update(bar_progress_task, advance=1)
 
                 s_meta = self.__pgt_get_term_metadata(s)
-                # if s not in processed_terms:
                 self.__pgt_process_rdf_term(s_meta)
-                # processed_terms.add(s)
 
                 p_meta = self.__pgt_get_term_metadata(p)
-                # if p not in processed_terms:
                 self.__pgt_process_rdf_term(p_meta)
-                # processed_terms.add(p)
 
                 _, s_col, s_key, _ = s_meta
                 _, _, _, p_label = p_meta
@@ -2496,7 +2523,7 @@ class ArangoRDF(AbstractArangoRDF):
         :rtype: Tuple[URIRef | BNode | Literal, str, str, str]
         """
         # Quick return for Literals (no caching needed)
-        if type(t) is Literal:
+        if isinstance(t, Literal):
             return t, "", "", ""  # No other metadata needed
 
         # Check cache first
@@ -2581,14 +2608,14 @@ class ArangoRDF(AbstractArangoRDF):
 
         # This flag is only active in ArangoRDF.__pgt_process_rdf_lists()
         if process_val_as_serialized_list:
-            doc[key] += f"'{val}'," if type(val) is str else f"{val},"
+            doc[key] += f"'{val}'," if isinstance(val, str) else f"{val},"
             return
 
         prev_val = doc.get(key)
 
         if prev_val is None:
             doc[key] = val
-        elif type(prev_val) is list:
+        elif isinstance(prev_val, list):
             prev_val.append(val)
         else:
             doc[key] = [prev_val, val]
@@ -2641,7 +2668,7 @@ class ArangoRDF(AbstractArangoRDF):
                 "_to": _to,
             }
 
-        elif type(t) is URIRef:
+        elif isinstance(t, URIRef):
             self.__adb_docs[t_col][t_key] = {
                 "_key": t_key,
                 self.__rdf_uri_attr: str(t),
@@ -2660,14 +2687,14 @@ class ArangoRDF(AbstractArangoRDF):
                     self.__rdf_uri_attr: str(t),
                 }
 
-        elif type(t) is BNode:
+        elif isinstance(t, BNode):
             self.__adb_docs[t_col][t_key] = {
                 "_key": t_key,
                 self.__rdf_label_attr: "",
                 self.__rdf_type_attr: "BNode",
             }
 
-        elif type(t) is Literal and all([s_col, s_key, p_label]):
+        elif isinstance(t, Literal) and all([s_col, s_key, p_label]):
             self.__pgt_process_rdf_literal(
                 t, s_col, s_key, p_label, sg_str, process_val_as_serialized_list
             )
@@ -2779,7 +2806,7 @@ class ArangoRDF(AbstractArangoRDF):
         """
         o, o_col, o_key, _ = o_meta
 
-        if type(o) is Literal or self.__pgt_object_is_head_of_rdf_list(o):
+        if isinstance(o, Literal) or self.__pgt_object_is_head_of_rdf_list(o):
             return
 
         _, s_col, s_key, _ = s_meta
@@ -2827,54 +2854,12 @@ class ArangoRDF(AbstractArangoRDF):
         :return: Whether the object points to an RDF List or not.
         :rtype: bool
         """
-        # TODO: Discuss repurcussions of this assumption
-        if type(o) is not BNode:
+        # Quick check: if not a BNode, it can't be an RDF list head
+        if not isinstance(o, BNode):
             return False
 
-        first = (o, RDF.first, None)
-        rest = (o, RDF.rest, None)
-
-        if first in self.__rdf_graph or rest in self.__rdf_graph:
-            return True
-
-        _n = (o, URIRef(f"{RDF}_1"), None)
-        li = (o, URIRef(f"{RDF}li"), None)
-
-        if _n in self.__rdf_graph or li in self.__rdf_graph:
-            return True
-
-        return False
-
-    def __pgt_statement_is_part_of_rdf_list(self, s: RDFTerm, p: URIRef) -> str:
-        """RDF -> ArangoDB (PGT): Return the associated "Document Buffer" key
-        if the RDF Statement (s, p, _) is part of an RDF Collection or RDF Container
-        within the RDF Graph. Essential for unpacking the complicated data structure of
-        RDF Lists and re-building them as an ArangoDB Document Property.
-
-        :param s: The RDF Subject.
-        :type s: URIRef | BNode
-        :param p: The RDF Predicate.
-        :type p: URIRef
-        :return: The **self.adb_docs** "Document Buffer" key associated
-            to the RDF Statement. If the statement is not part of an RDF
-            List, return an empty string.
-        :rtype: str
-        """
-        # TODO: Discuss repurcussions of this assumption
-        if type(s) is not BNode:
-            return ""
-
-        if p in {RDF.first, RDF.rest}:
-            return "_COLLECTION_BNODE"
-
-        p_str = str(p)
-        _n = r"^http://www.w3.org/1999/02/22-rdf-syntax-ns#_[0-9]{1,}$"
-        li = r"^http://www.w3.org/1999/02/22-rdf-syntax-ns#li$"
-
-        if re.match(_n, p_str) or re.match(li, p_str):
-            return "_CONTAINER_BNODE"
-
-        return ""
+        # Use pre-computed RDF list subjects for O(1) lookup
+        return o in self.__rdf_list_subjects
 
     def __pgt_process_rdf_lists(self, bar_progress: Progress) -> None:
         """RDF -> ArangoDB (PGT): Process all RDF Collections & Containers
@@ -3056,7 +3041,7 @@ class ArangoRDF(AbstractArangoRDF):
             # It is possible for the Container Membership Property
             # to be re-used in multiple statements (e.g rdf:li),
             # hence the reason why `value` can be a list or a single element.
-            value_as_list = value if type(value) is list else [value]
+            value_as_list = value if isinstance(value, list) else [value]
             for o in value_as_list:
                 self.__pgt_process_rdf_list_object(doc, s_meta, p_meta, o, sg)
 
@@ -3304,10 +3289,10 @@ class ArangoRDF(AbstractArangoRDF):
         sg = possible_sg[0]
         sg_identifier = sg.identifier if isinstance(sg, RDFGraph) else sg
 
-        if type(sg_identifier) is URIRef:
+        if isinstance(sg_identifier, URIRef):
             return str(sg_identifier)
 
-        if type(sg_identifier) is BNode:
+        if isinstance(sg_identifier, BNode):
             return ""  # TODO: Revisit
 
         raise ValueError(f"Sub Graph Identifier is not a URIRef or BNode: {sg}")
@@ -3832,7 +3817,7 @@ class ArangoRDF(AbstractArangoRDF):
             self.__e_col_map[e_col_type]["to"].add("Class")
 
         for t, t_col, t_key, t_label, dr_label in dr_meta:
-            if type(t) is Literal:
+            if isinstance(t, Literal):
                 continue
 
             DR_COL = dr_label if is_pgt else self.__STATEMENT_COL
