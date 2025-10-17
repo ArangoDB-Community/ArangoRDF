@@ -1014,7 +1014,7 @@ class ArangoRDF(AbstractArangoRDF):
         if overwrite_graph:
             self.db.delete_graph(name, ignore_missing=True, drop_collections=True)
 
-        if write_adb_col_statements or contextualize_graph:
+        if self.__resource_collection is None and (write_adb_col_statements or contextualize_graph):
             # Enabling Graph Contextualization forces
             # us to run the ArangoDB Collection Mapping algorithm
             # regardless of **write_adb_col_statements**
