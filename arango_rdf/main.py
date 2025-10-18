@@ -94,8 +94,8 @@ class ArangoRDF(AbstractArangoRDF):
         self.insert_async = insert_async
 
         self.controller: ArangoRDFController = controller
-        self.controller.db: StandardDatabase = db
-        self.controller.async_db: AsyncDatabase = self.async_db
+        self.controller.db = db
+        self.controller.async_db = self.async_db
 
         # Set the RDF attribute prefix
         self.__rdf_attribute_prefix = rdf_attribute_prefix
@@ -1042,28 +1042,8 @@ class ArangoRDF(AbstractArangoRDF):
         self.__precompute_rdf_list_info()
 
         ###########################
-        # PGT: Literal Statements #
+        # PGT: Prepare Statements #
         ###########################
-
-        self.__pgt_parse_literal_statements(
-            contextualize_statement_func,
-            batch_size,
-            adb_import_kwargs,
-        )
-
-        #############
-        # PGT: Main #
-        #############
-
-        s: RDFTerm  # Subject
-        p: URIRef  # Predicate
-        o: RDFTerm  # Object
-
-        rdf_graph_size = len(self.__rdf_graph)
-        batch_size = batch_size or rdf_graph_size
-        bar_progress = get_bar_progress("(RDF → ADB): PGT", "#08479E")
-        bar_progress_task = bar_progress.add_task("", total=rdf_graph_size)
-        spinner_progress = get_import_spinner_progress("    ")
 
         statements = (
             self.__rdf_graph.quads
@@ -1071,36 +1051,46 @@ class ArangoRDF(AbstractArangoRDF):
             else self.__rdf_graph.triples
         )
 
-        with Live(Group(bar_progress, spinner_progress)):
-            for i, (s, p, o, *sg) in enumerate(statements((None, None, None)), 1):
-                bar_progress.advance(bar_progress_task)
+        literal_statements = defaultdict(list)
+        non_literal_statements = defaultdict(list)
+        for s, p, o, *sg in statements((None, None, None)):
+            if (
+                isinstance(o, Literal)
+                and s not in self.__rdf_collection_subjects
+                and s not in self.__rdf_container_subjects
+            ):
+                literal_statements[(s, p)].append((o, sg))
+            else:
+                non_literal_statements[(s, p)].append((o, sg))
 
-                logger.debug(f"PGT: {s} {p} {o} {sg}")
+        ###########################
+        # PGT: Literal Statements #
+        ###########################
 
-                # Address the possibility of (s, p, o) being a part of the
-                # structure of an RDF Collection or an RDF Container.
-                # Uses pre-computed RDF list information
-                rdf_list_col = self.__is_rdf_list_statement(s, p)
-                if rdf_list_col:
-                    key = self.rdf_id_to_adb_label(str(p))
-                    doc = self.__rdf_list_data[rdf_list_col][s]
-                    self.__pgt_rdf_val_to_adb_val(doc, key, o)
-                    continue
+        self.__pgt_parse_literal_statements(
+            literal_statements,
+            contextualize_statement_func,
+            batch_size,
+            adb_import_kwargs,
+        )
 
-                self.__pgt_process_subject_predicate_object(
-                    s, p, o, sg, None, contextualize_statement_func
-                )
+        ###############################
+        # PGT: Non-Literal Statements #
+        ###############################
 
-                if i % batch_size == 0:
-                    self.__insert_adb_docs(spinner_progress, **adb_import_kwargs)
-
-            self.__insert_adb_docs(spinner_progress, **adb_import_kwargs)
+        self.__pgt_parse_non_literal_statements(
+            non_literal_statements,
+            contextualize_statement_func,
+            batch_size,
+            adb_import_kwargs,
+        )
 
         ##################
         # PGT: RDF Lists #
         ##################
 
-        bar_progress = get_bar_progress("(RDF → ADB): PGT [RDF Lists]", "#EF7D00")
+        bar_progress = get_bar_progress("(RDF → ADB): PGT [Lists]", "#EF7D00")
+        spinner_progress = get_import_spinner_progress("    ")
         with Live(Group(bar_progress, spinner_progress)):
             self.__pgt_process_rdf_lists(bar_progress)
             self.__insert_adb_docs(spinner_progress, **adb_import_kwargs)
@@ -1138,17 +1128,16 @@ class ArangoRDF(AbstractArangoRDF):
             self.__rdf_collection_subjects.add(s)
         for s in self.__rdf_graph.subjects(RDF.rest, None):
             self.__rdf_collection_subjects.add(s)
-            
+
         # Pre-compute container subjects (container predicates _1, li, etc.)
         self.__rdf_container_subjects = set()
-        for s, p, o in self.__rdf_graph:
+        for s, p, _ in self.__rdf_graph:
             if isinstance(s, BNode):
                 p_str = str(p)
-                if self.__container_pattern_n.match(p_str) or self.__container_pattern_li.match(p_str):
+                container_pattern_n = self.__container_pattern_n.match(p_str)
+                container_pattern_li = self.__container_pattern_li.match(p_str)
+                if container_pattern_n or container_pattern_li:
                     self.__rdf_container_subjects.add(s)
-
-        # Combined set for backward compatibility and general filtering
-        self.__rdf_list_subjects = self.__rdf_collection_subjects | self.__rdf_container_subjects
 
     def __is_rdf_list_statement(self, s: RDFTerm, p: URIRef) -> str:
         """Returns the list type or empty string if not a list statement.
@@ -1160,7 +1149,7 @@ class ArangoRDF(AbstractArangoRDF):
         # O(1) lookups using pre-computed categorized sets
         if s in self.__rdf_collection_subjects and p in {RDF.first, RDF.rest}:
             return "_COLLECTION_BNODE"
-            
+
         if s in self.__rdf_container_subjects:
             # Already pre-computed as container subject, no need for regex
             return "_CONTAINER_BNODE"
@@ -2378,6 +2367,9 @@ class ArangoRDF(AbstractArangoRDF):
 
     def __pgt_parse_literal_statements(
         self,
+        literal_statements: DefaultDict[
+            Tuple[RDFTerm, URIRef], List[Tuple[Literal, List[Any]]]
+        ],
         pgt_contextualize_statement_func: Callable[..., None],
         batch_size: Optional[int],
         adb_import_kwargs: Dict[str, Any],
@@ -2399,39 +2391,22 @@ class ArangoRDF(AbstractArangoRDF):
             `ArangoRDF.__insert_adb_docs()`.
         :type adb_import_kwargs: Dict[str, Any]
         """
-        literal_pairs = set()  # Use set to avoid duplicates automatically
-
-        for s, p, o in self.__rdf_graph:
-            if not isinstance(o, Literal):
-                continue
-
-            # Use pre-computed RDF list information (includes both collections and containers)
-            if s in self.__rdf_list_subjects:
-                continue
-
-            literal_pairs.add((s, p))
-
-        data = list(literal_pairs)
 
         s: RDFTerm
         p: URIRef
         o: Literal
 
-        total = len(data)
+        total = len(literal_statements)
         batch_size = batch_size or total
-        bar_progress = get_bar_progress("(RDF → ADB): PGT [RDF Literals]", "#EF7D00")
+        bar_progress = get_bar_progress("(RDF → ADB): PGT [Literals]", "#EF7D00")
         bar_progress_task = bar_progress.add_task("", total=total)
         spinner_progress = get_import_spinner_progress("    ")
 
-        statements = (
-            self.__rdf_graph.quads
-            if isinstance(self.__rdf_graph, RDFConjunctiveGraph)
-            else self.__rdf_graph.triples
-        )
-
         with Live(Group(bar_progress, spinner_progress)):
-            for i, (s, p) in enumerate(data, 1):
+            for i, (k, v) in enumerate(literal_statements.items(), 1):
                 bar_progress.update(bar_progress_task, advance=1)
+
+                s, p = k
 
                 s_meta = self.__pgt_get_term_metadata(s)
                 self.__pgt_process_rdf_term(s_meta)
@@ -2442,7 +2417,7 @@ class ArangoRDF(AbstractArangoRDF):
                 _, s_col, s_key, _ = s_meta
                 _, _, _, p_label = p_meta
 
-                for _, _, o, *sg in statements((s, p, None)):
+                for o, sg in v:
                     sg_str = self.__get_subgraph_str(sg)
 
                     o_meta = self.__pgt_get_term_metadata(o)
@@ -2450,7 +2425,67 @@ class ArangoRDF(AbstractArangoRDF):
 
                     pgt_contextualize_statement_func(s_meta, p_meta, o_meta, sg_str)
 
-                    self.__rdf_graph.remove((s, p, o))
+                if i % batch_size == 0:
+                    self.__insert_adb_docs(spinner_progress, **adb_import_kwargs)
+
+            self.__insert_adb_docs(spinner_progress, **adb_import_kwargs)
+
+    def __pgt_parse_non_literal_statements(
+        self,
+        non_literal_statements: DefaultDict[
+            Tuple[RDFTerm, URIRef], List[Tuple[RDFTerm, List[Any]]]
+        ],
+        contextualize_statement_func: Callable[..., None],
+        batch_size: Optional[int],
+        adb_import_kwargs: Dict[str, Any],
+    ) -> None:
+        """RDF -> ArangoDB (PGT): Processes all non-literal RDF statements.
+
+        :param non_literal_statements: Dictionary mapping (s,p) pairs to lists
+            of (o, sg) tuples for non-literal objects.
+        :type non_literal_statements: DefaultDict[
+            Tuple[RDFTerm, URIRef], List[Tuple[RDFTerm, List[Any]]]]
+        ]
+        :param contextualize_statement_func: A function that contextualizes
+            an RDF Statement. A no-op function is used if Graph Contextualization
+            is disabled.
+        :type contextualize_statement_func: Callable[..., None]
+        :param batch_size: The batch size to use when inserting ArangoDB Documents.
+            Defaults to None.
+        :type batch_size: int | None
+        :param adb_import_kwargs: The keyword arguments to pass to
+            `ArangoRDF.__insert_adb_docs()`.
+        :type adb_import_kwargs: Dict[str, Any]
+        """
+
+        s: RDFTerm  # Subject
+        p: URIRef  # Predicate
+        o: RDFTerm  # Object
+
+        total = len(non_literal_statements)
+        batch_size = batch_size or total
+        bar_progress = get_bar_progress("(RDF → ADB): PGT [Non-Literals]", "#08479E")
+        bar_progress_task = bar_progress.add_task("", total=total)
+        spinner_progress = get_import_spinner_progress("    ")
+
+        with Live(Group(bar_progress, spinner_progress)):
+            for i, (k, v) in enumerate(non_literal_statements.items(), 1):
+                bar_progress.update(bar_progress_task, advance=1)
+
+                s, p = k
+
+                rdf_list_col = self.__is_rdf_list_statement(s, p)
+
+                for o, sg in v:
+                    if rdf_list_col:
+                        predicate_label = self.rdf_id_to_adb_label(str(p))
+                        doc = self.__rdf_list_data[rdf_list_col][s]
+                        self.__pgt_rdf_val_to_adb_val(doc, predicate_label, o)
+                        continue
+
+                    self.__pgt_process_subject_predicate_object(
+                        s, p, o, sg, None, contextualize_statement_func
+                    )
 
                 if i % batch_size == 0:
                     self.__insert_adb_docs(spinner_progress, **adb_import_kwargs)
@@ -2836,7 +2871,7 @@ class ArangoRDF(AbstractArangoRDF):
             return False
 
         # Use pre-computed RDF list subjects for O(1) lookup
-        return o in self.__rdf_list_subjects
+        return o in self.__rdf_collection_subjects or o in self.__rdf_container_subjects
 
     def __pgt_process_rdf_lists(self, bar_progress: Progress) -> None:
         """RDF -> ArangoDB (PGT): Process all RDF Collections & Containers
