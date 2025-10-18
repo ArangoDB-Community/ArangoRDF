@@ -55,7 +55,7 @@ def pytest_configure(config: Any) -> None:
 
 
 @pytest.fixture(autouse=True)
-def reset_arango_db():
+def reset_arango_db() -> None:
     global db
     for g in db.graphs():
         db.delete_graph(g["name"], drop_collections=True)
