@@ -695,7 +695,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         # Create the ArangoDB documents buffer for this transformation
         adb_docs: ADBDocs = defaultdict(lambda: defaultdict(dict))
-        
+
         # Reset the ArangoDB Config
         self.__contextualize_graph = contextualize_graph
         self.__use_hashed_literals_as_keys = use_hashed_literals_as_keys
@@ -724,7 +724,9 @@ class ArangoRDF(AbstractArangoRDF):
         # NOTE: Graph Contextualization is an experimental work-in-progress
         contextualize_statement_func = empty_func
         if contextualize_graph:
-            contextualize_statement_func = lambda s_meta, p_meta, o_meta, sg_str: self.__rpt_contextualize_statement(adb_docs, s_meta, p_meta, o_meta, sg_str)
+            contextualize_statement_func = lambda s_meta, p_meta, o_meta, sg_str: self.__rpt_contextualize_statement(
+                adb_docs, s_meta, p_meta, o_meta, sg_str
+            )
 
             self.__rdf_graph = self.__load_meta_ontology(self.__rdf_graph)
 
@@ -782,7 +784,9 @@ class ArangoRDF(AbstractArangoRDF):
                 )
 
                 if i % batch_size == 0:
-                    self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
+                    self.__insert_adb_docs(
+                        adb_docs, spinner_progress, **adb_import_kwargs
+                    )
 
             self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
@@ -952,7 +956,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         # Create the ArangoDB documents buffer for this transformation
         adb_docs: ADBDocs = defaultdict(lambda: defaultdict(dict))
-        
+
         # Reset the ArangoDB Config
         self.__contextualize_graph = contextualize_graph
 
@@ -979,7 +983,9 @@ class ArangoRDF(AbstractArangoRDF):
         # NOTE: Graph Contextualization is an experimental work-in-progress
         contextualize_statement_func = empty_func
         if contextualize_graph:
-            contextualize_statement_func = lambda s_meta, p_meta, o_meta, sg_str: self.__pgt_contextualize_statement(adb_docs, s_meta, p_meta, o_meta, sg_str)
+            contextualize_statement_func = lambda s_meta, p_meta, o_meta, sg_str: self.__pgt_contextualize_statement(
+                adb_docs, s_meta, p_meta, o_meta, sg_str
+            )
 
             self.__rdf_graph = self.__load_meta_ontology(self.__rdf_graph)
 
@@ -1140,7 +1146,9 @@ class ArangoRDF(AbstractArangoRDF):
                 if container_pattern_n or container_pattern_li:
                     self.__rdf_container_subjects.add(s)
 
-        self.__rdf_list_subjects = self.__rdf_collection_subjects | self.__rdf_container_subjects
+        self.__rdf_list_subjects = (
+            self.__rdf_collection_subjects | self.__rdf_container_subjects
+        )
 
     def __is_rdf_list_statement(self, s: RDFTerm, p: URIRef) -> str:
         """Returns the list type or empty string if not a list statement.
@@ -2153,7 +2161,9 @@ class ArangoRDF(AbstractArangoRDF):
 
         o_meta = self.__rpt_process_term(adb_docs, o)
 
-        self.__rpt_process_statement(adb_docs, s_meta, p, o_meta, sg_str, reified_subject)
+        self.__rpt_process_statement(
+            adb_docs, s_meta, p, o_meta, sg_str, reified_subject
+        )
 
         contextualize_statement_func(s_meta, p, o_meta, sg_str)
 
@@ -2218,9 +2228,7 @@ class ArangoRDF(AbstractArangoRDF):
             if t.language:
                 adb_docs[t_col][t_key][self.__rdf_lang_attr] = t.language
             elif t.datatype:
-                adb_docs[t_col][t_key][self.__rdf_datatype_attr] = str(
-                    t.datatype
-                )
+                adb_docs[t_col][t_key][self.__rdf_datatype_attr] = str(t.datatype)
 
         else:
             raise ValueError(f"Unable to process {t}")  # pragma: no cover
@@ -2283,7 +2291,12 @@ class ArangoRDF(AbstractArangoRDF):
         )
 
     def __rpt_contextualize_statement(
-        self, adb_docs: ADBDocs, s_meta: RDFTermMeta, p: URIRef, o_meta: RDFTermMeta, sg_str: str
+        self,
+        adb_docs: ADBDocs,
+        s_meta: RDFTermMeta,
+        p: URIRef,
+        o_meta: RDFTermMeta,
+        sg_str: str,
     ) -> None:
         """RDF -> ArangoDB (RPT): Contextualizes the RDF Statement (s, p, o).
 
@@ -2300,7 +2313,9 @@ class ArangoRDF(AbstractArangoRDF):
         :type sg_str: str
         """
         p_meta = self.__rpt_process_term(adb_docs, p)
-        self.__contextualize_statement(adb_docs, s_meta, p_meta, o_meta, sg_str, is_pgt=False)
+        self.__contextualize_statement(
+            adb_docs, s_meta, p_meta, o_meta, sg_str, is_pgt=False
+        )
 
     def __rpt_create_adb_graph(self, name: str) -> ADBGraph:
         """RDF -> ArangoDB (RPT): Create an ArangoDB graph based on
@@ -2434,12 +2449,16 @@ class ArangoRDF(AbstractArangoRDF):
                     sg_str = self.__get_subgraph_str(sg)
 
                     o_meta = self.__pgt_get_term_metadata(o)
-                    self.__pgt_process_rdf_literal(adb_docs, o, s_col, s_key, p_label, sg_str)
+                    self.__pgt_process_rdf_literal(
+                        adb_docs, o, s_col, s_key, p_label, sg_str
+                    )
 
                     pgt_contextualize_statement_func(s_meta, p_meta, o_meta, sg_str)
 
                 if i % batch_size == 0:
-                    self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
+                    self.__insert_adb_docs(
+                        adb_docs, spinner_progress, **adb_import_kwargs
+                    )
 
             self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
@@ -2496,16 +2515,17 @@ class ArangoRDF(AbstractArangoRDF):
 
                     for o, sg in v:
                         self.__pgt_rdf_val_to_adb_val(doc, predicate_label, o)
-                
+
                 else:
                     for o, sg in v:
-
                         self.__pgt_process_subject_predicate_object(
                             adb_docs, s, p, o, sg, None, contextualize_statement_func
                         )
-                    
+
                 if i % batch_size == 0:
-                    self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
+                    self.__insert_adb_docs(
+                        adb_docs, spinner_progress, **adb_import_kwargs
+                    )
 
             self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
@@ -2552,7 +2572,9 @@ class ArangoRDF(AbstractArangoRDF):
         o_meta = self.__pgt_get_term_metadata(o)
         self.__pgt_process_object(adb_docs, s_meta, p_meta, o_meta, sg_str)
 
-        self.__pgt_process_statement(adb_docs, s_meta, p_meta, o_meta, sg_str, reified_subject)
+        self.__pgt_process_statement(
+            adb_docs, s_meta, p_meta, o_meta, sg_str, reified_subject
+        )
 
         contextualize_statement_func(s_meta, p_meta, o_meta, sg_str)
 
@@ -2729,7 +2751,13 @@ class ArangoRDF(AbstractArangoRDF):
 
         elif isinstance(t, Literal) and all([s_col, s_key, p_label]):
             self.__pgt_process_rdf_literal(
-                adb_docs, t, s_col, s_key, p_label, sg_str, process_val_as_serialized_list
+                adb_docs,
+                t,
+                s_col,
+                s_key,
+                p_label,
+                sg_str,
+                process_val_as_serialized_list,
             )
 
         else:
@@ -2777,7 +2805,12 @@ class ArangoRDF(AbstractArangoRDF):
             doc[self.__rdf_sub_graph_uri_attr] = sg_str
 
     def __pgt_process_object(
-        self, adb_docs: ADBDocs, s_meta: RDFTermMeta, p_meta: RDFTermMeta, o_meta: RDFTermMeta, sg_str: str
+        self,
+        adb_docs: ADBDocs,
+        s_meta: RDFTermMeta,
+        p_meta: RDFTermMeta,
+        o_meta: RDFTermMeta,
+        sg_str: str,
     ) -> None:
         """RDF -> ArangoDB (PGT): Processes the RDF Object into ArangoDB.
         Given the possibily of the RDF Object being used as the "root" of
@@ -2809,7 +2842,9 @@ class ArangoRDF(AbstractArangoRDF):
             self.__rdf_list_heads[s][p] = head
 
         else:
-            self.__pgt_process_rdf_term(adb_docs, o_meta, s_col, s_key, p_label, sg_str=sg_str)
+            self.__pgt_process_rdf_term(
+                adb_docs, o_meta, s_col, s_key, p_label, sg_str=sg_str
+            )
 
     def __pgt_process_statement(
         self,
@@ -2903,7 +2938,9 @@ class ArangoRDF(AbstractArangoRDF):
         # Use pre-computed RDF list subjects for O(1) lookup
         return o in self.__rdf_list_subjects
 
-    def __pgt_process_rdf_lists(self, adb_docs: ADBDocs, bar_progress: Progress) -> None:
+    def __pgt_process_rdf_lists(
+        self, adb_docs: ADBDocs, bar_progress: Progress
+    ) -> None:
         """RDF -> ArangoDB (PGT): Process all RDF Collections & Containers
         within the RDF Graph prior to inserting the documents into ArangoDB.
 
@@ -2944,7 +2981,9 @@ class ArangoRDF(AbstractArangoRDF):
                 sg: str = p_dict["sub_graph"]
 
                 doc[p_label] = ""
-                self.__pgt_process_rdf_list_object(adb_docs, doc, s_meta, p_meta, root, sg)
+                self.__pgt_process_rdf_list_object(
+                    adb_docs, doc, s_meta, p_meta, root, sg
+                )
                 doc[p_label] = doc[p_label].rstrip(",")
 
                 # Delete doc[p_key] if there are no Literals within the RDF List
@@ -2994,7 +3033,9 @@ class ArangoRDF(AbstractArangoRDF):
             doc[p_label] += "["
 
             next_bnode_dict = self.__rdf_list_data["_COLLECTION_BNODE"][o]
-            self.__pgt_unpack_rdf_collection(adb_docs, doc, s_meta, p_meta, next_bnode_dict, sg)
+            self.__pgt_unpack_rdf_collection(
+                adb_docs, doc, s_meta, p_meta, next_bnode_dict, sg
+            )
 
             doc[p_label] = doc[p_label].rstrip(",") + "],"
 
@@ -3002,7 +3043,9 @@ class ArangoRDF(AbstractArangoRDF):
             doc[p_label] += "["
 
             next_bnode_dict = self.__rdf_list_data["_CONTAINER_BNODE"][o]
-            self.__pgt_unpack_rdf_container(adb_docs, doc, s_meta, p_meta, next_bnode_dict, sg)
+            self.__pgt_unpack_rdf_container(
+                adb_docs, doc, s_meta, p_meta, next_bnode_dict, sg
+            )
 
             doc[p_label] = doc[p_label].rstrip(",") + "],"
 
@@ -3012,7 +3055,12 @@ class ArangoRDF(AbstractArangoRDF):
 
             # Process the RDF Object as an ArangoDB Document
             self.__pgt_process_rdf_term(
-                adb_docs, o_meta, s_col, s_key, p_label, process_val_as_serialized_list=True
+                adb_docs,
+                o_meta,
+                s_col,
+                s_key,
+                p_label,
+                process_val_as_serialized_list=True,
             )
             # Process the RDF Statement as an ArangoDB Edge
             self.__pgt_process_statement(adb_docs, s_meta, p_meta, o_meta, sg)
@@ -3051,7 +3099,9 @@ class ArangoRDF(AbstractArangoRDF):
             rest = bnode_dict["rest"]
 
             next_bnode_dict = self.__rdf_list_data["_COLLECTION_BNODE"][rest]
-            self.__pgt_unpack_rdf_collection(adb_docs, doc, s_meta, p_meta, next_bnode_dict, sg)
+            self.__pgt_unpack_rdf_collection(
+                adb_docs, doc, s_meta, p_meta, next_bnode_dict, sg
+            )
 
     def __pgt_unpack_rdf_container(
         self,
@@ -3091,7 +3141,12 @@ class ArangoRDF(AbstractArangoRDF):
                 self.__pgt_process_rdf_list_object(adb_docs, doc, s_meta, p_meta, o, sg)
 
     def __pgt_contextualize_statement(
-        self, adb_docs: ADBDocs, s_meta: RDFTermMeta, p_meta: RDFTermMeta, o_meta: RDFTermMeta, sg_str: str
+        self,
+        adb_docs: ADBDocs,
+        s_meta: RDFTermMeta,
+        p_meta: RDFTermMeta,
+        o_meta: RDFTermMeta,
+        sg_str: str,
     ) -> None:
         """RDF -> ArangoDB (PGT): Contextualizes the RDF Statement (s, p, o).
 
@@ -3107,7 +3162,9 @@ class ArangoRDF(AbstractArangoRDF):
             to this statement (if any).
         :type sg_str: str
         """
-        self.__contextualize_statement(adb_docs, s_meta, p_meta, o_meta, sg_str, is_pgt=True)
+        self.__contextualize_statement(
+            adb_docs, s_meta, p_meta, o_meta, sg_str, is_pgt=True
+        )
 
     def __pgt_create_adb_graph(self, name: str) -> ADBGraph:
         """RDF -> ArangoDB (PGT): Create an ArangoDB graph based
@@ -3319,7 +3376,9 @@ class ArangoRDF(AbstractArangoRDF):
                     process_reified_subject(reified_subject, sg)
 
                 if i % batch_size == 0:
-                    self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
+                    self.__insert_adb_docs(
+                        adb_docs, spinner_progress, **adb_import_kwargs
+                    )
 
             self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
