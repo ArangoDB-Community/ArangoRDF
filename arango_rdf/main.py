@@ -960,6 +960,9 @@ class ArangoRDF(AbstractArangoRDF):
         # convert RDF Lists into JSON Lists during the PGT Process
         self.__rdf_list_heads: RDFListHeads = defaultdict(lambda: defaultdict(dict))
         self.__rdf_list_data: RDFListData = defaultdict(lambda: defaultdict(dict))
+        self.__rdf_list_subjects: Set[RDFTerm] = set()
+        self.__rdf_collection_subjects: Set[RDFTerm] = set()
+        self.__rdf_container_subjects: Set[RDFTerm] = set()
 
         # The ArangoDB Collection name of all unidentified RDF Resources
         self.__UNKNOWN_RESOURCE = f"{name}_UnknownResource"
@@ -1056,11 +1059,7 @@ class ArangoRDF(AbstractArangoRDF):
         literal_statements = defaultdict(list)
         non_literal_statements = defaultdict(list)
         for s, p, o, *sg in statements((None, None, None)):
-            if (
-                isinstance(o, Literal)
-                and s not in self.__rdf_collection_subjects
-                and s not in self.__rdf_container_subjects
-            ):
+            if isinstance(o, Literal) and s not in self.__rdf_list_subjects:
                 literal_statements[(s, p)].append((o, sg))
             else:
                 non_literal_statements[(s, p)].append((o, sg))
@@ -1127,14 +1126,12 @@ class ArangoRDF(AbstractArangoRDF):
         to avoid repeated computation in processing loops.
         """
         # Pre-compute collection subjects (RDF.first, RDF.rest)
-        self.__rdf_collection_subjects = set()
         for s in self.__rdf_graph.subjects(RDF.first, None):
             self.__rdf_collection_subjects.add(s)
         for s in self.__rdf_graph.subjects(RDF.rest, None):
             self.__rdf_collection_subjects.add(s)
 
         # Pre-compute container subjects (container predicates _1, li, etc.)
-        self.__rdf_container_subjects = set()
         for s, p, _ in self.__rdf_graph:
             if isinstance(s, BNode):
                 p_str = str(p)
@@ -1143,6 +1140,8 @@ class ArangoRDF(AbstractArangoRDF):
                 if container_pattern_n or container_pattern_li:
                     self.__rdf_container_subjects.add(s)
 
+        self.__rdf_list_subjects = self.__rdf_collection_subjects | self.__rdf_container_subjects
+
     def __is_rdf_list_statement(self, s: RDFTerm, p: URIRef) -> str:
         """Returns the list type or empty string if not a list statement.
 
@@ -1150,12 +1149,10 @@ class ArangoRDF(AbstractArangoRDF):
         :param p: The RDF Predicate
         :return: The list type or empty string if not a list statement
         """
-        # O(1) lookups using pre-computed categorized sets
         if s in self.__rdf_collection_subjects and p in {RDF.first, RDF.rest}:
             return "_COLLECTION_BNODE"
 
         if s in self.__rdf_container_subjects:
-            # Already pre-computed as container subject, no need for regex
             return "_CONTAINER_BNODE"
 
         return ""
@@ -2493,17 +2490,20 @@ class ArangoRDF(AbstractArangoRDF):
 
                 rdf_list_col = self.__is_rdf_list_statement(s, p)
 
-                for o, sg in v:
-                    if rdf_list_col:
-                        predicate_label = self.rdf_id_to_adb_label(str(p))
-                        doc = self.__rdf_list_data[rdf_list_col][s]
+                if rdf_list_col:
+                    doc = self.__rdf_list_data[rdf_list_col][s]
+                    predicate_label = self.rdf_id_to_adb_label(str(p))
+
+                    for o, sg in v:
                         self.__pgt_rdf_val_to_adb_val(doc, predicate_label, o)
-                        continue
+                
+                else:
+                    for o, sg in v:
 
-                    self.__pgt_process_subject_predicate_object(
-                        adb_docs, s, p, o, sg, None, contextualize_statement_func
-                    )
-
+                        self.__pgt_process_subject_predicate_object(
+                            adb_docs, s, p, o, sg, None, contextualize_statement_func
+                        )
+                    
                 if i % batch_size == 0:
                     self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
@@ -2901,7 +2901,7 @@ class ArangoRDF(AbstractArangoRDF):
             return False
 
         # Use pre-computed RDF list subjects for O(1) lookup
-        return o in self.__rdf_collection_subjects or o in self.__rdf_container_subjects
+        return o in self.__rdf_list_subjects
 
     def __pgt_process_rdf_lists(self, adb_docs: ADBDocs, bar_progress: Progress) -> None:
         """RDF -> ArangoDB (PGT): Process all RDF Collections & Containers
