@@ -1,9 +1,9 @@
 import os
-import pytest
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, Set, Tuple
 
+import pytest
 from arango import ArangoClient, DefaultHTTPClient
 from arango.database import StandardDatabase
 from rdflib import BNode

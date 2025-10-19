@@ -68,10 +68,12 @@ class ArangoRDF(AbstractArangoRDF):
         that using an underscore "_", results in these attributes being treated
         as ArangoDB system attributes. Using "$" is an alternative non-system prefix.
     :type rdf_attribute_prefix: str
-    :param insert_async: If True, will insert documents asynchronously. Defaults to False.
+    :param insert_async: If True, will insert documents asynchronously.
+        Defaults to False.
     :type insert_async: bool
-    :param enable_pgt_cache: If True, will enable the PGT term metadata cache to avoid repeated computations.
-        Defaults to False. Not always useful, especially when terms are not repeated alot in the RDF graph.
+    :param enable_pgt_cache: If True, will enable the PGT term metadata cache to avoid
+        repeated computations. Defaults to False. Not always useful, especially when
+        terms are not repeated alot in the RDF graph.
     :type enable_pgt_cache: bool
     :raise TypeError: On invalid parameter types
     """
@@ -734,9 +736,7 @@ class ArangoRDF(AbstractArangoRDF):
         # NOTE: Graph Contextualization is an experimental work-in-progress
         contextualize_statement_func = empty_func
         if contextualize_graph:
-            contextualize_statement_func = lambda s_meta, p_meta, o_meta, sg_str: self.__rpt_contextualize_statement(
-                adb_docs, s_meta, p_meta, o_meta, sg_str
-            )
+            contextualize_statement_func = self.__rpt_contextualize_statement
 
             self.__rdf_graph = self.__load_meta_ontology(self.__rdf_graph)
 
@@ -993,9 +993,7 @@ class ArangoRDF(AbstractArangoRDF):
         # NOTE: Graph Contextualization is an experimental work-in-progress
         contextualize_statement_func = empty_func
         if contextualize_graph:
-            contextualize_statement_func = lambda s_meta, p_meta, o_meta, sg_str: self.__pgt_contextualize_statement(
-                adb_docs, s_meta, p_meta, o_meta, sg_str
-            )
+            contextualize_statement_func = self.__pgt_contextualize_statement
 
             self.__rdf_graph = self.__load_meta_ontology(self.__rdf_graph)
 
