@@ -780,10 +780,10 @@ class ArangoRDF(AbstractArangoRDF):
         p: URIRef  # Predicate
         o: RDFTerm  # Object
 
-        rdf_graph_size = len(self.__rdf_graph)
-        batch_size = batch_size or rdf_graph_size
+        total = len(self.__rdf_graph)
+        batch_size = batch_size or total
         bar_progress = get_bar_progress("(RDF → ADB): RPT", "#BF23C4")
-        bar_progress_task = bar_progress.add_task("", total=rdf_graph_size)
+        bar_progress_task = bar_progress.add_task("", total=total)
         spinner_progress = get_import_spinner_progress("    ")
 
         statements = (
@@ -794,8 +794,6 @@ class ArangoRDF(AbstractArangoRDF):
 
         with Live(Group(bar_progress, spinner_progress)):
             for i, (s, p, o, *sg) in enumerate(statements((None, None, None)), 1):
-                bar_progress.advance(bar_progress_task)
-
                 logger.debug(f"RPT: {s} {p} {o} {sg}")
 
                 self.__rpt_process_subject_predicate_object(
@@ -803,10 +801,12 @@ class ArangoRDF(AbstractArangoRDF):
                 )
 
                 if i % batch_size == 0:
+                    bar_progress.update(bar_progress_task, advance=batch_size)
                     self.__insert_adb_docs(
                         adb_docs, spinner_progress, **adb_import_kwargs
                     )
 
+            bar_progress.update(bar_progress_task, advance=total % batch_size)
             self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
         return self.__rpt_create_adb_graph(name)
@@ -1091,16 +1091,10 @@ class ArangoRDF(AbstractArangoRDF):
         literal_statements = defaultdict(list)
         non_literal_statements = defaultdict(list)
 
-        total = len(self.__rdf_graph)
-        bar_progress = get_bar_progress(
-            "(RDF → ADB): PGT [Prepare Statements]", "#EAD40B"
-        )
-        bar_progress_task = bar_progress.add_task("", total=total)
+        with get_spinner_progress("(RDF → ADB): PGT [Prepare Statements]") as rp:
+            rp.add_task("")
 
-        with Live(Group(bar_progress)):
             for s, p, o, *sg in statements((None, None, None)):
-                bar_progress.update(bar_progress_task, advance=1)
-
                 if isinstance(o, Literal) and s not in self.__rdf_list_subjects:
                     literal_statements[(s, p)].append((o, sg))
                 else:
@@ -2470,8 +2464,6 @@ class ArangoRDF(AbstractArangoRDF):
 
         with Live(Group(bar_progress, spinner_progress)):
             for i, (k, v) in enumerate(literal_statements.items(), 1):
-                bar_progress.update(bar_progress_task, advance=1)
-
                 s, p = k
 
                 s_meta = self.__pgt_get_term_metadata(s)
@@ -2494,10 +2486,12 @@ class ArangoRDF(AbstractArangoRDF):
                     pgt_contextualize_statement_func(s_meta, p_meta, o_meta, sg_str)
 
                 if i % batch_size == 0:
+                    bar_progress.update(bar_progress_task, advance=batch_size)
                     self.__insert_adb_docs(
                         adb_docs, spinner_progress, **adb_import_kwargs
                     )
 
+            bar_progress.update(bar_progress_task, advance=total % batch_size)
             self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
     def __pgt_parse_non_literal_statements(
@@ -2541,8 +2535,6 @@ class ArangoRDF(AbstractArangoRDF):
 
         with Live(Group(bar_progress, spinner_progress)):
             for i, (k, v) in enumerate(non_literal_statements.items(), 1):
-                bar_progress.update(bar_progress_task, advance=1)
-
                 s, p = k
 
                 rdf_list_col = self.__is_rdf_list_statement(s, p)
@@ -2561,10 +2553,12 @@ class ArangoRDF(AbstractArangoRDF):
                         )
 
                 if i % batch_size == 0:
+                    bar_progress.update(bar_progress_task, advance=batch_size)
                     self.__insert_adb_docs(
                         adb_docs, spinner_progress, **adb_import_kwargs
                     )
 
+            bar_progress.update(bar_progress_task, advance=total % batch_size)
             self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
     def __pgt_process_subject_predicate_object(
@@ -3415,18 +3409,18 @@ class ArangoRDF(AbstractArangoRDF):
 
         with Live(Group(bar_progress, spinner_progress)):
             for i, (reified_subject, *sg) in enumerate(data, 1):
-                bar_progress.advance(bar_progress_task)
-
                 # Only process the reified triple if it has not been processed yet
                 # i.e recursion
                 if reified_subject not in self.__reified_subject_map:
                     process_reified_subject(reified_subject, sg)
 
                 if i % batch_size == 0:
+                    bar_progress.update(bar_progress_task, advance=batch_size)
                     self.__insert_adb_docs(
                         adb_docs, spinner_progress, **adb_import_kwargs
                     )
 
+            bar_progress.update(bar_progress_task, advance=total % batch_size)
             self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
     def __get_subgraph_str(self, possible_sg: Optional[List[Any]]) -> str:
