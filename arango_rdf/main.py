@@ -68,6 +68,11 @@ class ArangoRDF(AbstractArangoRDF):
         that using an underscore "_", results in these attributes being treated
         as ArangoDB system attributes. Using "$" is an alternative non-system prefix.
     :type rdf_attribute_prefix: str
+    :param insert_async: If True, will insert documents asynchronously. Defaults to False.
+    :type insert_async: bool
+    :param enable_pgt_cache: If True, will enable the PGT term metadata cache to avoid repeated computations.
+        Defaults to False. Not always useful, especially when terms are not repeated alot in the RDF graph.
+    :type enable_pgt_cache: bool
     :raise TypeError: On invalid parameter types
     """
 
@@ -78,6 +83,7 @@ class ArangoRDF(AbstractArangoRDF):
         logging_lvl: Union[str, int] = logging.INFO,
         rdf_attribute_prefix: str = "_",
         insert_async: bool = False,
+        enable_pgt_cache: bool = False,
     ):
         self.set_logging(logging_lvl)
 
@@ -130,6 +136,10 @@ class ArangoRDF(AbstractArangoRDF):
         # the ArangoDB Key of an arbitrary RDF Resource.
         # e.g (<http://example.com/Bob> <http://www.arangodb.com/key> "4502")
         self.adb_key_uri = URIRef("http://www.arangodb.com/key")
+
+        # Cache for PGT term metadata to avoid repeated computations
+        self.enable_pgt_cache = enable_pgt_cache
+        self.pgt_term_metadata_cache: Dict[str, RDFTermMeta] = {}
 
         # RDF Graph for maintaining the ArangoDB Collections & Keys
         # of the RDF Resources
@@ -1117,7 +1127,9 @@ class ArangoRDF(AbstractArangoRDF):
                 for prefix, uri in namespace_prefixes
             ]
 
-            result = self.db.collection(namespace_collection_name).insert_many(
+            db = self.db if self.insert_async else self.async_db
+
+            result = db.collection(namespace_collection_name).insert_many(
                 docs, overwrite=True, raise_on_document_error=True
             )
 
@@ -2597,6 +2609,11 @@ class ArangoRDF(AbstractArangoRDF):
             return t, "", "", ""  # No other metadata needed
 
         t_str = str(t)
+
+        if self.enable_pgt_cache:
+            if t_str in self.pgt_term_metadata_cache:
+                return self.pgt_term_metadata_cache[t_str]
+
         t_col = ""
         t_key = self.rdf_id_to_adb_key(t_str, t)
         t_label = self.rdf_id_to_adb_label(t_str)
@@ -2624,7 +2641,11 @@ class ArangoRDF(AbstractArangoRDF):
                 logger.debug(f"Found unknown resource: {t} ({t_key})")
                 t_col = self.__UNKNOWN_RESOURCE
 
-        return t, str(t_col), t_key, t_label
+        result = t, str(t_col), t_key, t_label
+        if self.enable_pgt_cache:
+            self.pgt_term_metadata_cache[t_str] = result
+
+        return result
 
     def __pgt_rdf_val_to_adb_val(
         self,
