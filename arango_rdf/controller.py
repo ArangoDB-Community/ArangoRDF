@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from typing import Set
 
-from arango.database import StandardDatabase
+from arango.database import AsyncDatabase, StandardDatabase
 from rdflib import Graph
 
 from .abc import AbstractArangoRDFController
@@ -27,6 +27,7 @@ class ArangoRDFController(AbstractArangoRDFController):
 
     def __init__(self) -> None:
         self.db: StandardDatabase
+        self.async_db: AsyncDatabase
         self.rdf_graph: Graph
 
     def identify_best_class(
