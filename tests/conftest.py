@@ -61,7 +61,7 @@ def reset_arango_db() -> None:
         db.delete_graph(g["name"], drop_collections=True)
 
     for c in db.collections():
-        if c["system"] == False:
+        if c["system"] is False:
             db.delete_collection(c["name"])
 
 
