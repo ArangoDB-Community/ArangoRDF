@@ -1090,11 +1090,21 @@ class ArangoRDF(AbstractArangoRDF):
 
         literal_statements = defaultdict(list)
         non_literal_statements = defaultdict(list)
-        for s, p, o, *sg in statements((None, None, None)):
-            if isinstance(o, Literal) and s not in self.__rdf_list_subjects:
-                literal_statements[(s, p)].append((o, sg))
-            else:
-                non_literal_statements[(s, p)].append((o, sg))
+
+        total = len(self.__rdf_graph)
+        bar_progress = get_bar_progress(
+            "(RDF → ADB): PGT [Prepare Statements]", "#EAD40B"
+        )
+        bar_progress_task = bar_progress.add_task("", total=total)
+
+        with Live(Group(bar_progress)):
+            for s, p, o, *sg in statements((None, None, None)):
+                bar_progress.update(bar_progress_task, advance=1)
+
+                if isinstance(o, Literal) and s not in self.__rdf_list_subjects:
+                    literal_statements[(s, p)].append((o, sg))
+                else:
+                    non_literal_statements[(s, p)].append((o, sg))
 
         ###########################
         # PGT: Literal Statements #
