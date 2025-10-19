@@ -736,7 +736,16 @@ class ArangoRDF(AbstractArangoRDF):
         # NOTE: Graph Contextualization is an experimental work-in-progress
         contextualize_statement_func = empty_func
         if contextualize_graph:
-            contextualize_statement_func = self.__rpt_contextualize_statement
+
+            def contextualize_statement_func(
+                s_meta: RDFTermMeta,
+                p_meta: RDFTermMeta,
+                o_meta: RDFTermMeta,
+                sg_str: str,
+            ) -> None:
+                return self.__rpt_contextualize_statement(
+                    adb_docs, s_meta, p_meta, o_meta, sg_str
+                )
 
             self.__rdf_graph = self.__load_meta_ontology(self.__rdf_graph)
 
@@ -993,7 +1002,16 @@ class ArangoRDF(AbstractArangoRDF):
         # NOTE: Graph Contextualization is an experimental work-in-progress
         contextualize_statement_func = empty_func
         if contextualize_graph:
-            contextualize_statement_func = self.__pgt_contextualize_statement
+
+            def contextualize_statement_func(
+                s_meta: RDFTermMeta,
+                p_meta: RDFTermMeta,
+                o_meta: RDFTermMeta,
+                sg_str: str,
+            ) -> None:
+                return self.__pgt_contextualize_statement(
+                    adb_docs, s_meta, p_meta, o_meta, sg_str
+                )
 
             self.__rdf_graph = self.__load_meta_ontology(self.__rdf_graph)
 
