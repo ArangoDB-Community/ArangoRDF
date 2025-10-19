@@ -806,7 +806,8 @@ class ArangoRDF(AbstractArangoRDF):
                         adb_docs, spinner_progress, **adb_import_kwargs
                     )
 
-            bar_progress.update(bar_progress_task, advance=total % batch_size)
+            last_advance = total % batch_size if batch_size > 0 else 0
+            bar_progress.update(bar_progress_task, advance=last_advance)
             self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
         return self.__rpt_create_adb_graph(name)
@@ -2491,7 +2492,8 @@ class ArangoRDF(AbstractArangoRDF):
                         adb_docs, spinner_progress, **adb_import_kwargs
                     )
 
-            bar_progress.update(bar_progress_task, advance=total % batch_size)
+            last_advance = total % batch_size if batch_size > 0 else 0
+            bar_progress.update(bar_progress_task, advance=last_advance)
             self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
     def __pgt_parse_non_literal_statements(
@@ -2558,7 +2560,8 @@ class ArangoRDF(AbstractArangoRDF):
                         adb_docs, spinner_progress, **adb_import_kwargs
                     )
 
-            bar_progress.update(bar_progress_task, advance=total % batch_size)
+            last_advance = total % batch_size if batch_size > 0 else 0
+            bar_progress.update(bar_progress_task, advance=last_advance)
             self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
     def __pgt_process_subject_predicate_object(
@@ -3420,7 +3423,8 @@ class ArangoRDF(AbstractArangoRDF):
                         adb_docs, spinner_progress, **adb_import_kwargs
                     )
 
-            bar_progress.update(bar_progress_task, advance=total % batch_size)
+            last_advance = total % batch_size if batch_size > 0 else 0
+            bar_progress.update(bar_progress_task, advance=last_advance)
             self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
     def __get_subgraph_str(self, possible_sg: Optional[List[Any]]) -> str:
