@@ -5692,7 +5692,9 @@ def test_pgt_concurrent() -> None:
         return graph_name
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = [executor.submit(import_rdf, name, graph) for name, graph in graph_specs]
+        futures = [
+            executor.submit(import_rdf, name, graph) for name, graph in graph_specs
+        ]
         for future in as_completed(futures):
             results.append(future.result())
 
