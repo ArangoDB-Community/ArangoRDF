@@ -992,21 +992,21 @@ class ArangoRDF(AbstractArangoRDF):
                 raise ValueError(m)
 
             if not self.db.has_collection(uri_map_collection_name):
-                self.db.create_collection(uri_map_collection_name)
+                self.__create_collection(uri_map_collection_name)
 
             self.__uri_map_collection = self.db.collection(uri_map_collection_name)
 
         self.__resource_collection = None
         if resource_collection_name:
             if not self.db.has_collection(resource_collection_name):
-                self.db.create_collection(resource_collection_name)
+                self.__create_collection(resource_collection_name)
 
             self.__resource_collection = self.db.collection(resource_collection_name)
 
         self.__predicate_collection = None
         if predicate_collection_name:
             if not self.db.has_collection(predicate_collection_name):
-                self.db.create_collection(predicate_collection_name, edge=True)
+                self.__create_collection(predicate_collection_name, edge=True)
 
             self.__predicate_collection = self.db.collection(predicate_collection_name)
 
@@ -1177,7 +1177,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         if namespace_collection_name:
             if not self.db.has_collection(namespace_collection_name):
-                self.db.create_collection(namespace_collection_name)
+                self.__create_collection(namespace_collection_name)
 
             docs = [
                 {"prefix": prefix, "uri": uri, "_key": self.hash(uri)}
@@ -2401,23 +2401,23 @@ class ArangoRDF(AbstractArangoRDF):
         if self.db.has_graph(name):  # pragma: no cover
             return self.db.graph(name)
 
-        return self.db.create_graph(
-            name,
-            edge_definitions=[
-                {
-                    "edge_collection": self.__STATEMENT_COL,
-                    "from_vertex_collections": [
-                        self.__URIREF_COL,
-                        self.__BNODE_COL,
-                    ],
-                    "to_vertex_collections": [
-                        self.__URIREF_COL,
-                        self.__BNODE_COL,
-                        self.__LITERAL_COL,
-                    ],
-                }
-            ],
-        )
+        edge_definitions = [
+            {
+                "edge_collection": self.__STATEMENT_COL,
+                "from_vertex_collections": [
+                    self.__URIREF_COL,
+                    self.__BNODE_COL,
+                ],
+                "to_vertex_collections": [
+                    self.__URIREF_COL,
+                    self.__BNODE_COL,
+                    self.__LITERAL_COL,
+                ],
+            }
+        ]
+
+        self.__create_graph(name, edge_definitions=edge_definitions)
+        return self.db.graph(name)
 
     ##################################
     # Private: RDF -> ArangoDB (PGT) #
@@ -3298,7 +3298,13 @@ class ArangoRDF(AbstractArangoRDF):
             orphan_v_cols = orphan_v_cols ^ {self.__UNKNOWN_RESOURCE}
 
         if not self.db.has_graph(name):
-            return self.db.create_graph(name, edge_definitions, list(orphan_v_cols))
+            self.__create_graph(
+                name,
+                edge_definitions=edge_definitions,
+                orphan_collections=list(orphan_v_cols),
+            )
+
+            return self.db.graph(name)
 
         old_edge_definitions = {
             edge_def["edge_collection"]: edge_def
@@ -3335,6 +3341,33 @@ class ArangoRDF(AbstractArangoRDF):
     ############################################
     # Private: RDF -> ArangoDB (RPT, PGT, LPG) #
     ############################################
+
+    def __create_collection(self, col: str, edge: bool = False) -> None:
+        """RDF -> ArangoDB: Create an ArangoDB Collection."""
+        try:
+            self.db.create_collection(col, edge=edge)
+        except Exception:
+            # Collection may have been created by another thread
+            if not self.db.has_collection(col):
+                raise
+
+    def __create_graph(
+        self,
+        name: str,
+        edge_definitions: List[Dict[str, Any]],
+        orphan_collections: List[str] = [],
+    ) -> None:
+        """RDF -> ArangoDB: Create an ArangoDB Graph."""
+        try:
+            self.db.create_graph(
+                name,
+                edge_definitions=edge_definitions,
+                orphan_collections=orphan_collections,
+            )
+        except Exception:
+            # Graph may have been created by another thread
+            if not self.db.has_graph(name):
+                raise
 
     def __load_meta_ontology(self, rdf_graph: RDFGraph) -> RDFConjunctiveGraph:
         """RDF -> ArangoDB: Load the RDF, RDFS, and OWL
@@ -3377,6 +3410,9 @@ class ArangoRDF(AbstractArangoRDF):
         if Reified Triple Simplification is enabled.
 
         NOTE: This modifies the RDF Graph in-place. TODO: Revisit
+
+        NOTE: This function is NOT thread-safe due to thread-safety issues with
+        rdflib's SPARQL parser. Therefore it should ONLY be called from a single thread.
 
         :param process_subject_predicate_object: A function that processes
             the RDF Statement (s, p, o) as an ArangoDB document. Either
@@ -3871,9 +3907,10 @@ class ArangoRDF(AbstractArangoRDF):
 
         db = self.async_db if self.insert_async else self.db
 
-        adb_import_kwargs["overwrite_mode"] = "update"
-        adb_import_kwargs["merge"] = True
-
+        if "overwrite_mode" not in adb_import_kwargs:
+            adb_import_kwargs["overwrite_mode"] = "update"
+        if "merge" not in adb_import_kwargs:
+            adb_import_kwargs["merge"] = True
         if "raise_on_document_error" not in adb_import_kwargs:
             adb_import_kwargs["raise_on_document_error"] = True
 
@@ -3888,7 +3925,7 @@ class ArangoRDF(AbstractArangoRDF):
 
             if not self.db.has_collection(col):
                 is_edge = col in self.__e_col_map
-                self.db.create_collection(col, edge=is_edge)
+                self.__create_collection(col, edge=is_edge)
 
             logger.debug(f"Inserting Documents: {doc_list}")
 

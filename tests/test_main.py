@@ -1,4 +1,5 @@
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List
 
 import pytest
@@ -6,7 +7,7 @@ from arango_datasets import Datasets
 from rdflib import RDF, RDFS, BNode
 from rdflib import ConjunctiveGraph as RDFConjunctiveGraph
 from rdflib import Graph as RDFGraph
-from rdflib import Literal, URIRef
+from rdflib import Literal, Namespace, URIRef
 
 from arango_rdf import ArangoRDF
 from arango_rdf.exception import ArangoRDFImportException
@@ -5655,3 +5656,47 @@ def test_lpg_case_12_1(name: str, rdf_graph: RDFGraph) -> None:
         assert edge["_to"].split("/")[0] in {"Class", "Node"}
 
     db.delete_graph("Test", drop_collections=True)
+
+
+def test_pgt_concurrent() -> None:
+    db.delete_graph("Test", drop_collections=True, ignore_missing=True)
+
+    EX = Namespace("http://example.org/")
+
+    g1 = RDFGraph()
+    g1.add((EX.Alice, EX.knows, EX.Bob))
+    g1.add((EX.Alice, EX.name, Literal("Alice")))
+
+    g2 = RDFGraph()
+    g2.add((EX.Bob, EX.knows, EX.Charlie))
+    g2.add((EX.Bob, EX.name, Literal("Bob")))
+
+    graph_specs = [("Test", g1), ("Test", g2)]
+    results = []
+
+    def import_rdf(graph_name: str, rdf_graph: RDFGraph) -> str:
+        # Disable rich progress bars to avoid interference with concurrent modules
+        adbrdf = ArangoRDF(db, enable_rich=False)
+        adbrdf.rdf_to_arangodb_by_pgt(
+            graph_name,
+            rdf_graph,
+            overwrite_graph=False,
+            # Triple Reification is **not** thread-safe due to SPARQL queries
+            flatten_reified_triples=False,
+            resource_collection_name="Node",
+            # For concurrent inserts: ignore duplicates, don't raise on conflicts
+            overwrite_mode="ignore",
+            raise_on_document_error=False,
+        )
+
+        return graph_name
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(import_rdf, name, graph) for name, graph in graph_specs]
+        for future in as_completed(futures):
+            results.append(future.result())
+
+    assert db.has_graph("Test")
+    assert db.collection("Node").count() == 3
+    assert db.collection("Property").count() == 2
+    assert db.collection("knows").count() == 2
