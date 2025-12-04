@@ -79,4 +79,5 @@ Contents
    rdf_to_arangodb_pgt
    rdf_to_arangodb_lpg
    rdf_to_arangodb_concurrent
+   arangodb_to_rdf
    specs
