@@ -1,3 +1,56 @@
+## 1.4.0 (2025-10-19)
+
+### Fix
+
+* Doc. [Anthony Mahanna]
+
+### Other
+
+* PGT & RPT optimizations (#45) [Anthony Mahanna]
+
+  * new: reset_arango_db
+
+  * new: skip write_adb_col if `resource_collection` is defined
+
+  * v2: `__pgt_parse_literal_statements`
+
+  * new: early exit on `write_adb_cols`
+
+  * new: `term_metadata_cache`, `insert_async`, cleanup
+
+  * async_db
+
+  * new: `__precompute_rdf_list_info`, `__is_rdf_list_statement`
+
+  * remove: __term_metadata_cache
+
+  * mypy
+
+  * new: `__pgt_parse_non_literal_statements`
+
+  * remove: `self.__adb_docs`
+
+  * Update main.py
+
+  * fix: lint
+
+  * new: `enable_pgt_cache`
+
+  * cleanup
+
+  * fix: lint
+
+  * fix: lint
+
+  * new: progress bar for statement prep
+
+  * `rich` cleanup
+
+  * fix: modulo
+
+* Cleanup: docs. [Anthony Mahanna]
+
+
 ## 1.3.0 (2025-07-30)
 
 ### New
