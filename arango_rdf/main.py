@@ -40,6 +40,8 @@ from .typings import (
 )
 from .utils import (
     Node,
+    NoOpLive,
+    NoOpProgress,
     Tree,
     empty_func,
     get_bar_progress,
@@ -75,6 +77,10 @@ class ArangoRDF(AbstractArangoRDF):
         repeated computations. Defaults to False. Not always useful, especially when
         terms are not repeated alot in the RDF graph.
     :type enable_pgt_cache: bool
+    :param enable_rich: If True, will enable rich progress bars and spinners.
+        Defaults to True. Set to False when using multiprocessing or concurrent
+        modules, as rich can interfere with them.
+    :type enable_rich: bool
     :raise TypeError: On invalid parameter types
     """
 
@@ -86,6 +92,7 @@ class ArangoRDF(AbstractArangoRDF):
         rdf_attribute_prefix: str = "_",
         insert_async: bool = False,
         enable_pgt_cache: bool = False,
+        enable_rich: bool = True,
     ):
         self.set_logging(logging_lvl)
 
@@ -143,6 +150,9 @@ class ArangoRDF(AbstractArangoRDF):
         self.enable_pgt_cache = enable_pgt_cache
         self.pgt_term_metadata_cache: Dict[str, RDFTermMeta] = {}
 
+        # Rich progress bar configuration
+        self.enable_rich = enable_rich
+
         # RDF Graph for maintaining the ArangoDB Collections & Keys
         # of the RDF Resources
         self.__adb_col_statements = RDFGraph()
@@ -187,6 +197,30 @@ class ArangoRDF(AbstractArangoRDF):
 
     def set_logging(self, level: Union[int, str]) -> None:
         logger.setLevel(level)
+
+    def _get_spinner_progress(self, text: str) -> Union[Progress, NoOpProgress]:
+        """Get a spinner progress bar or no-op version based on enable_rich."""
+        if self.enable_rich:
+            return get_spinner_progress(text)
+        return NoOpProgress()
+
+    def _get_bar_progress(self, text: str, color: str) -> Union[Progress, NoOpProgress]:
+        """Get a bar progress or no-op version based on enable_rich."""
+        if self.enable_rich:
+            return get_bar_progress(text, color)
+        return NoOpProgress()
+
+    def _get_import_spinner_progress(self, text: str) -> Union[Progress, NoOpProgress]:
+        """Get an import spinner progress or no-op version based on enable_rich."""
+        if self.enable_rich:
+            return get_import_spinner_progress(text)
+        return NoOpProgress()
+
+    def _live_context(self, *renderables: Any) -> Union[Live, NoOpLive]:
+        """Get a Live context manager or no-op version based on enable_rich."""
+        if self.enable_rich:
+            return Live(Group(*renderables))
+        return NoOpLive()
 
     ###########################
     # Public: ArangoDB -> RDF #
@@ -749,7 +783,9 @@ class ArangoRDF(AbstractArangoRDF):
 
             self.__rdf_graph = self.__load_meta_ontology(self.__rdf_graph)
 
-            with get_spinner_progress("(RDF → ADB): Graph Contextualization") as rp:
+            with self._get_spinner_progress(
+                "(RDF → ADB): Graph Contextualization"
+            ) as rp:
                 rp.add_task("")
 
                 self.__explicit_type_map = self.__build_explicit_type_map()
@@ -782,9 +818,9 @@ class ArangoRDF(AbstractArangoRDF):
 
         total = len(self.__rdf_graph)
         batch_size = batch_size or total
-        bar_progress = get_bar_progress("(RDF → ADB): RPT", "#BF23C4")
+        bar_progress = self._get_bar_progress("(RDF → ADB): RPT", "#BF23C4")
         bar_progress_task = bar_progress.add_task("", total=total)
-        spinner_progress = get_import_spinner_progress("    ")
+        spinner_progress = self._get_import_spinner_progress("    ")
 
         statements = (
             self.__rdf_graph.quads
@@ -792,7 +828,7 @@ class ArangoRDF(AbstractArangoRDF):
             else self.__rdf_graph.triples
         )
 
-        with Live(Group(bar_progress, spinner_progress)):
+        with self._live_context(bar_progress, spinner_progress):
             for i, (s, p, o, *sg) in enumerate(statements((None, None, None)), 1):
                 logger.debug(f"RPT: {s} {p} {o} {sg}")
 
@@ -956,21 +992,21 @@ class ArangoRDF(AbstractArangoRDF):
                 raise ValueError(m)
 
             if not self.db.has_collection(uri_map_collection_name):
-                self.db.create_collection(uri_map_collection_name)
+                self.__create_collection(uri_map_collection_name)
 
             self.__uri_map_collection = self.db.collection(uri_map_collection_name)
 
         self.__resource_collection = None
         if resource_collection_name:
             if not self.db.has_collection(resource_collection_name):
-                self.db.create_collection(resource_collection_name)
+                self.__create_collection(resource_collection_name)
 
             self.__resource_collection = self.db.collection(resource_collection_name)
 
         self.__predicate_collection = None
         if predicate_collection_name:
             if not self.db.has_collection(predicate_collection_name):
-                self.db.create_collection(predicate_collection_name, edge=True)
+                self.__create_collection(predicate_collection_name, edge=True)
 
             self.__predicate_collection = self.db.collection(predicate_collection_name)
 
@@ -1092,7 +1128,7 @@ class ArangoRDF(AbstractArangoRDF):
         literal_statements = defaultdict(list)
         non_literal_statements = defaultdict(list)
 
-        with get_spinner_progress("(RDF → ADB): PGT [Prepare Statements]") as rp:
+        with self._get_spinner_progress("(RDF → ADB): PGT [Prepare Statements]") as rp:
             rp.add_task("")
 
             for s, p, o, *sg in statements((None, None, None)):
@@ -1129,9 +1165,9 @@ class ArangoRDF(AbstractArangoRDF):
         # PGT: RDF Lists #
         ##################
 
-        bar_progress = get_bar_progress("(RDF → ADB): PGT [Lists]", "#EF7D00")
-        spinner_progress = get_import_spinner_progress("    ")
-        with Live(Group(bar_progress, spinner_progress)):
+        bar_progress = self._get_bar_progress("(RDF → ADB): PGT [Lists]", "#EF7D00")
+        spinner_progress = self._get_import_spinner_progress("    ")
+        with self._live_context(bar_progress, spinner_progress):
             self.__pgt_process_rdf_lists(adb_docs, bar_progress)
             self.__insert_adb_docs(adb_docs, spinner_progress, **adb_import_kwargs)
 
@@ -1141,7 +1177,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         if namespace_collection_name:
             if not self.db.has_collection(namespace_collection_name):
-                self.db.create_collection(namespace_collection_name)
+                self.__create_collection(namespace_collection_name)
 
             docs = [
                 {"prefix": prefix, "uri": uri, "_key": self.hash(uri)}
@@ -1240,7 +1276,7 @@ class ArangoRDF(AbstractArangoRDF):
         self.__rdf_graph = rdf_graph
         self.controller.rdf_graph = rdf_graph
 
-        with get_spinner_progress("(RDF → ADB): Write Col Statements") as rp:
+        with self._get_spinner_progress("(RDF → ADB): Write Col Statements") as rp:
             rp.add_task("")
 
             # 0. Add URI Collection statements
@@ -1381,7 +1417,7 @@ class ArangoRDF(AbstractArangoRDF):
 
         edge_count = 0
 
-        with get_spinner_progress("(RDF → ADB): Migrate Unknown Resources") as sp:
+        with self._get_spinner_progress("(RDF → ADB): Migrate Unknown Resources") as sp:
             sp.add_task("")
 
             while not cursor.empty():
@@ -1715,7 +1751,9 @@ class ArangoRDF(AbstractArangoRDF):
 
         col_size: int = self.db.collection(col).count()
 
-        with get_spinner_progress(f"(ADB → RDF): Export '{col}' ({col_size})") as sp:
+        with self._get_spinner_progress(
+            f"(ADB → RDF): Export '{col}' ({col_size})"
+        ) as sp:
             sp.add_task("")
 
             cursor: Cursor = self.db.aql.execute(
@@ -1751,10 +1789,10 @@ class ArangoRDF(AbstractArangoRDF):
         :type col_uri: URIRef
         """
 
-        progress = get_bar_progress(f"(ADB → RDF): '{col}'", progress_color)
+        progress = self._get_bar_progress(f"(ADB → RDF): '{col}'", progress_color)
         progress_task_id = progress.add_task("", total=col_size)
 
-        with Live(Group(progress)):
+        with self._live_context(progress):
             while not cursor.empty():
                 for doc in cursor.batch():
                     process_adb_doc(doc, col, col_uri)
@@ -2363,23 +2401,23 @@ class ArangoRDF(AbstractArangoRDF):
         if self.db.has_graph(name):  # pragma: no cover
             return self.db.graph(name)
 
-        return self.db.create_graph(
-            name,
-            edge_definitions=[
-                {
-                    "edge_collection": self.__STATEMENT_COL,
-                    "from_vertex_collections": [
-                        self.__URIREF_COL,
-                        self.__BNODE_COL,
-                    ],
-                    "to_vertex_collections": [
-                        self.__URIREF_COL,
-                        self.__BNODE_COL,
-                        self.__LITERAL_COL,
-                    ],
-                }
-            ],
-        )
+        edge_definitions = [
+            {
+                "edge_collection": self.__STATEMENT_COL,
+                "from_vertex_collections": [
+                    self.__URIREF_COL,
+                    self.__BNODE_COL,
+                ],
+                "to_vertex_collections": [
+                    self.__URIREF_COL,
+                    self.__BNODE_COL,
+                    self.__LITERAL_COL,
+                ],
+            }
+        ]
+
+        self.__create_graph(name, edge_definitions=edge_definitions)
+        return self.db.graph(name)
 
     ##################################
     # Private: RDF -> ArangoDB (PGT) #
@@ -2459,11 +2497,11 @@ class ArangoRDF(AbstractArangoRDF):
 
         total = len(literal_statements)
         batch_size = batch_size or total
-        bar_progress = get_bar_progress("(RDF → ADB): PGT [Literals]", "#EF7D00")
+        bar_progress = self._get_bar_progress("(RDF → ADB): PGT [Literals]", "#EF7D00")
         bar_progress_task = bar_progress.add_task("", total=total)
-        spinner_progress = get_import_spinner_progress("    ")
+        spinner_progress = self._get_import_spinner_progress("    ")
 
-        with Live(Group(bar_progress, spinner_progress)):
+        with self._live_context(bar_progress, spinner_progress):
             for i, (k, v) in enumerate(literal_statements.items(), 1):
                 s, p = k
 
@@ -2531,11 +2569,13 @@ class ArangoRDF(AbstractArangoRDF):
 
         total = len(non_literal_statements)
         batch_size = batch_size or total
-        bar_progress = get_bar_progress("(RDF → ADB): PGT [Non-Literals]", "#08479E")
+        bar_progress = self._get_bar_progress(
+            "(RDF → ADB): PGT [Non-Literals]", "#08479E"
+        )
         bar_progress_task = bar_progress.add_task("", total=total)
-        spinner_progress = get_import_spinner_progress("    ")
+        spinner_progress = self._get_import_spinner_progress("    ")
 
-        with Live(Group(bar_progress, spinner_progress)):
+        with self._live_context(bar_progress, spinner_progress):
             for i, (k, v) in enumerate(non_literal_statements.items(), 1):
                 s, p = k
 
@@ -3258,7 +3298,13 @@ class ArangoRDF(AbstractArangoRDF):
             orphan_v_cols = orphan_v_cols ^ {self.__UNKNOWN_RESOURCE}
 
         if not self.db.has_graph(name):
-            return self.db.create_graph(name, edge_definitions, list(orphan_v_cols))
+            self.__create_graph(
+                name,
+                edge_definitions=edge_definitions,
+                orphan_collections=list(orphan_v_cols),
+            )
+
+            return self.db.graph(name)
 
         old_edge_definitions = {
             edge_def["edge_collection"]: edge_def
@@ -3295,6 +3341,33 @@ class ArangoRDF(AbstractArangoRDF):
     ############################################
     # Private: RDF -> ArangoDB (RPT, PGT, LPG) #
     ############################################
+
+    def __create_collection(self, col: str, edge: bool = False) -> None:
+        """RDF -> ArangoDB: Create an ArangoDB Collection."""
+        try:
+            self.db.create_collection(col, edge=edge)
+        except Exception:
+            # Collection may have been created by another thread
+            if not self.db.has_collection(col):
+                raise
+
+    def __create_graph(
+        self,
+        name: str,
+        edge_definitions: List[Dict[str, Any]],
+        orphan_collections: List[str] = [],
+    ) -> None:
+        """RDF -> ArangoDB: Create an ArangoDB Graph."""
+        try:
+            self.db.create_graph(
+                name,
+                edge_definitions=edge_definitions,
+                orphan_collections=orphan_collections,
+            )
+        except Exception:
+            # Graph may have been created by another thread
+            if not self.db.has_graph(name):
+                raise
 
     def __load_meta_ontology(self, rdf_graph: RDFGraph) -> RDFConjunctiveGraph:
         """RDF -> ArangoDB: Load the RDF, RDFS, and OWL
@@ -3337,6 +3410,9 @@ class ArangoRDF(AbstractArangoRDF):
         if Reified Triple Simplification is enabled.
 
         NOTE: This modifies the RDF Graph in-place. TODO: Revisit
+
+        NOTE: This function is NOT thread-safe due to thread-safety issues with
+        rdflib's SPARQL parser. Therefore it should ONLY be called from a single thread.
 
         :param process_subject_predicate_object: A function that processes
             the RDF Statement (s, p, o) as an ArangoDB document. Either
@@ -3398,7 +3474,7 @@ class ArangoRDF(AbstractArangoRDF):
         """
 
         text = "(RDF → ADB): PGT [Flatten Reified Triples (Query)]"
-        with get_spinner_progress(text) as sp:
+        with self._get_spinner_progress(text) as sp:
             sp.add_task("")
 
             data = self.__rdf_graph.query(query)
@@ -3406,11 +3482,11 @@ class ArangoRDF(AbstractArangoRDF):
         total = len(data)
         batch_size = batch_size or total
         m = "(RDF → ADB): Flatten Reified Triples"
-        bar_progress = get_bar_progress(m, "#FFFFFF")
+        bar_progress = self._get_bar_progress(m, "#FFFFFF")
         bar_progress_task = bar_progress.add_task("", total=total)
-        spinner_progress = get_import_spinner_progress("    ")
+        spinner_progress = self._get_import_spinner_progress("    ")
 
-        with Live(Group(bar_progress, spinner_progress)):
+        with self._live_context(bar_progress, spinner_progress):
             for i, (reified_subject, *sg) in enumerate(data, 1):
                 # Only process the reified triple if it has not been processed yet
                 # i.e recursion
@@ -3831,9 +3907,10 @@ class ArangoRDF(AbstractArangoRDF):
 
         db = self.async_db if self.insert_async else self.db
 
-        adb_import_kwargs["overwrite_mode"] = "update"
-        adb_import_kwargs["merge"] = True
-
+        if "overwrite_mode" not in adb_import_kwargs:
+            adb_import_kwargs["overwrite_mode"] = "update"
+        if "merge" not in adb_import_kwargs:
+            adb_import_kwargs["merge"] = True
         if "raise_on_document_error" not in adb_import_kwargs:
             adb_import_kwargs["raise_on_document_error"] = True
 
@@ -3848,7 +3925,7 @@ class ArangoRDF(AbstractArangoRDF):
 
             if not self.db.has_collection(col):
                 is_edge = col in self.__e_col_map
-                self.db.create_collection(col, edge=is_edge)
+                self.__create_collection(col, edge=is_edge)
 
             logger.debug(f"Inserting Documents: {doc_list}")
 
@@ -4079,7 +4156,9 @@ class ArangoRDF(AbstractArangoRDF):
 
         _, p, _ = triple
 
-        with get_spinner_progress(f"(RDF ↔ ADB): Extract Statements '{str(p)}'") as sp:
+        with self._get_spinner_progress(
+            f"(RDF ↔ ADB): Extract Statements '{str(p)}'"
+        ) as sp:
             sp.add_task("")
 
             for t in rdf_graph.triples(triple):
