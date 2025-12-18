@@ -1,3 +1,20 @@
+## 1.5.0 (2025-12-16)
+
+### New
+
+* Initial support for multiprocessing & concurrency (#47) [Anthony Mahanna]
+
+  * new: `enable_rich`
+
+  * new: `test_pgt_concurrent`
+
+  * fix: lint
+
+  * new: `rdf_to_arangodb_concurrent.rst`
+
+  * new: `arangodb_to_rdf.rst`
+
+
 ## 1.4.0 (2025-10-19)
 
 ### Fix
