@@ -21,6 +21,7 @@ Consider the following RDF graph:
 .. code-block:: turtle
 
     @prefix ex: <http://example.com/> .
+    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
     ex:Alice a ex:Person ;
             ex:name  "Alice" ;
@@ -31,6 +32,8 @@ Consider the following RDF graph:
             ex:age   30 .
 
     ex:Alice ex:friend ex:Bob .
+
+    ex:Person rdfs:subClassOf ex:Human .
 
 Running the LPG transformation produces a graph with:
 
@@ -79,6 +82,28 @@ Basic Usage
 After the migration each vertex has an ``_type`` array property –
 ``["Person"]`` in this example – and the original ``rdf:type`` edges remain untouched.
 Delete them if you do not need them any more.
+
+In addition to the **edge_collection_name** parameter, it is possible to traverse the vertices of the 2nd Order edge collection to apply
+the same attribute (but at the 2nd Order) to the original target verticies. In PGT, a common use case is to
+set **edge_collection_name** to **"type"** and **second_order_edge_collection_name**
+to **"subClassOf"** for inferring the **_type** attribute.
+
+In LPG, this can be done with ``second_order_filter_clause``:
+
+.. code-block:: python
+
+    adbrdf.migrate_edges_to_attributes(
+        graph_name="DemoGraph",
+        edge_collection_name="Edge",
+        attribute_name="_type",
+        filter_clause="e._label == 'type'",
+        second_order_edge_collection_name="Edge",
+        second_order_filter_clause="e._label == 'subClassOf'"
+        second_order_depth=10,
+    )
+
+After this migration, the ``_type`` attribute of ``ex:Alice`` and ``ex:Bob`` will be adjusted to ``["Person", "Human"]``.
+
 
 LPG Collection Mapping Process
 ==============================

@@ -5442,7 +5442,7 @@ def test_pgt_resource_collection_name_and_set_types_attribute() -> None:
     for node in db.collection("Node"):
         assert "_type" not in node
 
-    count = adbrdf.migrate_edges_to_attributes("Test", "type")
+    count = adbrdf.migrate_edges_to_attributes("Test", ["type"])
 
     node_col = db.collection("Node")
     assert set(node_col.get(adbrdf.hash("http://example.com/Alice"))["_type"]) == {
@@ -5475,7 +5475,7 @@ def test_pgt_resource_collection_name_and_set_types_attribute() -> None:
     for v in db.collection("Company"):
         assert "_type" not in v
 
-    count = adbrdf.migrate_edges_to_attributes("Test", "type", "foo")
+    count = adbrdf.migrate_edges_to_attributes("Test", ["type"], "foo")
     assert count == 3
 
     for v in db.collection("Human"):
@@ -5484,9 +5484,7 @@ def test_pgt_resource_collection_name_and_set_types_attribute() -> None:
     for v in db.collection("Company"):
         assert set(v["foo"]) == {"Organization", "Company"}
 
-    count = adbrdf.migrate_edges_to_attributes(
-        graph_name="Test", edge_collection_name="friend"
-    )
+    count = adbrdf.migrate_edges_to_attributes(graph_name="Test", edge_path=["friend"])
 
     alice = db.collection("Human").get(adbrdf.hash("http://example.com/Alice"))
     assert alice["_friend"] == ["Bob"]
@@ -5497,7 +5495,7 @@ def test_pgt_resource_collection_name_and_set_types_attribute() -> None:
     assert count == 2
 
     count = adbrdf.migrate_edges_to_attributes(
-        graph_name="Test", edge_collection_name="friend", edge_direction="ANY"
+        graph_name="Test", edge_path=["friend"], edge_direction="ANY"
     )
 
     assert count == 2
@@ -5510,23 +5508,19 @@ def test_pgt_resource_collection_name_and_set_types_attribute() -> None:
 
     with pytest.raises(ValueError) as e:
         adbrdf.migrate_edges_to_attributes(
-            graph_name="Test", edge_collection_name="friend", edge_direction="INVALID"
+            graph_name="Test", edge_path=["friend"], edge_direction="INVALID"
         )
 
     assert "Invalid edge direction: INVALID" in str(e.value)
 
     with pytest.raises(ValueError) as e:
-        adbrdf.migrate_edges_to_attributes(
-            graph_name="Test", edge_collection_name="INVALID"
-        )
+        adbrdf.migrate_edges_to_attributes(graph_name="Test", edge_path=["INVALID"])
 
-    m = "No edge definition found for 'INVALID' in graph 'Test'. Cannot migrate edges to attributes."  # noqa: E501
+    m = "No edge definitions found for '['INVALID']' in graph 'Test'. Cannot migrate edges to attributes."  # noqa: E501
     assert m in str(e.value)
 
     with pytest.raises(ValueError) as e:
-        adbrdf.migrate_edges_to_attributes(
-            graph_name="INVALID", edge_collection_name="friend"
-        )
+        adbrdf.migrate_edges_to_attributes(graph_name="INVALID", edge_path=["friend"])
 
     assert "Graph 'INVALID' does not exist" in str(e.value)
 
@@ -5627,7 +5621,7 @@ def test_lpg() -> None:
         assert "_type" not in node
 
     adbrdf.migrate_edges_to_attributes(
-        "Test", "Edge", "_type", filter_clause="e._label == 'type'"
+        "Test", ["Edge"], "_type", filter_clause="e._label == 'type'"
     )
 
     for node in db.collection("Node"):
@@ -5702,3 +5696,121 @@ def test_pgt_concurrent() -> None:
     assert db.collection("Node").count() == 3
     assert db.collection("Property").count() == 2
     assert db.collection("knows").count() == 2
+
+
+def test_migrate_edges_to_attributes_max_depth() -> None:
+    db.delete_graph("Test", drop_collections=True, ignore_missing=True)
+
+    g = RDFGraph()
+    g.parse(
+        data="""
+        @prefix ex: <http://example.com/> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+        ex:Alice a ex:Human .
+
+        ex:Bob a ex:Person .
+
+        ex:Charlie a ex:Animal .
+
+        ex:Dana a ex:Entity .
+
+        ex:Eve a ex:Human .
+        ex:Eve a ex:Person .
+
+        ex:Fred a ex:Human .
+        ex:Fred a ex:Individual .
+
+        ex:Human rdfs:subClassOf ex:Animal .
+        ex:Person rdfs:subClassOf ex:Individual .
+        ex:Animal rdfs:subClassOf ex:Entity .
+        ex:Individual rdfs:subClassOf ex:Entity .
+        """,
+        format="turtle",
+    )
+
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g, resource_collection_name="Node")
+
+    assert db.collection("subClassOf").count() == 4
+
+    adbrdf.migrate_edges_to_attributes(
+        graph_name="Test",
+        edge_path=["type", "subClassOf"],
+        max_depth=1,
+    )
+
+    alice = db.collection("Node").get(adbrdf.hash("http://example.com/Alice"))
+    assert set(alice["_type"]) == {"Human"}
+
+    bob = db.collection("Node").get(adbrdf.hash("http://example.com/Bob"))
+    assert set(bob["_type"]) == {"Person"}
+
+    charlie = db.collection("Node").get(adbrdf.hash("http://example.com/Charlie"))
+    assert set(charlie["_type"]) == {"Animal"}
+
+    dana = db.collection("Node").get(adbrdf.hash("http://example.com/Dana"))
+    assert set(dana["_type"]) == {"Entity"}
+
+    eve = db.collection("Node").get(adbrdf.hash("http://example.com/Eve"))
+    assert set(eve["_type"]) == {"Human", "Person"}
+
+    fred = db.collection("Node").get(adbrdf.hash("http://example.com/Fred"))
+    assert set(fred["_type"]) == {"Human", "Individual"}
+
+    db.delete_graph("Test", drop_collections=True)
+
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g, resource_collection_name="Node")
+
+    adbrdf.migrate_edges_to_attributes(
+        graph_name="Test",
+        edge_path=["type", "subClassOf"],
+        max_depth=2,
+    )
+
+    alice = db.collection("Node").get(adbrdf.hash("http://example.com/Alice"))
+    assert set(alice["_type"]) == {"Human", "Animal"}
+
+    bob = db.collection("Node").get(adbrdf.hash("http://example.com/Bob"))
+    assert set(bob["_type"]) == {"Person", "Individual"}
+
+    charlie = db.collection("Node").get(adbrdf.hash("http://example.com/Charlie"))
+    assert set(charlie["_type"]) == {"Animal", "Entity"}
+
+    dana = db.collection("Node").get(adbrdf.hash("http://example.com/Dana"))
+    assert set(dana["_type"]) == {"Entity"}
+
+    eve = db.collection("Node").get(adbrdf.hash("http://example.com/Eve"))
+    assert set(eve["_type"]) == {"Human", "Person", "Animal", "Individual"}
+
+    fred = db.collection("Node").get(adbrdf.hash("http://example.com/Fred"))
+    assert set(fred["_type"]) == {"Human", "Individual", "Animal", "Entity"}
+
+    db.delete_graph("Test", drop_collections=True)
+
+    adbrdf.rdf_to_arangodb_by_pgt("Test", g, resource_collection_name="Node")
+
+    adbrdf.migrate_edges_to_attributes(
+        graph_name="Test",
+        edge_path=["type", "subClassOf"],
+        max_depth=3,
+    )
+
+    alice = db.collection("Node").get(adbrdf.hash("http://example.com/Alice"))
+    assert set(alice["_type"]) == {"Human", "Animal", "Entity"}
+
+    bob = db.collection("Node").get(adbrdf.hash("http://example.com/Bob"))
+    assert set(bob["_type"]) == {"Person", "Individual", "Entity"}
+
+    charlie = db.collection("Node").get(adbrdf.hash("http://example.com/Charlie"))
+    assert set(charlie["_type"]) == {"Animal", "Entity"}
+
+    dana = db.collection("Node").get(adbrdf.hash("http://example.com/Dana"))
+    assert set(dana["_type"]) == {"Entity"}
+
+    eve = db.collection("Node").get(adbrdf.hash("http://example.com/Eve"))
+    assert set(eve["_type"]) == {"Human", "Person", "Animal", "Individual", "Entity"}
+
+    fred = db.collection("Node").get(adbrdf.hash("http://example.com/Fred"))
+    assert set(fred["_type"]) == {"Human", "Individual", "Entity", "Animal"}
+
+    db.delete_graph("Test", drop_collections=True)

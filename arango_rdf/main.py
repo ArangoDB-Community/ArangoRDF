@@ -1456,33 +1456,41 @@ class ArangoRDF(AbstractArangoRDF):
     def migrate_edges_to_attributes(
         self,
         graph_name: str,
-        edge_collection_name: str,
+        edge_path: list[str],
         attribute_name: Optional[str] = None,
         edge_direction: str = "OUTBOUND",
+        max_depth: int = 1,
         sort_clause: Optional[str] = None,
         return_clause: Optional[str] = None,
         filter_clause: Optional[str] = None,
+        traversal_options: Optional[dict[str, Any]] = None,
     ) -> int:
         """RDF --> ArangoDB (PGT): Migrate all edges in the specified edge collection to
         attributes. This method is useful when combined with the
         **resource_collection_name** parameter of the :func:`rdf_to_arangodb_by_pgt`
         method.
 
-        NOTE: It is recommended to run this method with **edge_collection_name** set
-        to **"type"** after :func:`rdf_to_arangodb_by_pgt` if the user has set the
+        NOTE: It is recommended to run this method with **edge_path** set
+        to **["type"]** after :func:`rdf_to_arangodb_by_pgt` if the user has set the
         **resource_collection_name** parameter.
 
         :param graph_name: The name of the graph to migrate the edges from.
         :type graph_name: str
-        :param edge_collection_name: The name of the edge collection to migrate.
-        :type edge_collection_name: str
-        :param attribute_name: The name of the attribute to migrate the edges to.
-            Defaults to **edge_collection_name**, prefixed with the
-            **rdf_attribute_prefix** parameter set in the constructor.
-        :type attribute_name: Optional[str]
-        :param edge_direction: The direction of the edges to migrate.
+        :param edge_path: The path of the edges to migrate. The first element is the
+            starting edge collection, the last element is the ending edge collection.
+            Can also include edge direction traversal
+            (e.g ["OUTBOUND type", "OUTBOUND subClassOf"]).
+        :type edge_path: list[str]
+        :param edge_direction: The default traversal direction of the edges to migrate.
             Defaults to **OUTBOUND**.
         :type edge_direction: str
+        :param max_depth: The maximum depth of the edge path to migrate.
+            Defaults to 1.
+        :type max_depth: int
+        :param attribute_name: The name of the attribute to migrate the edges to.
+            Defaults to **edge_path[0]**, prefixed with the
+            **rdf_attribute_prefix** parameter set in the constructor.
+        :type attribute_name: Optional[str]
         :param sort_clause: A SORT statement to order the traversed vertices.
             Defaults to f"v.{self.__rdf_attribute_prefix}label". If set to None,
             the vertex values will be ordered based on their traversal order.
@@ -1495,6 +1503,9 @@ class ArangoRDF(AbstractArangoRDF):
         :param filter_clause: A FILTER statement to filter the traversed
             edges & target vertices. Defaults to None.
         :type filter_clause: Optional[str]
+        :param traversal_options: A dictionary of traversal options to pass to the
+            AQL query. Defaults to None.
+        :type traversal_options: Optional[dict[str, Any]]
         :return: The number of documents updated.
         :rtype: int
         """
@@ -1507,35 +1518,51 @@ class ArangoRDF(AbstractArangoRDF):
 
         graph = self.db.graph(graph_name)
 
-        target_e_d = {}
-        for e_d in graph.edge_definitions():
-            if e_d["edge_collection"] == edge_collection_name:
-                target_e_d = e_d
-                break
+        # Remove potential INBOUND/OUTBOUND/ANY prefix
+        # (e.g ["OUTBOUND type", "OUTBOUND subClassOf"])
+        edge_path_cleaned = [e_col.split(" ")[-1] for e_col in edge_path]
+        start_edge_collection = edge_path_cleaned[0]
 
-        if not target_e_d:
-            m = f"No edge definition found for '{edge_collection_name}' in graph '{graph_name}'. Cannot migrate edges to attributes."  # noqa: E501
+        start_node_collections = []
+        all_e_ds = []
+        for e_d in graph.edge_definitions():
+            if e_d["edge_collection"] == start_edge_collection:
+                start_node_collections = e_d["from_vertex_collections"]
+
+            if e_d["edge_collection"] in edge_path_cleaned:
+                all_e_ds.append(e_d)
+
+        if not all_e_ds:
+            m = f"No edge definitions found for '{edge_path}' in graph '{graph_name}'. Cannot migrate edges to attributes."  # noqa: E501
             raise ValueError(m)
 
-        if not attribute_name:
-            attribute_name = f"{self.__rdf_attribute_prefix}{edge_collection_name}"
+        if attribute_name is None:
+            attribute_name = f"{self.__rdf_attribute_prefix}{start_edge_collection}"
 
-        if not sort_clause:
+        if sort_clause is None:
             sort_clause = f"v.{self.__rdf_label_attr}"
 
-        if not return_clause:
+        if return_clause is None:
             return_clause = f"v.{self.__rdf_label_attr}"
 
-        with_cols = set(target_e_d["to_vertex_collections"])
+        if traversal_options is None:
+            traversal_options = {
+                "uniqueVertices": "path",
+                "uniqueEdges": "path",
+            }
+
+        with_cols = {col for e_d in all_e_ds for col in e_d["to_vertex_collections"]}
         with_cols_str = "WITH " + ", ".join(with_cols)
+        e_cols = ", ".join(edge_path_cleaned)
 
         count = 0
-        for v_col in target_e_d["from_vertex_collections"]:
+        for v_col in start_node_collections:
             query = f"""
                 {with_cols_str}
                 FOR doc IN @@v_col
                     LET labels = (
-                        FOR v, e IN 1 {edge_direction} doc @@e_col
+                        FOR v, e IN 1..{max_depth} {edge_direction} doc {e_cols}
+                        OPTIONS {json.dumps(traversal_options)}
                             {f"FILTER {filter_clause}" if filter_clause else ""}
                             {f"SORT {sort_clause}" if sort_clause else ""}
                             RETURN {return_clause}
@@ -1544,9 +1571,7 @@ class ArangoRDF(AbstractArangoRDF):
                     UPDATE doc WITH {{{attribute_name}: labels}} IN @@v_col
             """
 
-            self.db.aql.execute(
-                query, bind_vars={"@v_col": v_col, "@e_col": edge_collection_name}
-            )
+            self.db.aql.execute(query, bind_vars={"@v_col": v_col})
 
             count += self.db.collection(v_col).count()
 
