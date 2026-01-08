@@ -54,6 +54,52 @@ def get_bar_progress(text: str, color: str) -> Progress:
     )
 
 
+class NoOpProgress:
+    """A no-op Progress class that mimics the rich Progress interface.
+
+    Used when enable_rich=False to avoid interference with
+    multiprocessing or concurrent modules.
+    """
+
+    def __init__(self) -> None:
+        pass
+
+    def __enter__(self) -> "NoOpProgress":
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        pass
+
+    def add_task(self, description: str = "", total: int = 0, **kwargs: Any) -> int:
+        return 0
+
+    def advance(self, task_id: int, advance: int = 1) -> None:
+        pass
+
+    def update(self, task_id: int, **kwargs: Any) -> None:
+        pass
+
+    def stop_task(self, task_id: int) -> None:
+        pass
+
+
+class NoOpLive:
+    """A no-op Live context manager that mimics the rich Live interface.
+
+    Used when enable_rich=False to avoid interference with
+    multiprocessing or concurrent modules.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def __enter__(self) -> "NoOpLive":
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        pass
+
+
 class Node:
     def __init__(self, name: str, depth: int = 0) -> None:
         self.name = name
