@@ -1536,13 +1536,13 @@ class ArangoRDF(AbstractArangoRDF):
             m = f"No edge definitions found for '{edge_path}' in graph '{graph_name}'. Cannot migrate edges to attributes."  # noqa: E501
             raise ValueError(m)
 
-        if not attribute_name:
+        if attribute_name is None:
             attribute_name = f"{self.__rdf_attribute_prefix}{start_edge_collection}"
 
-        if not sort_clause:
+        if sort_clause is None:
             sort_clause = f"v.{self.__rdf_label_attr}"
 
-        if not return_clause:
+        if return_clause is None:
             return_clause = f"v.{self.__rdf_label_attr}"
 
         if traversal_options is None:
