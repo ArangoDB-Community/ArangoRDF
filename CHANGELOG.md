@@ -1,3 +1,26 @@
+## 2.0.0 (2026-01-08)
+
+### Other
+
+* Refactor: `migrate_edges_to_attributes` (#44) [Anthony Mahanna]
+
+  * new: `second_order_edge_collection_name`
+
+  * new: filter clause, sort clause
+
+  * update docs
+
+  * fix: lint
+
+  * fix: apply filter clause
+
+  * refactor: `migrate_edges_to_attributes`
+
+  * update docstring
+
+  * None check
+
+
 ## 1.5.0 (2025-12-16)
 
 ### New
