@@ -1503,6 +1503,9 @@ class ArangoRDF(AbstractArangoRDF):
         :param filter_clause: A FILTER statement to filter the traversed
             edges & target vertices. Defaults to None.
         :type filter_clause: Optional[str]
+        :param traversal_options: A dictionary of traversal options to pass to the
+            AQL query. Defaults to None.
+        :type traversal_options: Optional[dict[str, Any]]
         :return: The number of documents updated.
         :rtype: int
         """
