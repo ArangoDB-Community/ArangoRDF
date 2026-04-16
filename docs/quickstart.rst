@@ -20,7 +20,7 @@ Quickstart
       g.parse("https://raw.githubusercontent.com/ArangoDB-Community/ArangoRDF/main/tests/data/rdf/beatles.ttl", format="ttl")
       return g
 
-**ArangoDB to RDF**
+**RDF to ArangoDB**
 
 **Note**: RDF-to-ArangoDB functionality has been implemented using concepts described in the paper
 `Transforming RDF-star to Property Graphs: A Preliminary Analysis of Transformation Approaches 
@@ -56,7 +56,7 @@ This approach is useful when you want to combine the benefits of RPT and PGT:
        "BeatlesLPG", "Edge", "_type", filter_clause="e._label == 'type'"
    )
 
-**RDF to ArangoDB**
+**ArangoDB to RDF**
 
 .. code-block:: python
 
